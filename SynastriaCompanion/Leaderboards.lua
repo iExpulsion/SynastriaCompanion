@@ -139,16 +139,21 @@ function LB.ClassColor(cl)
 	return color
 end
 
--- Ranks with their place numbers: rows marked h (an extra row, like your own place below the list) get none.
+-- Ranks with their place numbers, and the board's extra rows: rows marked h get no place, and unless they're
+-- yours they're notes like the times a speed buff needs ({ name = "50% speed buff", value }).
 function LB.Rows(data)
-	local rows, place = {}, 0
+	local rows, extras, place = {}, {}, 0
 	for _, r in ipairs(data and data.ranks or {}) do
 		local row = { name = r.name, acc = r.acc, cl = r.cl, value = r.value, ts = r.ts, self = r.self }
 		if not r.h then
 			place = place + 1
 			row.place = place
+			rows[#rows + 1] = row
+		elseif r.self then
+			rows[#rows + 1] = row
+		else
+			extras[#extras + 1] = row
 		end
-		rows[#rows + 1] = row
 	end
-	return rows
+	return rows, extras
 end

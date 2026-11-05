@@ -69,8 +69,14 @@ local function render(scrollToSelf)
 		panel.title:SetText(name or "Leaderboard")
 		panel.sub:SetText(group or "General")
 		local data = LB.Data(t, arg)
-		local rows = LB.Rows(data)
+		local rows, extras = LB.Rows(data)
 		panel.vtype = data and data.vtype
+		local notes = {}
+		for _, e in ipairs(extras) do
+			local label = (e.name or e.acc or ""):gsub("(%a)(%w*)", function(a, b) return a:upper() .. b end)
+			notes[#notes + 1] = S.Hex(C.muted, label .. ": ") .. LB.ValueText(e.value, panel.vtype)
+		end
+		panel.notes:SetText(table.concat(notes, "    "))
 		-- only some boards (the dungeon and raid runs) send dates; the others get the wider table
 		local dated = false
 		for _, r in ipairs(rows) do
@@ -95,6 +101,7 @@ local function render(scrollToSelf)
 	else
 		panel.title:SetText("Leaderboards")
 		panel.sub:SetText("Pick a board on the left.")
+		panel.notes:SetText("")
 		panel.dated.frame:Hide()
 		tbl = panel.plain
 		panel.table = tbl
@@ -198,6 +205,10 @@ local function create(parent, width, height)
 		end
 	end, "Ask the server for this board again. It answers at most once a minute per board.")
 	panel.refresh:SetPoint("TOPRIGHT", -PAD, -PAD)
+	-- the board's notes, like the times a speed buff needs, under Refresh on the subtitle's line
+	panel.notes = S.Text(panel, "small")
+	panel.notes:SetJustifyH("RIGHT")
+	panel.notes:SetPoint("BOTTOMRIGHT", panel.refresh, "BOTTOMRIGHT", -8, -16)
 
 	for key, columns in pairs({ plain = PLAIN_COLUMNS, dated = DATED_COLUMNS }) do
 		local t = SC.Table.New(panel, nil, width - x - PAD, height + top - footerH, {
