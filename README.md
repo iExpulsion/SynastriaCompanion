@@ -54,8 +54,8 @@ The attune search, rebuilt:
 
 - **Every board in one list:** the general boards, then dungeons and raids by expansion (WotLK, TBC, Classic and
   their Mythic versions), then prestiged runs. Click an expansion to open its boards.
-- **The ranks in a table** with place, player and account, and score (counts, times or percentages); hover a row
-  for its date when the board has one. Your own place is highlighted and scrolled into view.
+- **The ranks in a table** with place, player and account, score (counts, times or percentages), and the date on
+  boards that have one. Your own place is highlighted and scrolled into view.
 - **Refresh** asks for a board again; the server answers at most once a minute per board.
 
 More screens are on the way: Lootfilter.

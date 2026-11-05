@@ -71,6 +71,16 @@ local function render(scrollToSelf)
 		local data = LB.Data(t, arg)
 		local rows = LB.Rows(data)
 		panel.vtype = data and data.vtype
+		-- only some boards (the dungeon and raid runs) send dates; the others get the wider table
+		local dated = false
+		for _, r in ipairs(rows) do
+			if r.ts and r.ts ~= "" then dated = true end
+		end
+		tbl = dated and panel.dated or panel.plain
+		panel.table = tbl
+		panel.plain.frame:Hide()
+		panel.dated.frame:Hide()
+		tbl.frame:Show()
 		tbl:SetItems(rows, data and "Nobody Is Ranked Yet" or "Waiting for the Server...", not scrollToSelf)
 		if scrollToSelf then centerOnSelf(rows) end
 		local mine
@@ -85,6 +95,10 @@ local function render(scrollToSelf)
 	else
 		panel.title:SetText("Leaderboards")
 		panel.sub:SetText("Pick a board on the left.")
+		panel.dated.frame:Hide()
+		tbl = panel.plain
+		panel.table = tbl
+		tbl.frame:Show()
 		tbl:SetItems({}, "Pick a Board")
 		panel.status:SetText("")
 		panel.refresh:Hide()
@@ -99,16 +113,26 @@ local function selectBoard(t, arg)
 	render(true)
 end
 
-local COLUMNS = {
+local PLAIN_COLUMNS = {
 	{ key = "place", label = "#", width = 46, justify = "RIGHT" },
 	{ key = "name", label = "Player", width = 330 },
 	{ key = "value", label = "Score", width = 140, justify = "RIGHT" },
 }
+local DATED_COLUMNS = {
+	{ key = "place", label = "#", width = 46, justify = "RIGHT" },
+	{ key = "name", label = "Player", width = 260 },
+	{ key = "value", label = "Score", width = 110, justify = "RIGHT" },
+	{ key = "ts", label = "Date", width = 100 },
+}
 
--- Few boards send a date, so it's in the tooltip rather than a mostly empty column.
+-- A name of "!" is a character the server no longer knows; the account still shows.
+local function charName(row)
+	return row.name ~= "!" and row.name or nil
+end
+
 local function tooltip(tt, row)
-	local name = row.name == "!" and "<Unknown>" or row.name or row.acc or "?"
-	tt:AddLine(name, 1, 1, 1)
+	local name = charName(row)
+	tt:AddLine(name or row.acc or "?", 1, 1, 1)
 	if row.acc and row.acc ~= name then tt:AddLine("Account: " .. row.acc, unpack(C.muted)) end
 	tt:AddDoubleLine("Score", LB.ValueText(row.value, panel.vtype), 1, 1, 1, 1, 1, 1)
 	if row.place then tt:AddDoubleLine("Place", tostring(row.place), 1, 1, 1, 1, 1, 1) end
@@ -118,15 +142,18 @@ end
 local function cell(row, key)
 	if key == "place" then return row.place and (row.place .. ".") or "", C.muted
 	elseif key == "name" then
-		local name = row.name == "!" and "<Unknown>" or row.name
+		local name = charName(row)
 		local text
 		if name and name ~= row.acc then
 			text = LB.ClassColor(row.cl) .. name .. "|r" .. (row.acc and S.Hex(C.muted, "  " .. row.acc) or "")
+		elseif name then
+			text = LB.ClassColor(row.cl) .. name .. "|r"
 		else
-			text = LB.ClassColor(row.cl) .. (row.acc or name or "?") .. "|r"
+			text = S.Hex(C.muted, row.acc or "?")
 		end
 		return text
 	elseif key == "value" then return LB.ValueText(row.value, panel.vtype), row.self and C.heading or C.text
+	elseif key == "ts" then return row.ts or "", C.muted
 	end
 end
 
@@ -172,11 +199,16 @@ local function create(parent, width, height)
 	end, "Ask the server for this board again. It answers at most once a minute per board.")
 	panel.refresh:SetPoint("TOPRIGHT", -PAD, -PAD)
 
-	tbl = SC.Table.New(panel, "SynastriaCompanionLBRanks", width - x - PAD, height + top - footerH, {
-		columns = COLUMNS, rowH = 20, cell = cell, tooltip = tooltip,
-	})
-	tbl.isSelected = function(row) return row.self end
-	tbl.frame:SetPoint("TOPLEFT", x, top)
+	for key, columns in pairs({ plain = PLAIN_COLUMNS, dated = DATED_COLUMNS }) do
+		local t = SC.Table.New(panel, nil, width - x - PAD, height + top - footerH, {
+			columns = columns, rowH = 20, cell = cell, tooltip = tooltip,
+		})
+		t.isSelected = function(row) return row.self end
+		t.frame:SetPoint("TOPLEFT", x, top)
+		panel[key] = t
+	end
+	tbl = panel.plain
+	panel.dated.frame:Hide()
 	panel.table, panel.rail = tbl, rail
 
 	panel.status = S.Text(panel, "small")
