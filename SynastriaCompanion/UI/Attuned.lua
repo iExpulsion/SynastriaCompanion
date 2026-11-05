@@ -9,7 +9,7 @@ SC.AttunedUI = AttunedUI
 local S = SC.Style
 local C = S.colors
 local Attuned = SC.Attuned
-local PAD, GAP = S.PAD, S.GAP
+local PAD, CONTROL_H = S.PAD, S.CONTROL_H
 
 local panel, tbl, cols, state
 local KEYS = { "total", "misc", "armor", "weapon", "inactive" }
@@ -35,11 +35,15 @@ end
 
 local COLUMNS = {
 	{ key = "stat", label = "Stat", width = 156 },
-	{ key = "total", label = "Total", width = 110, justify = "RIGHT", defaultDesc = true },
-	{ key = "misc", label = "Misc", width = 106, justify = "RIGHT", defaultDesc = true },
-	{ key = "armor", label = "Armor", width = 106, justify = "RIGHT", defaultDesc = true },
+	{ key = "total", label = "Total", width = 110, justify = "RIGHT", defaultDesc = true,
+		tooltip = "What this character gets: Misc, its armor type and Weapon added up." },
+	{ key = "misc", label = "Misc", width = 106, justify = "RIGHT", defaultDesc = true,
+		tooltip = "Jewelry, cloaks and other gear any class can wear." },
+	{ key = "armor", label = "Armor", width = 106, justify = "RIGHT", defaultDesc = true,
+		tooltip = "Armor of this character's type." },
 	{ key = "weapon", label = "Weapon", width = 106, justify = "RIGHT", defaultDesc = true },
-	{ key = "inactive", label = "Inactive", width = 118, justify = "RIGHT", defaultDesc = true },
+	{ key = "inactive", label = "Inactive", width = 118, justify = "RIGHT", defaultDesc = true,
+		tooltip = "Attuned gear this character's armor type or class can't use, so it adds nothing here. Attune progress is account-wide." },
 }
 
 local function cell(row, key)
@@ -93,7 +97,7 @@ local function refresh()
 		or "Click Load Stats to Get Your Attuned Stats From the Server", true)
 	panel.status:SetText(Attuned.receivedAt and ("Updated " .. ago(Attuned.receivedAt))
 		or Attuned.HasData() and "" or S.Hex(C.muted, "Not Loaded"))
-	panel.load:SetLabel(Attuned.HasData() and "Refresh" or "Load Stats")
+	panel.load:SetText(Attuned.HasData() and "Refresh" or "Load Stats")
 end
 
 -- The request is a spell cast, which only a secure button the player clicks can make. Secure buttons can't be
@@ -143,21 +147,14 @@ local function create(parent, width, height)
 	state.sort = state.sort or "stat"
 	panel = CreateFrame("Frame", nil, parent)
 
-	local title = S.Text(panel, "large")
-	title:SetPoint("TOPLEFT", PAD, -PAD - 2)
-	title:SetText("Stats From Attuned Items")
-	local sub = S.Text(panel, "small", C.muted)
-	sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
-	sub:SetText("Total is what this character gets. Inactive is attuned gear its armor type or class can't use.")
-
 	-- a look-alike the secure button covers; it's what shows while in combat, when it can't be clicked
 	panel.load = S.Button(panel, "Load Stats", "primary", 100, function()
 		panel.status:SetText(S.Hex(C.bad, "Can't Ask in Combat"))
 	end, "Ask the server for your attuned stats (casts View Attuned Items).")
-	panel.load:SetPoint("TOPRIGHT", -PAD, -PAD)
+	panel.load:SetPoint("BOTTOMRIGHT", -PAD, PAD)
 
-	local top = -PAD - 40 - GAP
-	local footerH = PAD + 14 + PAD
+	local top = -PAD
+	local footerH = PAD + CONTROL_H + PAD
 	tbl = SC.Table.New(panel, "SynastriaCompanionAttunedTable", width - 2 * PAD, height + top - footerH, {
 		columns = COLUMNS, rowH = 20, cell = cell,
 		header = function(row) return row.header and row.label end,
@@ -171,10 +168,10 @@ local function create(parent, width, height)
 	panel.table = tbl
 
 	panel.status = S.Text(panel, "small")
-	panel.status:SetPoint("BOTTOMLEFT", PAD, PAD)
+	panel.status:SetPoint("LEFT", panel, "BOTTOMLEFT", PAD, PAD + CONTROL_H / 2)
 	local hint = S.Text(panel, "small", C.muted)
-	hint:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-	hint:SetText("Attune progress is account-wide; stats count only for gear this character can use")
+	hint:SetPoint("RIGHT", panel.load, "LEFT", -PAD, 0)
+	hint:SetText("Hover a Column for What It Counts")
 
 	panel:SetScript("OnUpdate", placeSecure)
 	panel:SetScript("OnHide", hideSecure)

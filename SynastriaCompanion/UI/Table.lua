@@ -82,7 +82,7 @@ local function paintHeader(self)
 	end
 end
 
--- opts: columns = { { key, label, width, justify, sortable } }, rowH, icons (first column has an icon),
+-- opts: columns = { { key, label, width, justify, sortable, defaultDesc, tooltip } }, rowH, icons (first column has an icon),
 -- cell(item, key) -> text, icon(item) -> texture, tooltip(tt, item), onClick(item, button), onSort(key, desc),
 -- header(item) -> label when the item is a group header row
 function Table.New(parent, name, width, height, opts)
@@ -149,6 +149,14 @@ function Table.New(parent, name, width, height, opts)
 				paintHeader(self)
 				if self.onSort then self.onSort(self.sortKey, self.sortDesc) end
 			end)
+		end
+		if col.tooltip then
+			h:SetScript("OnEnter", function()
+				GameTooltip:SetOwner(h, "ANCHOR_TOP")
+				GameTooltip:SetText(col.tooltip, nil, nil, nil, nil, true)
+				GameTooltip:Show()
+			end)
+			h:SetScript("OnLeave", function() GameTooltip:Hide() end)
 		end
 		self.headers[#self.headers + 1] = h
 	end

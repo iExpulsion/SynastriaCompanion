@@ -89,7 +89,7 @@ local function syncControls()
 		panel[key]:SetText(filter[key] and tostring(filter[key]) or "")
 	end
 	panel.zone:SetText(SC.ZonePicker.Name(filter.zone) or "Any Zone")
-	setShown(panel.zoneClear, filter.zone ~= nil)
+	if filter.zone ~= nil then panel.zoneClear:Enable() else panel.zoneClear:Disable() end
 end
 
 local function set(key, value)
@@ -172,7 +172,7 @@ local function create(parent, width, height)
 	local x0, inner = PAD, width - 2 * PAD
 
 	-- row 1: search, mode, class, reset
-	panel.name = S.Input(panel, "SynastriaCompanionAttuneName", 240, "Search Items", 60)
+	panel.name = S.Input(panel, "SynastriaCompanionAttuneName", 260, "Search Items", 60)
 	panel.name:SetPoint("TOPLEFT", x0, -PAD)
 	panel.name:HookScript("OnTextChanged", function(self, user)
 		if user then
@@ -236,16 +236,16 @@ local function create(parent, width, height)
 	panel.maxLvl = numberBox(panel, "SynastriaCompanionAttuneMaxLvl", "maxLvl")
 	panel.maxLvl:SetPoint("LEFT", panel.minLvl, "RIGHT", 4, 0)
 
-	panel.zone = S.Button(panel, "Any Zone", "secondary", 170, function(self)
-		SC.ZonePicker.Open(self, function(index) set("zone", index) end)
-	end, "Only items that come from one zone.")
+	panel.zone = S.AddArrow(S.Button(panel, "Any Zone", "secondary", 170, function(self)
+		SC.ZonePicker.Open(self, function(index) set("zone", index) end, filter.zone)
+	end, "Only items that come from one zone."))
 	panel.zone:SetPoint("LEFT", panel.maxLvl, "RIGHT", PAD, 0)
-	panel.zoneHere = S.Button(panel, "Current", "ghost", 64, function()
+	panel.zoneHere = S.Button(panel, "Current", "secondary", 64, function()
 		local index = SC.ZonePicker.CurrentIndex()
 		if index then set("zone", index) else panel.status:SetText(S.Hex(C.bad, "Couldn't Tell Which Zone You're In")) end
 	end, "Only items from the zone you're in.")
 	panel.zoneHere:SetPoint("LEFT", panel.zone, "RIGHT", 4, 0)
-	panel.zoneClear = S.Button(panel, "Clear", "ghost", 52, function() set("zone", nil) end)
+	panel.zoneClear = S.Button(panel, "Clear", "secondary", 52, function() set("zone", nil) end, "Any zone again.")
 	panel.zoneClear:SetPoint("LEFT", panel.zoneHere, "RIGHT", 4, 0)
 
 	-- results
@@ -300,6 +300,7 @@ local function show()
 	local zones = SC.ZonePicker.Available() and ItemLocIsLoaded and (ItemLocIsLoaded() or 0) ~= 0
 	setShown(panel.zone, zones)
 	setShown(panel.zoneHere, zones)
+	setShown(panel.zoneClear, zones)
 	if not zones then filter.zone = nil end
 	syncControls()
 	if panel.stale or not panel.result then

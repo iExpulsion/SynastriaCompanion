@@ -139,7 +139,7 @@ local SEARCH_COLUMNS = {
 	{ key = "name", label = "Item", width = 360 },
 	{ key = "kind", label = "Type", width = 160 },
 	{ key = "ilvl", label = "iLvl", width = 60, justify = "RIGHT", defaultDesc = true },
-	{ key = "status", label = "Attune", width = 113, defaultDesc = true },
+	{ key = "status", label = "Status", width = 113, defaultDesc = true },
 }
 local SOURCE_COLUMNS = {
 	{ key = "name", label = "Source", width = 236 },
@@ -153,7 +153,7 @@ local LOOT_COLUMNS = {
 	{ key = "type", label = "Type", width = 120 },
 	{ key = "chance", label = "Chance", width = 80, justify = "RIGHT", defaultDesc = true },
 	{ key = "per", label = "Per 1000", width = 90, justify = "RIGHT", defaultDesc = true },
-	{ key = "status", label = "Attune", width = 103, defaultDesc = true },
+	{ key = "status", label = "Status", width = 103, defaultDesc = true },
 }
 
 local function itemCell(row, key)
@@ -229,7 +229,7 @@ function render()
 	setShown(panel.search, view.kind == "search")
 	for _, t in ipairs({ panel.results, panel.sources, panel.loot }) do t:Hide() end
 	if view.kind == "search" then
-		showHeader(nil, "Search Every Item", C.heading, "Click an item to see where it comes from.")
+		showHeader(nil, "", C.text, "")
 		panel.results:Show()
 		runSearch()
 	elseif view.kind == "item" then
@@ -279,7 +279,7 @@ local function create(parent, width, height)
 	panel.back:SetPoint("TOPLEFT", PAD, -PAD)
 	function panel.back:SetEnabled(on) if on then self:Enable() else self:Disable() end end
 
-	panel.search = S.Input(panel, "SynastriaCompanionLootSearch", 280, "Search Items", 60)
+	panel.search = S.Input(panel, "SynastriaCompanionLootSearch", 260, "Search Items", 60)
 	panel.search:SetPoint("LEFT", panel.back, "RIGHT", GAP, 0)
 	panel.search:HookScript("OnTextChanged", function(_, user)
 		if user then panel.pending = GetTime() + SEARCH_DELAY end
@@ -328,16 +328,19 @@ local function create(parent, width, height)
 	panel.attunableLabel:SetPoint("LEFT", panel.attunableOnly, "RIGHT", 6, 0)
 	panel.attunableLabel:SetText("Still to Attune")
 
+	-- the search has no header, so its table starts right under the search row
 	local tableTop = -PAD - CONTROL_H - GAP - HEADER_H - GAP
+	local searchTop = -PAD - CONTROL_H - GAP
 	local footerH = PAD + 14 + PAD
 	local tableH = height + tableTop - footerH
 	panel.results = newTable("SynastriaCompanionLootResults", SEARCH_COLUMNS, itemCell, itemClick,
-		function(tt, r) if r.link then tt:SetHyperlink(r.link) end end, ITEM_SORT, "name", tableH, true)
+		function(tt, r) if r.link then tt:SetHyperlink(r.link) end end, ITEM_SORT, "name", height + searchTop - footerH, true)
 	panel.sources = newTable("SynastriaCompanionLootSources", SOURCE_COLUMNS, sourceCell, sourceClick,
 		sourceTooltip, SOURCE_SORT, "chance", tableH, false)
 	panel.loot = newTable("SynastriaCompanionLootDrops", LOOT_COLUMNS, itemCell, itemClick,
 		function(tt, r) if r.link then tt:SetHyperlink(r.link) end end, ITEM_SORT, "chance", tableH, true)
-	for _, t in ipairs({ panel.results, panel.sources, panel.loot }) do t.frame:SetPoint("TOPLEFT", PAD, tableTop) end
+	panel.results.frame:SetPoint("TOPLEFT", PAD, searchTop)
+	for _, t in ipairs({ panel.sources, panel.loot }) do t.frame:SetPoint("TOPLEFT", PAD, tableTop) end
 
 	panel.status = S.Text(panel, "small")
 	panel.status:SetPoint("BOTTOMLEFT", PAD, PAD)

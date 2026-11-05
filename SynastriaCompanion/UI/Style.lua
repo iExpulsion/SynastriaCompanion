@@ -339,10 +339,8 @@ clicks:SetScript("OnUpdate", function()
 	wasDown = down
 end)
 
--- Flat dropdown: a button showing the current choice that opens a menu below it. SetOptions takes
--- { { value, text, tooltip } }; picking one calls onSelect(value) and closes the menu. Opening one closes the others.
-function S.Dropdown(parent, width, onSelect)
-	local b = S.Button(parent, "", "secondary", width)
+-- Gives a button a dropdown's arrow and left-aligned label, for buttons that open a list (a menu or a picker).
+function S.AddArrow(b)
 	b.label:ClearAllPoints()
 	b.label:SetPoint("LEFT", 8, 0)
 	b.label:SetPoint("RIGHT", -24, 0)
@@ -356,6 +354,14 @@ function S.Dropdown(parent, width, onSelect)
 	arrow:SetPoint("RIGHT", -10, -2)
 	arrow:SetDesaturated(true)
 	arrow:SetVertexColor(unpack(S.colors.muted))
+	b.arrow = arrow
+	return b
+end
+
+-- Flat dropdown: a button showing the current choice that opens a menu below it. SetOptions takes
+-- { { value, text, tooltip } }; picking one calls onSelect(value) and closes the menu. Opening one closes the others.
+function S.Dropdown(parent, width, onSelect)
+	local b = S.AddArrow(S.Button(parent, "", "secondary", width))
 
 	local menu = CreateFrame("Frame", nil, b)
 	-- above DIALOG, so the menu covers the controls of the dialog it opens from
