@@ -236,6 +236,10 @@ function S.Button(parent, label, kind, width, onClick, tooltip, template)
 		self.label:SetText(text)
 		self:SetWidth(math.max(self.minWidth or 70, self.label:GetStringWidth() + 24))
 	end
+	-- changes the label and keeps the width; the button's own SetText would set a text it doesn't show
+	function b:SetText(text)
+		self.label:SetText(text)
+	end
 	b.minWidth = width
 	paint(b)
 	return b

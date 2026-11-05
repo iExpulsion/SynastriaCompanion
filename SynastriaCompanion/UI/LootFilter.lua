@@ -346,8 +346,8 @@ local function create(parent, width, height)
 
 	-- rule list and its buttons
 	panel.rules = SC.Table.New(panel, "SynastriaCompanionLFRules", LIST_W, listH, {
-		columns = { { key = "name", label = "Rule", width = 150, sortable = false },
-			{ key = "action", label = "Action", width = 58, sortable = false } },
+		columns = { { key = "name", label = "Rule", width = 138, sortable = false },
+			{ key = "action", label = "Action", width = 70, sortable = false } },
 		rowH = 20, cell = ruleCell, onClick = selectRule,
 		tooltip = function(tt, rule)
 			tt:AddLine(rule.name ~= "" and rule.name or "Unnamed Rule", 1, 1, 1)
@@ -444,6 +444,7 @@ local function create(parent, width, height)
 		row.frame:SetWidth(editorW)
 		conditionRows[i] = row
 	end
+	panel.conditionRows = conditionRows
 	panel.addCondition = S.Button(editor, "Add Condition", "secondary", 110, function()
 		local rule = draft.rules[sel]
 		rule.cond[#rule.cond + 1] = { type = 0, op = 0, value = 0 }
