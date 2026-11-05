@@ -63,7 +63,8 @@ local function ruleCell(rule, key)
 		local i = 0
 		for n, r in ipairs(draft.rules) do if r == rule then i = n end end
 		local name = rule.name ~= "" and rule.name or "Unnamed Rule"
-		return ("%d. %s"):format(i, name), muted and C.disabled or (rule == draft.rules[sel] and C.heading or C.text)
+		local current = not panel.showOptions and rule == draft.rules[sel]
+		return ("%d. %s"):format(i, name), muted and C.disabled or (current and C.heading or C.text)
 	end
 	return muted and "Off" or SHORT_ACTION[rule.outcome] or "?", muted and C.disabled or C.muted
 end
@@ -178,6 +179,23 @@ local function newConditionRow(parent, index)
 	row.valueButton.label:SetPoint("RIGHT", -8, 0)
 	row.valueButton.label:SetJustifyH("LEFT")
 	row.valueButton:SetPoint("LEFT", valueX, 0)
+	-- an item value shows its icon, and its tooltip on hover
+	row.valueIcon = row.valueButton:CreateTexture(nil, "OVERLAY")
+	row.valueIcon:SetSize(16, 16)
+	row.valueIcon:SetPoint("LEFT", 5, 0)
+	row.valueButton:HookScript("OnEnter", function(self)
+		if self.link then
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetHyperlink(self.link)
+			GameTooltip:Show()
+		end
+	end)
+	row.valueButton:HookScript("OnClick", function(self)
+		if self.link and IsModifiedClick() then
+			S.CloseMenus()
+			HandleModifiedItemClick(self.link)
+		end
+	end)
 	row.noValue = S.Text(row.frame, "small", C.muted)
 	row.noValue:SetPoint("LEFT", row.op, "LEFT", 8, 0)
 	row.noValue:SetText("Needs no value")
@@ -220,8 +238,20 @@ local function renderConditions(rule)
 			local picked = v.kind == K.MASK or v.kind == K.ITEM or v.kind == K.ZONE
 			setShown(row.valueButton, picked)
 			if picked then
-				row.valueButton:SetText(LF.ValueText(c))
-				row.valueButton.tooltipText = v.kind == K.MASK and LF.ValueText(c) or nil
+				local link, quality, icon
+				if v.kind == K.ITEM and (c.value or 0) > 0 then
+					_, link, quality, _, _, _, _, _, _, icon = GetItemInfoCustom(c.value)
+				end
+				local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+				local text = LF.ValueText(c)
+				row.valueButton:SetText(color and color.hex and (color.hex .. text .. "|r") or text)
+				row.valueButton.link = link
+				row.valueButton.tooltipText = v.kind == K.MASK and text or nil
+				row.valueIcon:SetTexture(icon)
+				setShown(row.valueIcon, icon ~= nil)
+				row.valueButton.label:ClearAllPoints()
+				row.valueButton.label:SetPoint("LEFT", icon and 26 or 8, 0)
+				row.valueButton.label:SetPoint("RIGHT", -8, 0)
 			end
 		end
 	end
@@ -260,6 +290,7 @@ function render()
 		for _, box in ipairs(panel.optionBoxes) do box:SetChecked(bit.band(draft.options or 0, box.bit) ~= 0) end
 	end
 
+	panel.optionsButton:SetKind(panel.showOptions and available and "selected" or "secondary")
 	local isDirty = dirty()
 	panel.apply:SetEnabled(isDirty)
 	panel.discard:SetEnabled(isDirty)
@@ -360,7 +391,7 @@ local function create(parent, width, height)
 			end
 		end,
 	})
-	panel.rules.isSelected = function(rule) return draft and rule == draft.rules[sel] end
+	panel.rules.isSelected = function(rule) return draft and not panel.showOptions and rule == draft.rules[sel] end
 	panel.rules.frame:SetPoint("TOPLEFT", PAD, -PAD)
 
 	panel.newRule = S.Button(panel, "New", "secondary", 51, function()
@@ -492,6 +523,7 @@ local function create(parent, width, height)
 		render()
 	end, "Turn auto looting and its parts on or off.")
 	optionsButton:SetPoint("BOTTOMLEFT", PAD, footerY)
+	panel.optionsButton = optionsButton
 	local export = S.Dropdown(panel, 84, exportChoice)
 	export:SetOptions({ { value = "filter", text = "Whole Filter" }, { value = "rule", text = "This Rule" } })
 	export:SetText("Export")
