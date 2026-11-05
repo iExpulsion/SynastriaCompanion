@@ -228,6 +228,15 @@ function Window.Close(key)
 	if frame and (key == nil or key == current) then frame:Hide() end
 end
 
+-- Forgets the saved position and puts the window back in the middle of the screen.
+function Window.ResetPosition()
+	SC.db.window = {}
+	if frame then
+		frame:ClearAllPoints()
+		frame:SetPoint("CENTER")
+	end
+end
+
 function Window.Toggle(key)
 	if frame and frame:IsShown() and (key == nil or key == current) then frame:Hide() else Window.Open(key) end
 end

@@ -88,6 +88,7 @@ The game's Loot Database:
 - `/scomp <screen>`: opens a screen: `attunable`, `attuned` (or `stats`), `lootfilter` (or `autoloot`), `bank`,
   `lootdb` (or `itemdb`), `leaderboards`.
 - `/scomp minimap`: shows or hides the minimap button.
+- `/scomp reset`: moves the window back to the center of the screen.
 - `/scomp replace attunable off`: gives a screen back to the game's own window (`on` takes it back).
 
 The **minimap button** opens or closes the window on a left-click and lists the screens on a right-click; drag it to

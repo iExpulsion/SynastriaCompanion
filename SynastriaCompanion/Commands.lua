@@ -15,7 +15,7 @@ local function usage()
 	local keys = {}
 	for _, s in ipairs(SC.Window.Ordered()) do keys[#keys + 1] = s.key end
 	SC:Print("/scomp opens the window. /scomp <screen> opens a screen: %s.", table.concat(keys, ", "))
-	SC:Print("/scomp minimap shows or hides the minimap button.")
+	SC:Print("/scomp minimap shows or hides the minimap button. /scomp reset moves the window back to the center.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
 end
 
@@ -30,6 +30,9 @@ SlashCmdList.SYNASTRIACOMPANION = function(msg)
 		usage()
 	elseif cmd == "minimap" then
 		SC.MinimapButton.Toggle()
+	elseif cmd == "reset" then
+		SC.Window.ResetPosition()
+		SC:Print("Window moved back to the center of the screen.")
 	elseif cmd == "replace" and replaced and (value == "on" or value == "off") then
 		SC.db.replace[replaced.key] = value == "on"
 		SC:Print("%s: %s.", replaced.label, value == "on" and "opens here" or "opens the game's window")
