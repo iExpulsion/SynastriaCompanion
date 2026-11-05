@@ -58,12 +58,12 @@ local function refresh(keepScroll)
 	local q = (state.search or ""):lower()
 	local searching = q ~= ""
 	local counts, rows, total = { [ALL_KEY] = 0, [RECENT_KEY] = 0 }, {}, 0
-	local types = {}
+	local present = {}
 	for _, item in ipairs(Bank.Items()) do
 		total = total + item.count
 		if counts[item.group] == nil then
 			counts[item.group] = 0
-			types[#types + 1] = item.group
+			present[item.group] = true
 		end
 		if not searching or item.name:lower():find(q, 1, true) then
 			counts[ALL_KEY] = counts[ALL_KEY] + 1
@@ -79,9 +79,11 @@ local function refresh(keepScroll)
 		state.type = nil
 		return refresh(keepScroll)
 	end
-	table.sort(types)
 	local rail = { { key = ALL_KEY, label = "All" }, { key = RECENT_KEY, label = "Recently Looted" } }
-	for _, t in ipairs(types) do rail[#rail + 1] = { key = t, label = t } end
+	for _, section in ipairs(Bank.Sections(present)) do
+		rail[#rail + 1] = { header = true, label = section.label }
+		for _, g in ipairs(section.groups) do rail[#rail + 1] = { key = g, label = g } end
+	end
 	for _, entry in ipairs(rail) do entry.count = counts[entry.key] or 0 end
 	panel.rail:SetItems(rail, nil, true)
 
@@ -164,7 +166,8 @@ local function create(parent, width, height)
 	panel.rail = SC.Table.New(panel, "SynastriaCompanionBankTypes", RAIL_W, listH, {
 		columns = { { key = "label", label = "Type", width = 120, sortable = false },
 			{ key = "count", label = "", width = 46, justify = "RIGHT", sortable = false } },
-		rowH = 20,
+		rowH = 18,
+		header = function(entry) return entry.header and entry.label end,
 		cell = function(entry, key)
 			local color = entry.count > 0 and C.text or C.disabled
 			if entry.key == (state.type or ALL_KEY) then color = C.heading end
@@ -172,8 +175,10 @@ local function create(parent, width, height)
 			return entry.count > 0 and tostring(entry.count) or "", C.muted
 		end,
 		onClick = function(entry)
-			state.type = entry.key ~= ALL_KEY and entry.key or nil
-			refresh()
+			if entry.key then
+				state.type = entry.key ~= ALL_KEY and entry.key or nil
+				refresh()
+			end
 		end,
 	})
 	panel.rail.isSelected = function(entry) return entry.key == (state.type or ALL_KEY) end

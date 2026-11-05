@@ -38,7 +38,44 @@ local function otherGroup(name, fallback)
 end
 
 -- Game groups shown under another name.
-local RENAMED = { Meat = "Cooking" }
+local RENAMED = {
+	Meat = "Cooking", ["Metal & Stone"] = "Ores & Metals", Herb = "Herbs", Leather = "Leather & Scales",
+	Gem = "Gems", Parts = "Engineering", Devices = "Engineering", Explosives = "Engineering",
+	Consumable = "Consumables", Quest = "Quest Items",
+}
+
+-- The type list's sections in order. A group not named here goes in the last section, before Other.
+Bank.SECTIONS = {
+	{ label = "Gathering", groups = { "Ores & Metals", "Herbs", "Leather & Scales", "Cloth", "Cooking" } },
+	{ label = "Crafting", groups = { "Elemental", "Enchanting", "Gems", "Alchemy", "Inscription", "Engineering" } },
+	{ label = "Reagents", groups = { "Orbs & Runes", "Creature Parts", "Materials" } },
+	{ label = "Other", groups = { "Consumables", "Quest Items" }, rest = true },
+}
+
+-- The groups present, as sections in order: { { label, groups = { names } } }, leaving out empty sections.
+function Bank.Sections(present)
+	local placed, out = {}, {}
+	for _, section in ipairs(Bank.SECTIONS) do
+		for _, g in ipairs(section.groups) do placed[g] = true end
+	end
+	for _, section in ipairs(Bank.SECTIONS) do
+		local groups = {}
+		for _, g in ipairs(section.groups) do
+			if present[g] then groups[#groups + 1] = g end
+		end
+		if section.rest then
+			local extra = {}
+			for g in pairs(present) do
+				if not placed[g] and g ~= "Other" then extra[#extra + 1] = g end
+			end
+			table.sort(extra)
+			for _, g in ipairs(extra) do groups[#groups + 1] = g end
+			if present.Other then groups[#groups + 1] = "Other" end
+		end
+		if #groups > 0 then out[#out + 1] = { label = section.label, groups = groups } end
+	end
+	return out
+end
 
 -- The group an item is listed under: its subclass for trade goods (Metal & Stone, Herb, Cloth...), otherwise its
 -- class (Gem, Consumable...). Other and Miscellaneous are regrouped by name.

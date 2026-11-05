@@ -32,8 +32,11 @@ The attune search, rebuilt:
 
 ### Resource Bank
 
-- **A type list beside the materials:** All, Recently Looted, then each type (Metal & Stone, Herb, Cloth, Gem...)
-  with how many it holds. One click shows just that type.
+- **A type list beside the materials:** All, Recently Looted, then each type with how many it holds, in sections:
+  Gathering (Ores & Metals, Herbs, Leather & Scales, Cloth, Cooking), Crafting (Elemental, Enchanting, Gems,
+  Alchemy, Inscription, Engineering), Reagents and Other. One click shows just that type.
+- **Materials the game files as "Other"** (pigments, vials, orbs, venom sacs...) are sorted into the type they're
+  used with.
 - **What you carry beside what's stored:** In Bank, In Bags and Looted columns, all sortable.
 - **Click** a material to withdraw a stack, **right-click** to deposit every stack you carry, or use
   **Deposit All**.
