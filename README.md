@@ -32,8 +32,8 @@ The attune search, rebuilt:
 
 ### Resource Bank
 
-- **Materials grouped by type** (Metal & Stone, Herb, Cloth, Gem...), each group collapsible, with **Recently
-  Looted** on top. Untick **Group by Type** for one list.
+- **A type list beside the materials:** All, Recently Looted, then each type (Metal & Stone, Herb, Cloth, Gem...)
+  with how many it holds. One click shows just that type.
 - **What you carry beside what's stored:** In Bank, In Bags and Looted columns, all sortable.
 - **Click** a material to withdraw a stack, **right-click** to deposit every stack you carry, or use
   **Deposit All**.

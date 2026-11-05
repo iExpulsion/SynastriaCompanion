@@ -12,7 +12,8 @@ local Bank = SC.ResourceBank
 local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 
 local panel, tbl, state
-local RECENT_KEY = "\1recent"
+local ALL_KEY, RECENT_KEY = "\1all", "\1recent"
+local RAIL_W = 168
 local SEARCH_DELAY = 0.15
 
 local function qualityColor(q)
@@ -50,50 +51,45 @@ local function commas(n)
 	return text
 end
 
--- A searched list opens every group, so nothing that matches is hidden.
-local function addGroup(rows, key, label, items, open)
-	if #items > 0 then
-		local collapsed = state.collapsed[key] and not open
-		rows[#rows + 1] = { header = true, key = key,
-			label = ("%s %s  " .. S.Hex(C.muted, "%d")):format(collapsed and "+" or "-", label, #items) }
-		if not collapsed then
-			sortItems(items)
-			for _, i in ipairs(items) do rows[#rows + 1] = i end
-		end
-	end
-end
-
+-- The type list and the materials of the selected type, both narrowed by the search. A type the search leaves
+-- empty stays listed with no count, so the list doesn't jump while typing.
 local function refresh(keepScroll)
 	panel.pending = nil
 	local q = (state.search or ""):lower()
-	local all, recent, groups, names = Bank.Items(), {}, {}, {}
-	local shown, total = 0, 0
 	local searching = q ~= ""
-	for _, item in ipairs(all) do
+	local counts, rows, total = { [ALL_KEY] = 0, [RECENT_KEY] = 0 }, {}, 0
+	local types = {}
+	for _, item in ipairs(Bank.Items()) do
 		total = total + item.count
+		if counts[item.group] == nil then
+			counts[item.group] = 0
+			types[#types + 1] = item.group
+		end
 		if not searching or item.name:lower():find(q, 1, true) then
-			shown = shown + 1
-			if item.recent > 0 and not searching then recent[#recent + 1] = item end
-			local key = state.grouped and item.group or ""
-			if not groups[key] then
-				groups[key] = {}
-				names[#names + 1] = key
+			counts[ALL_KEY] = counts[ALL_KEY] + 1
+			counts[item.group] = counts[item.group] + 1
+			if item.recent > 0 then counts[RECENT_KEY] = counts[RECENT_KEY] + 1 end
+			local selected = state.type or ALL_KEY
+			if selected == ALL_KEY or selected == item.group or (selected == RECENT_KEY and item.recent > 0) then
+				rows[#rows + 1] = item
 			end
-			table.insert(groups[key], item)
 		end
 	end
-	local rows = {}
-	if state.grouped then
-		addGroup(rows, RECENT_KEY, "Recently Looted", recent)
-		table.sort(names)
-		for _, key in ipairs(names) do addGroup(rows, key, key, groups[key], searching) end
-	else
-		local items = groups[""] or {}
-		sortItems(items)
-		rows = items
+	if state.type and counts[state.type] == nil then
+		state.type = nil
+		return refresh(keepScroll)
 	end
-	tbl:SetItems(rows, searching and "No Materials Match" or "The Resource Bank Is Empty", keepScroll)
-	panel.status:SetText(("%s  " .. S.Hex(C.muted, "|  %s Stored")):format(S.Count(shown, "Material"), commas(total)))
+	table.sort(types)
+	local rail = { { key = ALL_KEY, label = "All" }, { key = RECENT_KEY, label = "Recently Looted" } }
+	for _, t in ipairs(types) do rail[#rail + 1] = { key = t, label = t } end
+	for _, entry in ipairs(rail) do entry.count = counts[entry.key] or 0 end
+	panel.rail:SetItems(rail, nil, true)
+
+	sortItems(rows)
+	local empty = searching and "No Materials Match" or state.type == RECENT_KEY and "Nothing Looted Lately"
+		or "The Resource Bank Is Empty"
+	tbl:SetItems(rows, empty, keepScroll)
+	panel.status:SetText(("%s  " .. S.Hex(C.muted, "|  %s Stored")):format(S.Count(#rows, "Material"), commas(total)))
 end
 
 local function message(text)
@@ -102,10 +98,7 @@ local function message(text)
 end
 
 local function onClick(row, button)
-	if row.header then
-		state.collapsed[row.key] = not state.collapsed[row.key] or nil
-		refresh(true)
-	elseif IsModifiedClick() then
+	if IsModifiedClick() then
 		HandleModifiedItemClick(row.link)
 	elseif button == "RightButton" then
 		if bags(row) > 0 then
@@ -132,7 +125,7 @@ local function tooltip(tt, row)
 end
 
 local COLUMNS = {
-	{ key = "name", label = "Material", width = 393 },
+	{ key = "name", label = "Material", width = 228 },
 	{ key = "count", label = "In Bank", width = 100, justify = "RIGHT", defaultDesc = true },
 	{ key = "bags", label = "In Bags", width = 100, justify = "RIGHT", defaultDesc = true },
 	{ key = "recent", label = "Looted", width = 100, justify = "RIGHT", defaultDesc = true },
@@ -151,9 +144,7 @@ end
 local function create(parent, width, height)
 	SC.db.bank = SC.db.bank or {}
 	state = SC.db.bank
-	state.collapsed = state.collapsed or {}
 	state.sort = state.sort or "name"
-	if state.grouped == nil then state.grouped = true end
 	panel = CreateFrame("Frame", nil, parent)
 
 	panel.search = S.Input(panel, "SynastriaCompanionBankSearch", 260, "Search Materials", 60)
@@ -166,42 +157,38 @@ local function create(parent, width, height)
 	end)
 	panel.search:SetScript("OnEnterPressed", panel.search.ClearFocus)
 
-	local groupCheck = S.Check(panel, 14, function(self)
-		state.grouped = not state.grouped
-		self:SetChecked(state.grouped)
-		refresh()
-	end)
-	groupCheck:SetPoint("LEFT", panel.search, "RIGHT", PAD, 0)
-	groupCheck:SetChecked(state.grouped)
-	local groupLabel = S.Text(panel, "small")
-	groupLabel:SetPoint("LEFT", groupCheck, "RIGHT", 6, 0)
-	groupLabel:SetText("Group by Type")
-
-	local expand = S.Button(panel, "Expand All", "ghost", 84, function()
-		state.collapsed = {}
-		refresh(true)
-	end)
-	expand:SetPoint("TOPRIGHT", -PAD, -PAD)
-	local collapse = S.Button(panel, "Collapse All", "ghost", 90, function()
-		for _, item in ipairs(Bank.Items()) do state.collapsed[item.group] = true end
-		state.collapsed[RECENT_KEY] = true
-		refresh(true)
-	end)
-	collapse:SetPoint("RIGHT", expand, "LEFT", -4, 0)
-
 	local top = -PAD - CONTROL_H - GAP
 	local footerH = PAD + CONTROL_H + PAD
-	tbl = SC.Table.New(panel, "SynastriaCompanionBankTable", width - 2 * PAD, height + top - footerH, {
+	local listH = height + top - footerH
+
+	panel.rail = SC.Table.New(panel, "SynastriaCompanionBankTypes", RAIL_W, listH, {
+		columns = { { key = "label", label = "Type", width = 120, sortable = false },
+			{ key = "count", label = "", width = 46, justify = "RIGHT", sortable = false } },
+		rowH = 20,
+		cell = function(entry, key)
+			local color = entry.count > 0 and C.text or C.disabled
+			if entry.key == (state.type or ALL_KEY) then color = C.heading end
+			if key == "label" then return entry.label, color end
+			return entry.count > 0 and tostring(entry.count) or "", C.muted
+		end,
+		onClick = function(entry)
+			state.type = entry.key ~= ALL_KEY and entry.key or nil
+			refresh()
+		end,
+	})
+	panel.rail.isSelected = function(entry) return entry.key == (state.type or ALL_KEY) end
+	panel.rail.frame:SetPoint("TOPLEFT", PAD, top)
+
+	tbl = SC.Table.New(panel, "SynastriaCompanionBankTable", width - 2 * PAD - RAIL_W - GAP, listH, {
 		columns = COLUMNS, rowH = 20, icons = true, cell = cell,
 		icon = function(row) return row.icon end,
-		header = function(row) return row.header and row.label end,
 		tooltip = tooltip, onClick = onClick,
 		onSort = function(key, desc)
 			state.sort, state.desc = key, desc
 			refresh(true)
 		end,
 	})
-	tbl.frame:SetPoint("TOPLEFT", PAD, top)
+	tbl.frame:SetPoint("TOPLEFT", panel.rail.frame, "TOPRIGHT", GAP, 0)
 	tbl:SetSort(state.sort, state.desc)
 	panel.table = tbl
 
