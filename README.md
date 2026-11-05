@@ -58,12 +58,24 @@ The attune search, rebuilt:
   boards that have one. Your own place is highlighted and scrolled into view.
 - **Refresh** asks for a board again; the server answers at most once a minute per board.
 
-More screens are on the way: Lootfilter.
+### Lootfilter
+
+- **Rules on the left, the selected rule on the right:** its name, on or off, what must match (all conditions, any,
+  or the first and any other), what to do, and up to eight conditions.
+- **Every condition is searchable** by name, with a description on hover. Values use the right control for each:
+  yes or no, a number, a choice, several choices, an item search, or a zone.
+- **Changes wait for Apply,** and **Discard** throws them away. Turning a rule on or off and the loot options save
+  at once when nothing else is waiting.
+- **Export and Import** use the game's own share strings, for the whole filter or one rule, so filters others post
+  still work. **Reset to Default** asks you to click twice.
+
+Every screen is in.
 
 ## Commands
 
 - `/scomp` or `/companion`: opens or closes the window.
-- `/scomp attunable`, `/scomp attuned`, `/scomp lootdb`, `/scomp bank` or `/scomp leaderboards`: opens a screen.
+- `/scomp attunable`, `/scomp attuned`, `/scomp lootdb`, `/scomp bank`, `/scomp leaderboards` or
+  `/scomp lootfilter`: opens a screen.
 - `/scomp replace attunable off`: gives a screen back to the game's own window (`on` takes it back).
 
 The **Game Window** button in the title bar opens the game's own window for the screen you're on.

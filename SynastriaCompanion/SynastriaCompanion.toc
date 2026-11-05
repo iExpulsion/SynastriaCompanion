@@ -12,13 +12,17 @@ LootDB.lua
 ResourceBank.lua
 Attuned.lua
 Leaderboards.lua
+LootFilter.lua
 UI\Style.lua
 UI\Table.lua
 UI\Window.lua
+UI\Picker.lua
 UI\ZonePicker.lua
+UI\TextDialog.lua
 UI\Attunable.lua
 UI\Attuned.lua
 UI\LootDatabase.lua
 UI\ResourceBank.lua
 UI\Leaderboards.lua
+UI\LootFilter.lua
 Commands.lua
