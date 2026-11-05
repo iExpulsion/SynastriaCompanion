@@ -2,7 +2,7 @@ local _, NS = ...
 local SC = NS.SC
 
 -- Flat dark style kit on Material 3 color roles: one accent color, 1px borders, and a few button kinds.
--- Shared with Synastria Build Suite so both addons look alike.
+-- The same kit is in Synastria Build Suite and Rotation Assist; keep the copies in step.
 local S = {}
 SC.Style = S
 
@@ -67,7 +67,7 @@ S.colors = {
 -- controls, and one height for every button, input and dropdown so rows line up.
 S.PAD, S.GAP, S.CONTROL_H = 12, 8, 24
 
--- "1 perk", "3 perks".
+-- "1 item", "3 items".
 function S.Count(n, singular, plural)
 	return ("%d %s"):format(n, n == 1 and singular or (plural or singular .. "s"))
 end
@@ -444,17 +444,32 @@ function S.Dropdown(parent, width, onSelect)
 	return b
 end
 
--- Single-line input with a placeholder shown while it's empty and unfocused. Never takes focus on its own.
-function S.Input(parent, name, width, placeholder, maxLetters)
+-- Input with a placeholder shown while it's empty and unfocused. Never takes focus on its own. With lines above 1
+-- it's a taller box whose text wraps; Enter still finishes, and GetText turns any line break into a space.
+function S.Input(parent, name, width, placeholder, maxLetters, lines)
 	local e = CreateFrame("EditBox", name, parent)
-	e:SetSize(width, S.CONTROL_H)
+	local tall = (lines or 1) > 1
+	S.SetFont(e, "small")
+	e:SetSize(width, tall and (lines * 13 + 12) or S.CONTROL_H)
 	e:SetAutoFocus(false)
 	e:SetMaxLetters(maxLetters or 40)
-	S.SetFont(e, "small")
-	e:SetTextInsets(8, 8, 0, 0)
 	S.Panel(e, S.colors.well, S.colors.border)
 	e.placeholder = S.Text(e, "small", S.colors.muted)
-	e.placeholder:SetPoint("LEFT", 8, 0)
+	if tall then
+		e:SetMultiLine(true)
+		e:SetTextInsets(8, 8, 6, 6)
+		e.placeholder:SetPoint("TOPLEFT", 8, -6)
+		e.placeholder:SetPoint("TOPRIGHT", -8, -6)
+		local getText = e.GetText
+		e.GetText = function(self) return ((getText(self) or ""):gsub("[\r\n]", " ")) end
+		e:SetScript("OnEnterPressed", e.ClearFocus)
+	else
+		e:SetTextInsets(8, 8, 0, 0)
+		e.placeholder:SetPoint("LEFT", 8, 0)
+		e.placeholder:SetPoint("RIGHT", -8, 0)
+	end
+	e.placeholder:SetJustifyH("LEFT")
+	e.placeholder:SetWordWrap(false)
 	e.placeholder:SetText(placeholder or "")
 	-- the soft border at rest, the stronger outline on hover, the accent while focused
 	local function update(self)
