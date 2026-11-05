@@ -12,6 +12,8 @@ local C = S.colors
 local HEADER_H, WHEEL_ROWS, BAR_SPACE = 22, 3, 10
 -- rows start below the header and its 1px rule, so a highlighted first row doesn't cover the rule
 local BODY_TOP = HEADER_H + 1
+-- a centered font string keeps room for descenders, so text without them sits a pixel above the middle
+local TEXT_Y = -1
 
 local function newRow(self, i)
 	local row = CreateFrame("Button", nil, self.content)
@@ -37,7 +39,7 @@ local function newRow(self, i)
 		fs:SetJustifyH(col.justify or "LEFT")
 		fs:ClearAllPoints()
 		local x = col.x + 6 + ((c == 1 and self.icons) and self.rowH or 0)
-		fs:SetPoint("LEFT", row, "LEFT", x, 0)
+		fs:SetPoint("LEFT", row, "LEFT", x, TEXT_Y)
 		fs:SetWidth(col.width - 12 - (col.barInset or 0) - ((c == 1 and self.icons) and self.rowH or 0))
 		fs:SetHeight(self.rowH)
 		row.cells[c] = fs
@@ -49,8 +51,8 @@ local function newRow(self, i)
 	row.headerTex:SetAllPoints()
 	row.headerTex:Hide()
 	row.headerText = S.Text(row, "small", C.heading)
-	row.headerText:SetPoint("LEFT", 6, 0)
-	row.headerText:SetPoint("RIGHT", -6 - BAR_SPACE, 0)
+	row.headerText:SetPoint("LEFT", 6, TEXT_Y)
+	row.headerText:SetPoint("RIGHT", -6 - BAR_SPACE, TEXT_Y)
 	row.headerText:Hide()
 
 	row:SetScript("OnEnter", function(r)
@@ -128,8 +130,8 @@ function Table.New(parent, name, width, height, opts)
 		h:SetPoint("TOPLEFT", col.x, 0)
 		h.col = col
 		h.label = S.Text(h, "small", C.muted)
-		h.label:SetPoint("LEFT", 6, 0)
-		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), 0)
+		h.label:SetPoint("LEFT", 6, TEXT_Y)
+		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), TEXT_Y)
 		h.label:SetJustifyH(col.justify or "LEFT")
 		h.label:SetText(col.label or "")
 		h.arrow = h:CreateTexture(nil, "OVERLAY")
