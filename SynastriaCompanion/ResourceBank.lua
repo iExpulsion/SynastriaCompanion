@@ -13,11 +13,15 @@ local WITHDRAW, DEPOSIT, DEPOSIT_ALL = 7, 8, 9
 -- first match wins) give them a group of their own or the group they belong with.
 local OTHER_GROUPS = {
 	{ "pigment", "Inscription" }, { "ink", "Inscription" }, { "parchment", "Inscription" },
-	{ "vial", "Vials & Flasks" }, { "flask", "Vials & Flasks" },
+	{ "vial", "Alchemy" }, { "flask", "Alchemy" }, { "oil", "Alchemy" }, { "mojo", "Alchemy" },
 	{ "orb", "Orbs & Runes" }, { "rune", "Orbs & Runes" },
 	{ "pearl", "Gem" },
-	{ "snapper", "Meat" }, { "fish", "Meat" }, { "salmon", "Meat" }, { "eel", "Meat" }, { "squid", "Meat" },
-	{ "fang", "Creature Parts" }, { "venom sac", "Creature Parts" }, { "heart", "Creature Parts" },
+	{ "snapper", "Cooking" }, { "fish", "Cooking" }, { "suckerfish", "Cooking" }, { "blackmouth", "Cooking" },
+	{ "salmon", "Cooking" }, { "eel", "Cooking" }, { "squid", "Cooking" }, { "spice", "Cooking" },
+	{ "scale", "Leather" },
+	{ "saronite", "Metal & Stone" },
+	{ "mote", "Elemental" }, { "sunmote", "Elemental" },
+	{ "fang", "Creature Parts" }, { "sac", "Creature Parts" }, { "heart", "Creature Parts" },
 	{ "claw", "Creature Parts" }, { "tooth", "Creature Parts" }, { "talon", "Creature Parts" },
 	{ "ichor", "Creature Parts" }, { "eye", "Creature Parts" }, { "feather", "Creature Parts" },
 	{ "wing", "Creature Parts" }, { "horn", "Creature Parts" },
@@ -25,22 +29,26 @@ local OTHER_GROUPS = {
 	{ "flux", "Metal & Stone" }, { "salt", "Metal & Stone" }, { "vitriol", "Metal & Stone" },
 }
 
-local function otherGroup(name)
+local function otherGroup(name, fallback)
 	local lower = (name or ""):lower()
 	for _, rule in ipairs(OTHER_GROUPS) do
 		if lower:find("%f[%a]" .. rule[1] .. "s?%f[%A]") then return rule[2] end
 	end
-	return "Other"
+	return fallback
 end
 
+-- Game groups shown under another name.
+local RENAMED = { Meat = "Cooking" }
+
 -- The group an item is listed under: its subclass for trade goods (Metal & Stone, Herb, Cloth...), otherwise its
--- class (Gem, Consumable...).
+-- class (Gem, Consumable...). Other and Miscellaneous are regrouped by name.
 local function group(name, class, subclass)
-	local trade = select(6, GetAuctionItemClasses and GetAuctionItemClasses() or nil)
+	local classes = { GetAuctionItemClasses and GetAuctionItemClasses() }
+	local trade, misc = classes[6] or "Trade Goods", classes[11] or "Miscellaneous"
 	local result = (class and class ~= "") and class or "Other"
-	if subclass and subclass ~= "" and (class == trade or class == "Trade Goods") then result = subclass end
-	if result == "Other" then result = otherGroup(name) end
-	return result
+	if subclass and subclass ~= "" and class == trade then result = subclass end
+	if result == "Other" or result == misc then result = otherGroup(name, result) end
+	return RENAMED[result] or result
 end
 Bank.Group = group
 
