@@ -2,11 +2,13 @@
 
 Cleaner, faster replacements for Synastria's own windows, in one flat window that matches
 [Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite). When the game opens one of the windows
-it covers, Companion opens instead.
+it covers, Companion opens instead, and the **minimap button** opens any screen without the game's spells.
 
 ## Screens
 
-### Attunable Items
+### Attunes
+
+#### Attunable Items
 
 The attune search, rebuilt:
 
@@ -17,17 +19,49 @@ The attune search, rebuilt:
 - **The same filters as the game:** mode (Attunable or Attuned, for the character or the account, or All), class
   for multi-class characters, rarity, slot, Mythic, Has Affix, more than five sources, level ranges and zone.
 - **The attuned share** of everything your filters match, shown below the list.
-- **Click** an item to open it in the Loot Database. **Shift-click** links it.
+- **Click** an item to open it in the Item Database. **Shift-click** links it.
 
-### Attuned Items
+#### Attuned Stats
 
-- **One table of every stat your attuned items give**, with a **Total** of what this character actually gets beside
-  Misc, your armor type and Weapon, plus an **Inactive** column for attuned gear this character can't use.
+- **One table of every stat your attuned items give**, grouped like a character sheet, with a **Total** of what
+  this character actually gets beside Misc, your armor type and Weapon, plus an **Inactive** column for attuned gear
+  this character can't use. Hover a column name for what it counts.
 - **Sortable:** by stat, or by any column to see your biggest bonuses first.
 - **Load Stats / Refresh** asks the server for the latest numbers (it casts View Attuned Items, so it works out of
   combat only).
 
-### Loot Database
+### Loot
+
+#### Auto Loot
+
+The game's Lootfilter:
+
+- **Rules on the left, the selected rule on the right:** its name, on or off, what must match (all conditions, any,
+  or the first and any other), what to do, and up to eight conditions. Counters show how close you are to the
+  limits of 32 rules and 8 conditions.
+- **Every condition is searchable** by name, with a description on hover. Values use the right control for each:
+  yes or no, a number, a choice, several choices, an item search, or a zone. **+** copies a condition.
+- **Changes wait for Apply,** and **Discard** throws them away. Turning a rule on or off and the loot options save
+  at once when nothing else is waiting.
+- **Options** groups what gets looted under the Auto Loot switch: what you loot from, gathering, and what happens to
+  items.
+- **Export and Import** use the game's own share strings, for the whole filter or one rule, so filters others post
+  still work. **Reset to Default** asks you to click twice.
+
+#### Resource Bank
+
+- **A type list beside the materials:** All, Recently Looted, then each type with how many it holds, in sections:
+  Gathering, Crafting, Reagents and Other. One click shows just that type.
+- **Materials the game files as "Other"** (pigments, vials, orbs, venom sacs...) are sorted into the type they're
+  used with.
+- **What you carry beside what's stored:** In Bank, In Bags and Looted columns, all sortable.
+- **Click** a material to withdraw a stack, **right-click** to deposit every stack you carry, or use
+  **Deposit All**.
+- Live search, and the list updates as the bank changes.
+
+#### Item Database
+
+The game's Loot Database:
 
 - **Live search** across every item, with no cap on results.
 - **Where an item comes from:** a sortable table of its sources, with type, zone, drop chance and drops per 1000.
@@ -38,47 +72,26 @@ The attune search, rebuilt:
 - **Right-click** a source to track it on the map.
 - **Options** opens the game's Loot Database settings (Alt-click to open items, source lines in tooltips).
 
-### Resource Bank
+### Community
 
-- **A type list beside the materials:** All, Recently Looted, then each type with how many it holds, in sections:
-  Gathering (Ores & Metals, Herbs, Leather & Scales, Cloth, Cooking), Crafting (Elemental, Enchanting, Gems,
-  Alchemy, Inscription, Engineering), Reagents and Other. One click shows just that type.
-- **Materials the game files as "Other"** (pigments, vials, orbs, venom sacs...) are sorted into the type they're
-  used with.
-- **What you carry beside what's stored:** In Bank, In Bags and Looted columns, all sortable.
-- **Click** a material to withdraw a stack, **right-click** to deposit every stack you carry, or use
-  **Deposit All**.
-- Live search, and the list updates as the bank changes.
-
-### Leaderboards
+#### Leaderboards
 
 - **Every board in one list:** the general boards, then dungeons and raids by expansion (WotLK, TBC, Classic and
   their Mythic versions), then prestiged runs. Click an expansion to open its boards.
 - **The ranks in a table** with place, player and account, score (counts, times or percentages), and the date on
-  boards that have one. Your own place is highlighted and scrolled into view.
+  boards that have one. Your own place is highlighted and scrolled into view, and speed buff times show above it.
 - **Refresh** asks for a board again; the server answers at most once a minute per board.
-
-### Lootfilter
-
-- **Rules on the left, the selected rule on the right:** its name, on or off, what must match (all conditions, any,
-  or the first and any other), what to do, and up to eight conditions.
-- **Every condition is searchable** by name, with a description on hover. Values use the right control for each:
-  yes or no, a number, a choice, several choices, an item search, or a zone.
-- **Changes wait for Apply,** and **Discard** throws them away. Turning a rule on or off and the loot options save
-  at once when nothing else is waiting.
-- **Export and Import** use the game's own share strings, for the whole filter or one rule, so filters others post
-  still work. **Reset to Default** asks you to click twice.
-
-Every screen is in.
 
 ## Commands
 
 - `/scomp` or `/companion`: opens or closes the window.
-- `/scomp attunable`, `/scomp attuned`, `/scomp lootdb`, `/scomp bank`, `/scomp leaderboards` or
-  `/scomp lootfilter`: opens a screen.
+- `/scomp <screen>`: opens a screen: `attunable`, `attuned` (or `stats`), `lootfilter` (or `autoloot`), `bank`,
+  `lootdb` (or `itemdb`), `leaderboards`.
+- `/scomp minimap`: shows or hides the minimap button.
 - `/scomp replace attunable off`: gives a screen back to the game's own window (`on` takes it back).
 
-The **Game Window** button in the title bar opens the game's own window for the screen you're on.
+The **minimap button** opens or closes the window on a left-click and lists the screens on a right-click; drag it to
+move it. The **Game Window** button in the title bar opens the game's own window for the screen you're on.
 
 ## Install
 

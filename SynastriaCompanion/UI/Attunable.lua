@@ -269,7 +269,7 @@ local function create(parent, width, height)
 	panel.status:SetPoint("BOTTOMLEFT", x0, PAD)
 	local hint = S.Text(panel, "small", C.muted)
 	hint:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-	hint:SetText("Click: Loot Database  |  Shift-Click: Link")
+	hint:SetText("Click: Item Database  |  Shift-Click: Link")
 
 	panel:SetScript("OnUpdate", function()
 		if Attune.scanning then status() end

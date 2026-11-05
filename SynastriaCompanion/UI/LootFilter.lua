@@ -1,7 +1,7 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Lootfilter: the rules on the left, the selected rule's name, match, action and conditions on the right, and the
+-- Auto Loot (the game's Lootfilter): the rules on the left, the selected rule's name, match, action and conditions on the right, and the
 -- loot options. Edits stay a draft until Apply. Replaces the window the game opens with OpenLootFilter.
 local LFUI = {}
 SC.LootFilterUI = LFUI
@@ -645,7 +645,7 @@ end
 
 SC.Window.AddScreen({
 	key = "lootfilter",
-	label = "Lootfilter",
+	label = "Auto Loot",
 	create = create,
 	show = show,
 	hook = {

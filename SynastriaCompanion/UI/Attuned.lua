@@ -1,7 +1,7 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Attuned Items: the stats attuned items give, totaled for this character beside each part (Misc, its armor type,
+-- Attuned Stats: the stats attuned items give, totaled for this character beside each part (Misc, its armor type,
 -- Weapon) and what's attuned but inactive. Replaces the window the game opens with OpenAttuneSummary.
 local AttunedUI = {}
 SC.AttunedUI = AttunedUI
@@ -188,7 +188,7 @@ end
 
 SC.Window.AddScreen({
 	key = "attuned",
-	label = "Attuned Items",
+	label = "Attuned Stats",
 	create = create,
 	show = show,
 	hook = {

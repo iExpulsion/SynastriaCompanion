@@ -1,7 +1,7 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Loot Database: search items, see where one comes from, and see what a creature or object drops, with Back
+-- Item Database: search items, see where one comes from, and see what a creature or object drops, with Back
 -- going through everything opened since the search. Replaces the window the game opens with OpenLootDb.
 local LootUI = {}
 SC.LootDatabaseUI = LootUI
@@ -371,7 +371,7 @@ end
 
 SC.Window.AddScreen({
 	key = "lootdb",
-	label = "Loot Database",
+	label = "Item Database",
 	create = create,
 	show = show,
 	hook = { open = "OpenLootDb", close = "CloseLootDb", frame = "LootDBFrame" },

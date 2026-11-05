@@ -10,11 +10,38 @@ local S = SC.Style
 local C = S.colors
 
 local W, H = 900, 600
-local TITLE_H, SIDEBAR_W, NAV_H = 36, 170, 30
+local TITLE_H, SIDEBAR_W, NAV_H, SECTION_H = 36, 170, 30, 20
 Window.CONTENT_W, Window.CONTENT_H = W - SIDEBAR_W, H - TITLE_H
 
 local frame
 local current
+
+-- The sidebar's sections and the screens in each, in order.
+Window.SECTIONS = {
+	{ label = "Attunes", screens = { "attunable", "attuned" } },
+	{ label = "Loot", screens = { "lootfilter", "bank", "lootdb" } },
+	{ label = "Community", screens = { "leaderboards" } },
+}
+
+-- The screens in sidebar order, each with its section label; screens no section names come last.
+function Window.Ordered()
+	local out, placed = {}, {}
+	for _, section in ipairs(Window.SECTIONS) do
+		for _, key in ipairs(section.screens) do
+			for _, screen in ipairs(Window.screens) do
+				if screen.key == key then
+					screen.section = section.label
+					out[#out + 1] = screen
+					placed[screen] = true
+				end
+			end
+		end
+	end
+	for _, screen in ipairs(Window.screens) do
+		if not placed[screen] then out[#out + 1] = screen end
+	end
+	return out
+end
 
 -- screen: { key, label, create(parent, width, height) -> panel, show(panel, ...),
 -- hook = { open = global, close = global, frame = global frame name, extra = { [global] = handler } } }
@@ -98,11 +125,20 @@ local function createSidebar(f)
 	edge:SetPoint("BOTTOMRIGHT")
 
 	f.nav = {}
-	for i, screen in ipairs(Window.screens) do
+	local y, section = S.GAP, nil
+	for i, screen in ipairs(Window.Ordered()) do
+		if screen.section ~= section then
+			section = screen.section
+			local heading = S.Text(side, "small", C.muted)
+			heading:SetPoint("TOPLEFT", S.PAD, -y - (i > 1 and S.GAP or 0) - 4)
+			heading:SetText(section or "")
+			y = y + (i > 1 and S.GAP or 0) + SECTION_H
+		end
 		local b = CreateFrame("Button", nil, side)
 		b:SetHeight(NAV_H)
-		b:SetPoint("TOPLEFT", 1, -S.GAP - (i - 1) * NAV_H)
-		b:SetPoint("TOPRIGHT", -1, -S.GAP - (i - 1) * NAV_H)
+		b:SetPoint("TOPLEFT", 1, -y)
+		b:SetPoint("TOPRIGHT", -1, -y)
+		y = y + NAV_H
 		local hover = S.Solid(b, "HIGHLIGHT", C.hover)
 		hover:SetAllPoints()
 		b.selectedTex = S.Solid(b, "BACKGROUND", C.selected)
@@ -154,7 +190,8 @@ end
 -- Shows the window on a screen (default: the last one), passing the rest on to that screen.
 function Window.Open(key, ...)
 	frame = frame or create()
-	local screen = find(key or current or (SC.db.lastScreen) or Window.screens[1].key) or Window.screens[1]
+	local first = Window.Ordered()[1]
+	local screen = find(key or current or SC.db.lastScreen or first.key) or first
 	S.Dismiss()
 	current = screen.key
 	SC.db.lastScreen = current

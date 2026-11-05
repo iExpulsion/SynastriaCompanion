@@ -1,6 +1,6 @@
 ## Interface: 30300
 ## Title: Synastria Companion
-## Notes: Cleaner replacements for Synastria's own windows, starting with Attunable Items. /scomp
+## Notes: Cleaner replacements for Synastria's own windows: attunes, auto loot, the resource bank, the item database and leaderboards. /scomp
 ## Author: Expulsion
 ## Version: 0.1.0
 ## SavedVariables: SynastriaCompanionDB
@@ -25,4 +25,5 @@ UI\LootDatabase.lua
 UI\ResourceBank.lua
 UI\Leaderboards.lua
 UI\LootFilter.lua
+UI\Minimap.lua
 Commands.lua
