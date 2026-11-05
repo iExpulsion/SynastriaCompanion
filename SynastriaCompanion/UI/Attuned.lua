@@ -24,20 +24,22 @@ end
 local function valueText(v, muted)
 	local text, color = "", C.muted
 	if v and v ~= 0 then
-		local whole = math.floor(math.abs(v))
-		text = (v > 0 and "+" or "-") .. commas(whole)
+		-- the game keeps fractions; below 1 a whole number would read as a zero
+		local size = math.abs(v)
+		local shown = size < 1 and ("%.1f"):format(math.max(0.1, math.floor(size * 10) / 10)) or commas(math.floor(size))
+		text = (v > 0 and "+" or "-") .. shown
 		color = muted and C.disabled or v > 0 and C.good or C.bad
 	end
 	return text, color
 end
 
 local COLUMNS = {
-	{ key = "stat", label = "Stat", width = 194 },
+	{ key = "stat", label = "Stat", width = 156 },
 	{ key = "total", label = "Total", width = 110, justify = "RIGHT", defaultDesc = true },
-	{ key = "misc", label = "Misc", width = 100, justify = "RIGHT", defaultDesc = true },
-	{ key = "armor", label = "Armor", width = 100, justify = "RIGHT", defaultDesc = true },
-	{ key = "weapon", label = "Weapon", width = 100, justify = "RIGHT", defaultDesc = true },
-	{ key = "inactive", label = "Inactive", width = 100, justify = "RIGHT", defaultDesc = true },
+	{ key = "misc", label = "Misc", width = 106, justify = "RIGHT", defaultDesc = true },
+	{ key = "armor", label = "Armor", width = 106, justify = "RIGHT", defaultDesc = true },
+	{ key = "weapon", label = "Weapon", width = 106, justify = "RIGHT", defaultDesc = true },
+	{ key = "inactive", label = "Inactive", width = 118, justify = "RIGHT", defaultDesc = true },
 }
 
 local function cell(row, key)
