@@ -1,0 +1,16 @@
+## Interface: 30300
+## Title: Synastria Companion
+## Notes: Cleaner replacements for Synastria's own windows, starting with Attunable Items. /scomp
+## Author: Expulsion
+## Version: 0.1.0
+## SavedVariables: SynastriaCompanionDB
+
+Core.lua
+Hooks.lua
+Attune.lua
+UI\Style.lua
+UI\Table.lua
+UI\Window.lua
+UI\ZonePicker.lua
+UI\Attunable.lua
+Commands.lua
