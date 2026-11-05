@@ -287,6 +287,11 @@ function S.OnDismiss(fn)
 	dismissers[#dismissers + 1] = fn
 end
 
+-- A popup that closes like a dropdown menu: on a click outside it and its popup.owner, and on S.Dismiss.
+function S.TrackPopup(popup)
+	menus[#menus + 1] = popup
+end
+
 function S.CloseMenus()
 	for _, menu in ipairs(menus) do menu:Hide() end
 end

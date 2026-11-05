@@ -8,9 +8,11 @@
 Core.lua
 Hooks.lua
 Attune.lua
+LootDB.lua
 UI\Style.lua
 UI\Table.lua
 UI\Window.lua
 UI\ZonePicker.lua
 UI\Attunable.lua
+UI\LootDatabase.lua
 Commands.lua

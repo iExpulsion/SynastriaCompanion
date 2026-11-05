@@ -46,7 +46,7 @@ local function create()
 	})
 	popup.list.frame:SetPoint("TOPLEFT", popup.search, "BOTTOMLEFT", 0, -S.GAP)
 	popup:SetScript("OnHide", function() popup.search:ClearFocus() end)
-	S.OnDismiss(function() popup:Hide() end)
+	S.TrackPopup(popup)
 end
 
 function ZonePicker.Available()
@@ -55,12 +55,17 @@ end
 
 function ZonePicker.Open(anchor, pick)
 	if not popup then create() end
-	onPick = pick
-	popup:ClearAllPoints()
-	popup:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
-	popup.search:SetText("")
-	refresh()
-	popup:Show()
+	local open = popup:IsShown() and popup.owner == anchor
+	S.CloseMenus()
+	if not open then
+		onPick = pick
+		popup.owner = anchor
+		popup:ClearAllPoints()
+		popup:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
+		popup.search:SetText("")
+		refresh()
+		popup:Show()
+	end
 end
 
 function ZonePicker.Name(index)

@@ -9,7 +9,7 @@ SC.Table = Table
 local S = SC.Style
 local C = S.colors
 
-local HEADER_H, WHEEL_ROWS = 22, 3
+local HEADER_H, WHEEL_ROWS, BAR_SPACE = 22, 3, 10
 
 local function newRow(self, i)
 	local row = CreateFrame("Button", nil, self.content)
@@ -36,7 +36,7 @@ local function newRow(self, i)
 		fs:ClearAllPoints()
 		local x = col.x + 6 + ((c == 1 and self.icons) and self.rowH or 0)
 		fs:SetPoint("LEFT", row, "LEFT", x, 0)
-		fs:SetWidth(col.width - 12 - ((c == 1 and self.icons) and self.rowH or 0))
+		fs:SetWidth(col.width - 12 - (col.barInset or 0) - ((c == 1 and self.icons) and self.rowH or 0))
 		fs:SetHeight(self.rowH)
 		row.cells[c] = fs
 	end
@@ -79,18 +79,27 @@ function Table.New(parent, name, width, height, opts)
 	local self = setmetatable({ columns = opts.columns, rowH = opts.rowH or 20, icons = opts.icons, cell = opts.cell,
 		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, items = {},
 		offset = 0, rows = {}, headers = {} }, { __index = Table })
-	local x = 0
-	for _, col in ipairs(self.columns) do
+	-- the rows run under the scroll bar to the table's edge; the last column takes any spare width and keeps its
+	-- text clear of the bar
+	local x, columns = 0, {}
+	for i, def in ipairs(opts.columns) do
+		local col = {}
+		for k, v in pairs(def) do col[k] = v end
 		col.x = x
 		x = x + col.width
+		columns[i] = col
 	end
+	self.columns = columns
+	local last = self.columns[#self.columns]
+	last.width = last.width + math.max(0, width - 2 - x)
+	last.barInset = BAR_SPACE
 
 	self.frame = CreateFrame("Frame", name, parent)
 	self.frame:SetSize(width, height)
 	S.Panel(self.frame, C.well, C.border)
 	self.content = CreateFrame("Frame", nil, self.frame)
 	self.content:SetPoint("TOPLEFT", 1, -1)
-	self.content:SetPoint("BOTTOMRIGHT", -12, 1)
+	self.content:SetPoint("BOTTOMRIGHT", -1, 1)
 
 	local header = S.Solid(self.content, "BACKGROUND", C.panel)
 	header:SetPoint("TOPLEFT")
@@ -107,13 +116,13 @@ function Table.New(parent, name, width, height, opts)
 		h.col = col
 		h.label = S.Text(h, "small", C.muted)
 		h.label:SetPoint("LEFT", 6, 0)
-		h.label:SetPoint("RIGHT", -16, 0)
+		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), 0)
 		h.label:SetJustifyH(col.justify or "LEFT")
 		h.label:SetText(col.label or "")
 		h.arrow = h:CreateTexture(nil, "OVERLAY")
 		h.arrow:SetTexture("Interface\\Buttons\\UI-SortArrow")
 		h.arrow:SetSize(9, 8)
-		h.arrow:SetPoint("RIGHT", -4, 0)
+		h.arrow:SetPoint("RIGHT", -4 - (col.barInset or 0), 0)
 		h.arrow:SetDesaturated(true)
 		h.arrow:SetVertexColor(unpack(C.heading))
 		h.arrow:Hide()
@@ -137,6 +146,7 @@ function Table.New(parent, name, width, height, opts)
 	for i = 1, self.visible do self.rows[i] = newRow(self, i) end
 
 	local bar = CreateFrame("Slider", nil, self.frame)
+	bar:SetFrameLevel(self.content:GetFrameLevel() + 5)
 	bar:SetOrientation("VERTICAL")
 	bar:SetWidth(6)
 	bar:SetPoint("TOPRIGHT", -3, -HEADER_H - 2)
