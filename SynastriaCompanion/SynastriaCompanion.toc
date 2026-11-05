@@ -10,11 +10,13 @@ Hooks.lua
 Attune.lua
 LootDB.lua
 ResourceBank.lua
+Attuned.lua
 UI\Style.lua
 UI\Table.lua
 UI\Window.lua
 UI\ZonePicker.lua
 UI\Attunable.lua
+UI\Attuned.lua
 UI\LootDatabase.lua
 UI\ResourceBank.lua
 Commands.lua

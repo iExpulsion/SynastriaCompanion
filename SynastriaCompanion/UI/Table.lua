@@ -194,6 +194,12 @@ function Table.New(parent, name, width, height, opts)
 	return self
 end
 
+function Table:SetColumnLabel(key, text)
+	for _, h in ipairs(self.headers) do
+		if h.col.key == key then h.label:SetText(text) end
+	end
+end
+
 function Table:SetSort(key, desc)
 	self.sortKey, self.sortDesc = key, desc
 	paintHeader(self)

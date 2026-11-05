@@ -19,6 +19,14 @@ The attune search, rebuilt:
 - **The attuned share** of everything your filters match, shown below the list.
 - **Click** an item to open it in the Loot Database. **Shift-click** links it.
 
+### Attuned Items
+
+- **One table of every stat your attuned items give**, with a **Total** of what this character actually gets beside
+  Misc, your armor type and Weapon, plus an **Inactive** column for attuned gear this character can't use.
+- **Sortable:** by stat, or by any column to see your biggest bonuses first.
+- **Load Stats / Refresh** asks the server for the latest numbers (it casts View Attuned Items, so it works out of
+  combat only).
+
 ### Loot Database
 
 - **Live search** across every item, with no cap on results.
@@ -42,12 +50,12 @@ The attune search, rebuilt:
   **Deposit All**.
 - Live search, and the list updates as the bank changes.
 
-More screens are on the way: Attuned Items, Leaderboards and Lootfilter.
+More screens are on the way: Leaderboards and Lootfilter.
 
 ## Commands
 
 - `/scomp` or `/companion`: opens or closes the window.
-- `/scomp attunable`, `/scomp lootdb` or `/scomp bank`: opens a screen.
+- `/scomp attunable`, `/scomp attuned`, `/scomp lootdb` or `/scomp bank`: opens a screen.
 - `/scomp replace attunable off`: gives a screen back to the game's own window (`on` takes it back).
 
 The **Game Window** button in the title bar opens the game's own window for the screen you're on.
