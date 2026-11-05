@@ -10,13 +10,15 @@ local S = SC.Style
 local C = S.colors
 
 local HEADER_H, WHEEL_ROWS, BAR_SPACE = 22, 3, 10
+-- rows start below the header and its 1px rule, so a highlighted first row doesn't cover the rule
+local BODY_TOP = HEADER_H + 1
 
 local function newRow(self, i)
 	local row = CreateFrame("Button", nil, self.content)
 	row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	row:SetHeight(self.rowH)
-	row:SetPoint("TOPLEFT", 0, -HEADER_H - (i - 1) * self.rowH)
-	row:SetPoint("TOPRIGHT", 0, -HEADER_H - (i - 1) * self.rowH)
+	row:SetPoint("TOPLEFT", 0, -BODY_TOP - (i - 1) * self.rowH)
+	row:SetPoint("TOPRIGHT", 0, -BODY_TOP - (i - 1) * self.rowH)
 	if i % 2 == 0 then
 		local stripe = S.Solid(row, "BACKGROUND", { C.text[1], C.text[2], C.text[3], 0.025 })
 		stripe:SetAllPoints()
@@ -161,7 +163,7 @@ function Table.New(parent, name, width, height, opts)
 		self.headers[#self.headers + 1] = h
 	end
 
-	self.visible = math.floor((height - 2 - HEADER_H) / self.rowH)
+	self.visible = math.floor((height - 2 - BODY_TOP) / self.rowH)
 	for i = 1, self.visible do self.rows[i] = newRow(self, i) end
 
 	local bar = CreateFrame("Slider", nil, self.frame)
@@ -197,7 +199,7 @@ function Table.New(parent, name, width, height, opts)
 	end)
 
 	self.empty = S.Text(self.content, "normal", C.muted)
-	self.empty:SetPoint("TOP", 0, -HEADER_H - 40)
+	self.empty:SetPoint("TOP", 0, -BODY_TOP - 40)
 	self.empty:SetJustifyH("CENTER")
 	return self
 end
