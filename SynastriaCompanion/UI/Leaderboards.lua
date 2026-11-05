@@ -125,7 +125,7 @@ local DATED_COLUMNS = {
 	{ key = "ts", label = "Date", width = 100 },
 }
 
--- A name of "!" is a character the server no longer knows; the account still shows.
+-- A name of "!" is a character the server no longer knows (usually deleted); the account shows in its class color.
 local function charName(row)
 	return row.name ~= "!" and row.name or nil
 end
@@ -149,7 +149,7 @@ local function cell(row, key)
 		elseif name then
 			text = LB.ClassColor(row.cl) .. name .. "|r"
 		else
-			text = S.Hex(C.muted, row.acc or "?")
+			text = LB.ClassColor(row.cl) .. (row.acc or "?") .. "|r"
 		end
 		return text
 	elseif key == "value" then return LB.ValueText(row.value, panel.vtype), row.self and C.heading or C.text
