@@ -41,6 +41,15 @@ local function newRow(self, i)
 		row.cells[c] = fs
 	end
 	if self.icons then row.icon:SetPoint("LEFT", row, "LEFT", self.columns[1].x + 6, 0) end
+	-- a group header row: one label across the row on the header color
+	row.headerTex = S.Solid(row, "BACKGROUND", C.panel)
+	row.headerTex:SetDrawLayer("BACKGROUND", 1)
+	row.headerTex:SetAllPoints()
+	row.headerTex:Hide()
+	row.headerText = S.Text(row, "small", C.heading)
+	row.headerText:SetPoint("LEFT", 6, 0)
+	row.headerText:SetPoint("RIGHT", -6 - BAR_SPACE, 0)
+	row.headerText:Hide()
 
 	row:SetScript("OnEnter", function(r)
 		r.hoverTex:Show()
@@ -74,10 +83,12 @@ local function paintHeader(self)
 end
 
 -- opts: columns = { { key, label, width, justify, sortable } }, rowH, icons (first column has an icon),
--- cell(item, key) -> text, icon(item) -> texture, tooltip(tt, item), onClick(item, button), onSort(key, desc)
+-- cell(item, key) -> text, icon(item) -> texture, tooltip(tt, item), onClick(item, button), onSort(key, desc),
+-- header(item) -> label when the item is a group header row
 function Table.New(parent, name, width, height, opts)
 	local self = setmetatable({ columns = opts.columns, rowH = opts.rowH or 20, icons = opts.icons, cell = opts.cell,
-		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, items = {},
+		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, header = opts.header,
+		items = {},
 		offset = 0, rows = {}, headers = {} }, { __index = Table })
 	-- the rows run under the scroll bar to the table's edge; the last column takes any spare width and keeps its
 	-- text clear of the bar
@@ -214,7 +225,18 @@ function Table:Redraw()
 	for i, row in ipairs(self.rows) do
 		local item = self.items[self.offset + i]
 		row.item = item
-		if item then
+		local header = item and self.header and self.header(item)
+		if header then
+			for _, fs in ipairs(row.cells) do fs:SetText("") end
+			row.icon:Hide()
+			row.headerText:SetText(header)
+			row.headerText:Show()
+			row.headerTex:Show()
+		else
+			row.headerText:Hide()
+			row.headerTex:Hide()
+		end
+		if item and not header then
 			for c, col in ipairs(self.columns) do
 				local text, color = self.cell(item, col.key)
 				row.cells[c]:SetText(text or "")
@@ -225,6 +247,8 @@ function Table:Redraw()
 				row.icon:SetTexture(tex)
 				if tex then row.icon:Show() else row.icon:Hide() end
 			end
+		end
+		if item then
 			if self.isSelected and self.isSelected(item) then row.selectedTex:Show() else row.selectedTex:Hide() end
 			row:Show()
 		else

@@ -30,12 +30,21 @@ The attune search, rebuilt:
 - **Right-click** a source to track it on the map.
 - **Options** opens the game's Loot Database settings (Alt-click to open items, source lines in tooltips).
 
-More screens are on the way: Attuned Items, Resource Bank, Leaderboards and Lootfilter.
+### Resource Bank
+
+- **Materials grouped by type** (Metal & Stone, Herb, Cloth, Gem...), each group collapsible, with **Recently
+  Looted** on top. Untick **Group by Type** for one list.
+- **What you carry beside what's stored:** In Bank, In Bags and Looted columns, all sortable.
+- **Click** a material to withdraw a stack, **right-click** to deposit every stack you carry, or use
+  **Deposit All**.
+- Live search, and the list updates as the bank changes.
+
+More screens are on the way: Attuned Items, Leaderboards and Lootfilter.
 
 ## Commands
 
 - `/scomp` or `/companion`: opens or closes the window.
-- `/scomp attunable` or `/scomp lootdb`: opens a screen.
+- `/scomp attunable`, `/scomp lootdb` or `/scomp bank`: opens a screen.
 - `/scomp replace attunable off`: gives a screen back to the game's own window (`on` takes it back).
 
 The **Game Window** button in the title bar opens the game's own window for the screen you're on.
