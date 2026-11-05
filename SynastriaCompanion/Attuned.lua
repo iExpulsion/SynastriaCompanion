@@ -85,11 +85,6 @@ function Attuned.Read()
 	return cols, rows
 end
 
--- The macro that asks the server for the stats: casting View Attuned Items.
-function Attuned.RequestMacro()
-	return "/cast " .. (GetSpellInfo(Attuned.SPELL) or "View Attuned Items")
-end
-
 function Attuned.Received()
 	Attuned.receivedAt = time()
 	if Attuned.onChange then Attuned.onChange() end

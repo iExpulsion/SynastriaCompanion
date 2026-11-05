@@ -232,6 +232,8 @@ end
 SC.Window.AddScreen({
 	key = "bank",
 	label = "Resource Bank",
+	spell = Bank.SPELL,
+	needsSpell = function() return not Bank.HasData() end,
 	create = create,
 	show = show,
 	hook = { open = "OpenResourceSummary", close = "CloseResourceSummary", frame = "RBankFrame" },

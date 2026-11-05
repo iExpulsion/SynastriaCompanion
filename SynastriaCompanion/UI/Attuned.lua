@@ -100,47 +100,6 @@ local function refresh()
 	panel.load:SetText(Attuned.HasData() and "Refresh" or "Load Stats")
 end
 
--- The request is a spell cast, which only a secure button the player clicks can make. Secure buttons can't be
--- shown or moved in combat, and lock what they're anchored to, so this one sits on UIParent over the
--- placeholder button, follows it each frame out of combat, and hides when combat starts or the screen does.
-local secure
-
-local function hideSecure()
-	if secure and not InCombatLockdown() then secure:Hide() end
-end
-
-local function placeSecure()
-	local spot = panel.load
-	if not InCombatLockdown() and spot:IsVisible() then
-		if not secure then
-			secure = CreateFrame("Button", "SynastriaCompanionAttunedLoad", UIParent, "SecureActionButtonTemplate")
-			secure:SetFrameStrata("HIGH")
-			secure:RegisterForClicks("LeftButtonUp")
-			secure:SetAttribute("type", "macro")
-			secure:SetScript("OnEnter", function() spot:GetScript("OnEnter")(spot) end)
-			secure:SetScript("OnLeave", function() spot:GetScript("OnLeave")(spot) end)
-			secure:HookScript("OnClick", function() panel.status:SetText(S.Hex(C.muted, "Asking the Server...")) end)
-		end
-		secure:SetAttribute("macrotext", Attuned.RequestMacro())
-		local scale = spot:GetEffectiveScale() / UIParent:GetEffectiveScale()
-		local left, bottom, w, h = spot:GetLeft(), spot:GetBottom(), spot:GetWidth(), spot:GetHeight()
-		if left and bottom then
-			secure:ClearAllPoints()
-			secure:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left * scale, bottom * scale)
-			secure:SetSize(w * scale, h * scale)
-			secure:SetFrameLevel(spot:GetFrameLevel() + 10)
-			secure:Show()
-		end
-	end
-end
-
-local watch = CreateFrame("Frame")
-watch:RegisterEvent("PLAYER_REGEN_DISABLED")
-watch:SetScript("OnEvent", function()
-	-- fires just before the lockdown starts, so it can still hide here
-	if secure then secure:Hide() end
-end)
-
 local function create(parent, width, height)
 	SC.db.attuned = SC.db.attuned or {}
 	state = SC.db.attuned
@@ -152,6 +111,9 @@ local function create(parent, width, height)
 		panel.status:SetText(S.Hex(C.bad, "Can't Ask in Combat"))
 	end, "Ask the server for your attuned stats (casts View Attuned Items).")
 	panel.load:SetPoint("BOTTOMRIGHT", -PAD, PAD)
+	SC.SecureCast.Overlay(panel.load, { name = "SynastriaCompanionAttunedLoad",
+		spell = function() return Attuned.SPELL end,
+		onClick = function() panel.status:SetText(S.Hex(C.muted, "Asking the Server...")) end })
 
 	local top = -PAD
 	local footerH = PAD + CONTROL_H + PAD
@@ -173,9 +135,6 @@ local function create(parent, width, height)
 	hint:SetPoint("RIGHT", panel.load, "LEFT", -PAD, 0)
 	hint:SetText("Hover a Column for What It Counts")
 
-	panel:SetScript("OnUpdate", placeSecure)
-	panel:SetScript("OnHide", hideSecure)
-	S.OnDismiss(hideSecure)
 	Attuned.onChange = function()
 		if panel:IsVisible() then refresh() end
 	end
@@ -189,6 +148,8 @@ end
 SC.Window.AddScreen({
 	key = "attuned",
 	label = "Attuned Stats",
+	spell = Attuned.SPELL,
+	needsSpell = function() return not Attuned.HasData() end,
 	create = create,
 	show = show,
 	hook = {

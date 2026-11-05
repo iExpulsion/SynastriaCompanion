@@ -103,6 +103,13 @@ function Bank.Items()
 	return out
 end
 
+-- View Resource Bank. An empty bank may only mean its contents haven't arrived yet; casting it asks for them.
+Bank.SPELL = 80270
+
+function Bank.HasData()
+	return (GetCustomGameDataCount and GetCustomGameDataCount(STORED) or 0) > 0
+end
+
 function Bank.Withdraw(id)
 	NotifyServer(2, WITHDRAW, tostring(id))
 end

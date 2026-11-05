@@ -77,10 +77,12 @@ local function createMenu()
 		local text = S.Text(item, "small")
 		text:SetPoint("LEFT", S.PAD + 6, 0)
 		text:SetText(screen.label)
-		item:SetScript("OnClick", function()
+		local function pick()
 			menu:Hide()
 			SC.Window.Open(screen.key)
-		end)
+		end
+		item:SetScript("OnClick", pick)
+		SC.SecureCast.Overlay(item, { spell = function() return SC.SecureCast.ScreenSpell(screen) end, onClick = pick })
 		y = y + ROW_H
 	end
 	menu:SetHeight(y + 4)
@@ -165,6 +167,17 @@ local function create()
 	end)
 	button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
 	place()
+
+	-- a left-click that opens the window on a screen needing its spell casts it too; closing never does
+	SC.SecureCast.Overlay(button, {
+		name = "SynastriaCompanionMinimapCast", right = true,
+		spell = function()
+			return not SC.Window.Current() and SC.SecureCast.ScreenSpell(SC.Window.Default()) or nil
+		end,
+		onClick = function(mouse) onClick(button, mouse) end,
+		onDragStart = function() button:GetScript("OnDragStart")(button) end,
+		onDragStop = function() button:GetScript("OnDragStop")(button) end,
+	})
 end
 
 local function registerBroker()

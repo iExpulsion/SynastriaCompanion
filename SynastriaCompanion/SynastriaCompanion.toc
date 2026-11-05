@@ -15,6 +15,7 @@ Leaderboards.lua
 LootFilter.lua
 UI\Style.lua
 UI\Table.lua
+UI\SecureCast.lua
 UI\Window.lua
 UI\Picker.lua
 UI\ZonePicker.lua

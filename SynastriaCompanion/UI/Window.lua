@@ -43,7 +43,18 @@ function Window.Ordered()
 	return out
 end
 
--- screen: { key, label, create(parent, width, height) -> panel, show(panel, ...),
+-- The screen the window opens on when no screen is named: the last one shown, or the first.
+function Window.Default()
+	local first = Window.Ordered()[1]
+	local last = SC.db and SC.db.lastScreen
+	for _, screen in ipairs(Window.screens) do
+		if screen.key == last then return screen end
+	end
+	return first
+end
+
+-- screen: { key, label, create(parent, width, height) -> panel, show(panel, ...), spell = the game's View spell
+-- for it, needsSpell() = true while its data only comes from casting that spell,
 -- hook = { open = global, close = global, frame = global frame name, extra = { [global] = handler } } }
 function Window.AddScreen(screen)
 	Window.screens[#Window.screens + 1] = screen
@@ -152,6 +163,9 @@ local function createSidebar(f)
 		b.label:SetText(screen.label)
 		b.screen = screen
 		b:SetScript("OnClick", function() Window.Open(screen.key) end)
+		-- a screen that needs its spell cast gets it cast by the same click
+		SC.SecureCast.Overlay(b, { spell = function() return SC.SecureCast.ScreenSpell(screen) end,
+			onClick = function() Window.Open(screen.key) end })
 		f.nav[i] = b
 	end
 end
@@ -190,8 +204,7 @@ end
 -- Shows the window on a screen (default: the last one), passing the rest on to that screen.
 function Window.Open(key, ...)
 	frame = frame or create()
-	local first = Window.Ordered()[1]
-	local screen = find(key or current or SC.db.lastScreen or first.key) or first
+	local screen = find(key or current) or Window.Default()
 	S.Dismiss()
 	current = screen.key
 	SC.db.lastScreen = current
