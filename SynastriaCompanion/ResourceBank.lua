@@ -25,7 +25,7 @@ local OTHER_GROUPS = {
 	{ "claw", "Creature Parts" }, { "tooth", "Creature Parts" }, { "talon", "Creature Parts" },
 	{ "ichor", "Creature Parts" }, { "eye", "Creature Parts" }, { "feather", "Creature Parts" },
 	{ "wing", "Creature Parts" }, { "horn", "Creature Parts" },
-	{ "thread", "Cloth" }, { "dye", "Cloth" },
+	{ "thread", "Cloth" }, { "dye", "Cloth" }, { "soul essence", "Cloth" },
 	{ "flux", "Metal & Stone" }, { "salt", "Metal & Stone" }, { "vitriol", "Metal & Stone" },
 }
 
