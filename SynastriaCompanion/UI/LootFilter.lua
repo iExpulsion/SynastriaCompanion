@@ -157,13 +157,13 @@ local function newConditionRow(parent, index)
 	end)
 	row.op:SetPoint("LEFT", row.typeButton, "RIGHT", 4, 0)
 
-	local valueX = 176 + 4 + 76 + 4
-	row.choice = S.Dropdown(row.frame, 196, function(value)
+	local valueX, valueW = 176 + 4 + 76 + 4, 170
+	row.choice = S.Dropdown(row.frame, valueW, function(value)
 		draft.rules[sel].cond[row.index].value = value
 		changed()
 	end)
 	row.choice:SetPoint("LEFT", valueX, 0)
-	row.number = S.Input(row.frame, nil, 196, "Number", 8)
+	row.number = S.Input(row.frame, nil, valueW, "Number", 8)
 	row.number:SetNumeric(true)
 	row.number:SetPoint("LEFT", valueX, 0)
 	row.number:HookScript("OnTextChanged", function(self, user)
@@ -173,7 +173,7 @@ local function newConditionRow(parent, index)
 		end
 	end)
 	row.number:SetScript("OnEnterPressed", row.number.ClearFocus)
-	row.valueButton = S.Button(row.frame, "", "secondary", 196, function() openValuePicker(row) end)
+	row.valueButton = S.Button(row.frame, "", "secondary", valueW, function() openValuePicker(row) end)
 	row.valueButton.label:ClearAllPoints()
 	row.valueButton.label:SetPoint("LEFT", 8, 0)
 	row.valueButton.label:SetPoint("RIGHT", -8, 0)
@@ -206,6 +206,16 @@ local function newConditionRow(parent, index)
 		changed()
 	end, "Remove this condition.")
 	row.remove:SetPoint("RIGHT")
+	row.copy = S.Button(row.frame, "+", "ghost", 24, function()
+		local rule = draft.rules[sel]
+		local c = rule.cond[row.index]
+		if #rule.cond < LF.MAX_CONDITIONS then
+			table.insert(rule.cond, row.index + 1, { type = c.type, op = c.op, value = c.value })
+			changed()
+		end
+	end, "Copy this condition into a new one below it.")
+	row.copy:SetPoint("RIGHT", row.remove, "LEFT", -2, 0)
+	function row.copy:SetEnabled(on) if on then self:Enable() else self:Disable() end end
 	return row
 end
 
@@ -256,6 +266,9 @@ local function renderConditions(rule)
 		end
 	end
 	local count = rule and #rule.cond or 0
+	for _, row in ipairs(conditionRows) do row.copy:SetEnabled(count < LF.MAX_CONDITIONS) end
+	local full = count >= LF.MAX_CONDITIONS
+	panel.condTop:SetText("Conditions  " .. S.Hex(full and C.warn or C.muted, ("%d/%d"):format(count, LF.MAX_CONDITIONS)))
 	panel.addCondition:ClearAllPoints()
 	panel.addCondition:SetPoint("TOPLEFT", panel.condTop, "BOTTOMLEFT", 0, -GAP - count * ROW_H)
 	setShown(panel.addCondition, rule ~= nil and count < LF.MAX_CONDITIONS)
@@ -268,6 +281,9 @@ function render()
 	local available = draft ~= nil
 	panel.rules:SetItems(draft and draft.rules or {}, available and "No Rules Yet" or "The Server Hasn't Enabled the Loot Filter", true)
 	local rule = draft and sel and draft.rules[sel]
+	local ruleCount = draft and #draft.rules or 0
+	panel.rules:SetColumnLabel("name", available and ("Rules  " .. S.Hex(ruleCount >= LF.MAX_RULES and C.warn or C.muted,
+		("%d/%d"):format(ruleCount, LF.MAX_RULES))) or "Rules")
 	panel.newRule:SetEnabled(available and #draft.rules < LF.MAX_RULES)
 	panel.delete:SetEnabled(rule ~= nil)
 	panel.up:SetEnabled(rule ~= nil and sel > 1)
