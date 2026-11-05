@@ -12,8 +12,7 @@ local C = S.colors
 local HEADER_H, WHEEL_ROWS, BAR_SPACE = 22, 3, 10
 -- rows start below the header and its 1px rule, so a highlighted first row doesn't cover the rule
 local BODY_TOP = HEADER_H + 1
--- a centered font string keeps room for descenders, so text without them sits a pixel above the middle
-local TEXT_Y = -1
+local TEXT_Y = 0
 
 local function newRow(self, i)
 	local row = CreateFrame("Button", nil, self.content)
@@ -33,6 +32,8 @@ local function newRow(self, i)
 	row.selectedTex:Hide()
 	row.icon = row:CreateTexture(nil, "ARTWORK")
 	row.icon:SetSize(self.rowH - 4, self.rowH - 4)
+	-- crops the dark frame Blizzard's icon art has around its edge, which is uneven and makes icons look off-center
+	row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 	row.cells = {}
 	for c, col in ipairs(self.columns) do
 		local fs = S.Text(row, "small")
