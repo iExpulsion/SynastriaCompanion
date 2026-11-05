@@ -303,7 +303,15 @@ function render()
 		renderConditions(rule)
 	end
 	if panel.showOptions and available then
-		for _, box in ipairs(panel.optionBoxes) do box:SetChecked(bit.band(draft.options or 0, box.bit) ~= 0) end
+		local on = bit.band(draft.options or 0, LF.AUTO_LOOT.bit) ~= 0
+		for _, box in ipairs(panel.optionBoxes) do
+			box:SetChecked(bit.band(draft.options or 0, box.bit) ~= 0)
+			-- the others still change while Auto Loot is off, but they don't apply, so they're dimmed
+			local alpha = (box == panel.autoLoot or on) and 1 or 0.45
+			box:SetAlpha(alpha)
+			box.text:SetAlpha(alpha)
+			box.desc:SetAlpha(alpha)
+		end
 	end
 
 	panel.optionsButton:SetKind(panel.showOptions and available and "selected" or "secondary")
@@ -514,22 +522,47 @@ local function create(parent, width, height)
 	local note = S.Text(options, "small", C.muted)
 	note:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
 	note:SetText("These save as soon as you change them.")
+	-- Auto Loot on top, then the groups: Loot From and Gathering in the left column, Items in the right
 	panel.optionBoxes = {}
-	for i, opt in ipairs(LF.OPTIONS) do
+	local OPTION_H, colW = 36, editorW / 2
+	local function optionRow(opt, left, y, size)
 		local box = S.Check(options, 14, function(self)
 			draft.options = bit.bxor(draft.options or 0, self.bit)
 			server.options = bit.bxor(server.options or 0, self.bit)
 			LF.SetOptionsNow(server.options)
 			changed()
 		end)
-		box.bit, box.tooltipText = opt.bit, opt.tooltip
-		local col, rowN = (i - 1) % 2, math.floor((i - 1) / 2)
-		box:SetPoint("TOPLEFT", note, "BOTTOMLEFT", col * (editorW / 2), -PAD - rowN * 26)
-		local text = S.Text(options, "small")
-		text:SetPoint("LEFT", box, "RIGHT", 8, 0)
-		text:SetWidth(editorW / 2 - 30)
-		text:SetText(opt.text)
-		panel.optionBoxes[i] = box
+		box.bit = opt.bit
+		box:SetPoint("TOPLEFT", options, "TOPLEFT", left, y)
+		box.text = S.Text(options, size or "small")
+		box.text:SetPoint("LEFT", box, "RIGHT", 8, 0)
+		box.text:SetText(opt.text)
+		box.desc = S.Text(options, "small", C.muted)
+		box.desc:SetPoint("TOPLEFT", box.text, "BOTTOMLEFT", 0, -3)
+		box.desc:SetWidth(colW - 34)
+		box.desc:SetText(opt.desc)
+		panel.optionBoxes[#panel.optionBoxes + 1] = box
+		return box
+	end
+	local top = -44
+	panel.autoLoot = optionRow(LF.AUTO_LOOT, 0, top, "normal")
+	panel.autoLoot.desc:SetWidth(editorW - 34)
+	local rule = S.Solid(options, "BORDER", C.border)
+	rule:SetHeight(1)
+	rule:SetPoint("TOPLEFT", 0, top - OPTION_H - 4)
+	rule:SetPoint("TOPRIGHT", 0, top - OPTION_H - 4)
+	local columns = { { x = 0, y = top - OPTION_H - 16 }, { x = colW, y = top - OPTION_H - 16 } }
+	for g, group in ipairs(LF.OPTION_GROUPS) do
+		local col = columns[g == #LF.OPTION_GROUPS and 2 or 1]
+		local heading = S.Text(options, "small", C.heading)
+		heading:SetPoint("TOPLEFT", options, "TOPLEFT", col.x, col.y)
+		heading:SetText(group.label)
+		col.y = col.y - 20
+		for _, opt in ipairs(group.options) do
+			optionRow(opt, col.x, col.y)
+			col.y = col.y - OPTION_H
+		end
+		col.y = col.y - GAP
 	end
 
 	-- footer

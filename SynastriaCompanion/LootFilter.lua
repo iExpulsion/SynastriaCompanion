@@ -21,15 +21,25 @@ LF.ACTIONS = {
 LF.OPS = {
 	[0] = "Is Not", [1] = "Is", [2] = "Has Any", [3] = "Has None", [4] = ">", [5] = "<", [6] = ">=", [7] = "<=",
 }
-LF.OPTIONS = {
-	{ bit = 0x1, text = "Auto Loot", tooltip = "Loot by the filter at all. Off turns every other option off too." },
-	{ bit = 0x2, text = "Enemies" }, { bit = 0x4, text = "Herbalism" }, { bit = 0x8, text = "Mining" },
-	{ bit = 0x10, text = "Skinning" }, { bit = 0x20, text = "Herbalism, Mining and Engineering on Enemies" },
-	{ bit = 0x40, text = "Chests" },
-	{ bit = 0x80, text = "Send to Resource Bank", tooltip = "Send looted materials the bank takes straight to it." },
-	{ bit = 0x100, text = "Show Destroyed Messages" },
-	{ bit = 0x200, text = "Don't Destroy Items", tooltip = "Leave items the filter would destroy in the corpse." },
-	{ bit = 0x400, text = "Apply to Lockboxes" }, { bit = 0x800, text = "Apply to Clams" },
+LF.AUTO_LOOT = { bit = 0x1, text = "Auto Loot", desc = "Loot by your rules. While it's off, nothing below applies." }
+LF.OPTION_GROUPS = {
+	{ label = "Loot From", options = {
+		{ bit = 0x2, text = "Enemies", desc = "Creatures you kill." },
+		{ bit = 0x40, text = "Chests", desc = "Chests and other objects you open." },
+		{ bit = 0x400, text = "Lockboxes", desc = "Lockboxes you open." },
+		{ bit = 0x800, text = "Clams", desc = "Clams you open." },
+	} },
+	{ label = "Gathering", options = {
+		{ bit = 0x4, text = "Herbalism", desc = "Herbs you pick." },
+		{ bit = 0x8, text = "Mining", desc = "Veins and deposits you mine." },
+		{ bit = 0x10, text = "Skinning", desc = "Creatures you skin." },
+		{ bit = 0x20, text = "Gathering From Enemies", desc = "Creatures you herb, mine or salvage with Engineering." },
+	} },
+	{ label = "Items", options = {
+		{ bit = 0x80, text = "Send to Resource Bank", desc = "Looted materials the bank takes go straight to it." },
+		{ bit = 0x200, text = "Don't Destroy Items", desc = "Items your rules would destroy stay in the corpse." },
+		{ bit = 0x100, text = "Show Destroyed Messages", desc = "Say in chat when an item is destroyed." },
+	} },
 }
 
 -- Value kinds: none, yes/no, number, one choice, several choices (a bit mask), item, zone. ops is the allowed
