@@ -8,6 +8,15 @@ it covers, Companion opens instead, and the **minimap button** opens any screen 
 
 ### Attunes
 
+#### Attuned Stats
+
+- **One table of every stat your attuned items give**, grouped like a character sheet, with a **Total** of what
+  this character actually gets beside Misc, your armor type and Weapon, plus an **Inactive** column for attuned gear
+  this character can't use. Hover a column name for what it counts.
+- **Sortable:** by stat, or by any column to see your biggest bonuses first.
+- **Load Stats / Refresh** asks the server for the latest numbers (it casts View Attuned Items, so it works out of
+  combat only).
+
 #### Attunable Items
 
 The attune search, rebuilt:
@@ -20,15 +29,6 @@ The attune search, rebuilt:
   for multi-class characters, rarity, slot, Mythic, Has Affix, more than five sources, level ranges and zone.
 - **The attuned share** of everything your filters match, shown below the list.
 - **Click** an item to open it in the Item Database. **Shift-click** links it.
-
-#### Attuned Stats
-
-- **One table of every stat your attuned items give**, grouped like a character sheet, with a **Total** of what
-  this character actually gets beside Misc, your armor type and Weapon, plus an **Inactive** column for attuned gear
-  this character can't use. Hover a column name for what it counts.
-- **Sortable:** by stat, or by any column to see your biggest bonuses first.
-- **Load Stats / Refresh** asks the server for the latest numbers (it casts View Attuned Items, so it works out of
-  combat only).
 
 ### Loot
 

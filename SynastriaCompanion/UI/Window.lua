@@ -18,7 +18,7 @@ local current
 
 -- The sidebar's sections and the screens in each, in order.
 Window.SECTIONS = {
-	{ label = "Attunes", screens = { "attunable", "attuned" } },
+	{ label = "Attunes", screens = { "attuned", "attunable" } },
 	{ label = "Loot", screens = { "lootfilter", "bank", "lootdb" } },
 	{ label = "Community", screens = { "leaderboards" } },
 }
