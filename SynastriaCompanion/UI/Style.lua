@@ -339,6 +339,19 @@ clicks:SetScript("OnUpdate", function()
 	wasDown = down
 end)
 
+-- A section heading in a navigation list: small dim text with a rule running from it to the right edge, so it
+-- reads as a divider rather than one of the entries under it.
+function S.SectionHeading(parent, text, x, y, rightInset)
+	local label = S.Text(parent, "small", S.colors.outline)
+	label:SetPoint("TOPLEFT", x, y)
+	label:SetText(text)
+	local line = S.Solid(parent, "BORDER", S.colors.border)
+	line:SetHeight(1)
+	line:SetPoint("LEFT", label, "RIGHT", 6, 0)
+	line:SetPoint("RIGHT", parent, "RIGHT", -(rightInset or x), 0)
+	return label, line
+end
+
 -- Gives a button a dropdown's arrow and left-aligned label, for buttons that open a list (a menu or a picker).
 function S.AddArrow(b)
 	b.label:ClearAllPoints()

@@ -140,9 +140,7 @@ local function createSidebar(f)
 	for i, screen in ipairs(Window.Ordered()) do
 		if screen.section ~= section then
 			section = screen.section
-			local heading = S.Text(side, "small", C.muted)
-			heading:SetPoint("TOPLEFT", S.PAD, -y - (i > 1 and S.GAP or 0) - 4)
-			heading:SetText(section or "")
+			S.SectionHeading(side, section or "", S.PAD, -y - (i > 1 and S.GAP or 0) - 4)
 			y = y + (i > 1 and S.GAP or 0) + SECTION_H
 		end
 		local b = CreateFrame("Button", nil, side)
@@ -159,7 +157,8 @@ local function createSidebar(f)
 		b.bar:SetPoint("TOPLEFT")
 		b.bar:SetPoint("BOTTOMLEFT")
 		b.label = S.Text(b, "normal")
-		b.label:SetPoint("LEFT", S.PAD, 0)
+		-- entries sit in from their section heading
+		b.label:SetPoint("LEFT", S.PAD + 8, 0)
 		b.label:SetText(screen.label)
 		b.screen = screen
 		b:SetScript("OnClick", function() Window.Open(screen.key) end)

@@ -63,9 +63,7 @@ local function createMenu()
 	for _, screen in ipairs(SC.Window.Ordered()) do
 		if screen.section ~= section then
 			section = screen.section
-			local heading = S.Text(menu, "small", C.muted)
-			heading:SetPoint("TOPLEFT", S.PAD, -y - 4)
-			heading:SetText(section or "")
+			S.SectionHeading(menu, section or "", S.PAD, -y - 4)
 			y = y + 18
 		end
 		local item = CreateFrame("Button", nil, menu)
