@@ -101,10 +101,19 @@ end
 
 local COLUMNS = {
 	{ key = "place", label = "#", width = 46, justify = "RIGHT" },
-	{ key = "name", label = "Player", width = 236 },
-	{ key = "value", label = "Score", width = 120, justify = "RIGHT" },
-	{ key = "ts", label = "Date", width = 116 },
+	{ key = "name", label = "Player", width = 330 },
+	{ key = "value", label = "Score", width = 140, justify = "RIGHT" },
 }
+
+-- Few boards send a date, so it's in the tooltip rather than a mostly empty column.
+local function tooltip(tt, row)
+	local name = row.name == "!" and "<Unknown>" or row.name or row.acc or "?"
+	tt:AddLine(name, 1, 1, 1)
+	if row.acc and row.acc ~= name then tt:AddLine("Account: " .. row.acc, unpack(C.muted)) end
+	tt:AddDoubleLine("Score", LB.ValueText(row.value, panel.vtype), 1, 1, 1, 1, 1, 1)
+	if row.place then tt:AddDoubleLine("Place", tostring(row.place), 1, 1, 1, 1, 1, 1) end
+	if row.ts and row.ts ~= "" then tt:AddDoubleLine("Date", row.ts, 1, 1, 1, 1, 1, 1) end
+end
 
 local function cell(row, key)
 	if key == "place" then return row.place and (row.place .. ".") or "", C.muted
@@ -118,7 +127,6 @@ local function cell(row, key)
 		end
 		return text
 	elseif key == "value" then return LB.ValueText(row.value, panel.vtype), row.self and C.heading or C.text
-	elseif key == "ts" then return row.ts or "", C.muted
 	end
 end
 
@@ -165,7 +173,7 @@ local function create(parent, width, height)
 	panel.refresh:SetPoint("TOPRIGHT", -PAD, -PAD)
 
 	tbl = SC.Table.New(panel, "SynastriaCompanionLBRanks", width - x - PAD, height + top - footerH, {
-		columns = COLUMNS, rowH = 20, cell = cell,
+		columns = COLUMNS, rowH = 20, cell = cell, tooltip = tooltip,
 	})
 	tbl.isSelected = function(row) return row.self end
 	tbl.frame:SetPoint("TOPLEFT", x, top)
