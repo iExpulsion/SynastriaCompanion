@@ -44,7 +44,8 @@ local RENAMED = {
 	Consumable = "Consumables", Quest = "Quest Items",
 }
 
--- The type list's sections in order. A group not named here goes in the last section, before Other.
+-- The type list's sections in order, each listed alphabetically. A group not named here goes in the last
+-- section, with Other at the end.
 Bank.SECTIONS = {
 	{ label = "Gathering", groups = { "Ores & Metals", "Herbs", "Leather & Scales", "Cloth", "Cooking" } },
 	{ label = "Crafting", groups = { "Elemental", "Enchanting", "Gems", "Alchemy", "Inscription", "Engineering" } },
@@ -64,14 +65,12 @@ function Bank.Sections(present)
 			if present[g] then groups[#groups + 1] = g end
 		end
 		if section.rest then
-			local extra = {}
 			for g in pairs(present) do
-				if not placed[g] and g ~= "Other" then extra[#extra + 1] = g end
+				if not placed[g] and g ~= "Other" then groups[#groups + 1] = g end
 			end
-			table.sort(extra)
-			for _, g in ipairs(extra) do groups[#groups + 1] = g end
-			if present.Other then groups[#groups + 1] = "Other" end
 		end
+		table.sort(groups)
+		if section.rest and present.Other then groups[#groups + 1] = "Other" end
 		if #groups > 0 then out[#out + 1] = { label = section.label, groups = groups } end
 	end
 	return out
