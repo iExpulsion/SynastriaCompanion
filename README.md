@@ -50,12 +50,20 @@ The attune search, rebuilt:
   **Deposit All**.
 - Live search, and the list updates as the bank changes.
 
-More screens are on the way: Leaderboards and Lootfilter.
+### Leaderboards
+
+- **Every board in one list:** the general boards, then dungeons and raids by expansion (WotLK, TBC, Classic and
+  their Mythic versions), then prestiged runs. Click an expansion to open its boards.
+- **The ranks in a table** with place, player and account, score (counts, times or percentages) and date. Your own
+  place is highlighted and scrolled into view.
+- **Refresh** asks for a board again; the server answers at most once a minute per board.
+
+More screens are on the way: Lootfilter.
 
 ## Commands
 
 - `/scomp` or `/companion`: opens or closes the window.
-- `/scomp attunable`, `/scomp attuned`, `/scomp lootdb` or `/scomp bank`: opens a screen.
+- `/scomp attunable`, `/scomp attuned`, `/scomp lootdb`, `/scomp bank` or `/scomp leaderboards`: opens a screen.
 - `/scomp replace attunable off`: gives a screen back to the game's own window (`on` takes it back).
 
 The **Game Window** button in the title bar opens the game's own window for the screen you're on.

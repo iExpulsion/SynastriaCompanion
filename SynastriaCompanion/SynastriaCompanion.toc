@@ -11,6 +11,7 @@ Attune.lua
 LootDB.lua
 ResourceBank.lua
 Attuned.lua
+Leaderboards.lua
 UI\Style.lua
 UI\Table.lua
 UI\Window.lua
@@ -19,4 +20,5 @@ UI\Attunable.lua
 UI\Attuned.lua
 UI\LootDatabase.lua
 UI\ResourceBank.lua
+UI\Leaderboards.lua
 Commands.lua
