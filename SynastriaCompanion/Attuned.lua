@@ -13,8 +13,16 @@ Attuned.SPELL = 80189
 local KIND = { "misc", "misc", "armor", "armor", "armor", "armor", "armor", "weapon", "weapon" }
 local ARMOR_NAMES = { [3] = "Cloth", [4] = "Leather", [5] = "Mail", [6] = "Plate" }
 
-Attuned.STAT_ORDER = { 1, 0, 7, 5, 4, 3, 6, 45, 38, 39, 12, 13, 14, 15, 31, 32, 36, 35, 37, 44, 43, 46, 47, 48, 49, 50,
-	51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62 }
+-- Stats in groups, as a character sheet lays them out; the order within a group is the default sort.
+Attuned.GROUPS = {
+	{ label = "Attributes", stats = { 1, 0, 7, 4, 3, 5, 6 } },
+	{ label = "Physical", stats = { 38, 39, 44, 37 } },
+	{ label = "Spell", stats = { 45, 47, 56, 57, 58, 59, 60, 61, 62 } },
+	{ label = "Shared Ratings", stats = { 31, 32, 36 } },
+	{ label = "Defense", stats = { 49, 12, 13, 14, 15, 48, 35 } },
+	{ label = "Regeneration", stats = { 43, 46 } },
+	{ label = "Resistances", stats = { 50, 51, 52, 53, 54, 55 } },
+}
 Attuned.STAT_NAMES = {
 	[0] = "Mana", [1] = "Health", [3] = "Agility", [4] = "Strength", [5] = "Intellect", [6] = "Spirit",
 	[7] = "Stamina", [12] = "Defense Rating", [13] = "Dodge Rating", [14] = "Parry Rating", [15] = "Block Rating",
@@ -44,7 +52,7 @@ local function add(column, data)
 end
 
 -- { misc, armor, weapon, inactive, total } columns, each { label, count, stats = { [stat] = value } }, plus
--- rows: the stats any column has, in the game's order, each { stat, name, order }.
+-- rows: the stats any column has, grouped, each { stat, name, order, group = index into GROUPS }.
 function Attuned.Read()
 	local cols = { misc = newColumn("Misc"), armor = newColumn("Armor"), weapon = newColumn("Weapon"),
 		inactive = newColumn("Inactive"), total = newColumn("Total") }
@@ -61,13 +69,18 @@ function Attuned.Read()
 			end
 		end
 	end
-	local rows = {}
-	for order, stat in ipairs(Attuned.STAT_ORDER) do
-		local any = false
-		for _, col in pairs(cols) do
-			if (col.stats[stat] or 0) ~= 0 then any = true end
+	local rows, order = {}, 0
+	for g, group in ipairs(Attuned.GROUPS) do
+		for _, stat in ipairs(group.stats) do
+			order = order + 1
+			local any = false
+			for _, col in pairs(cols) do
+				if (col.stats[stat] or 0) ~= 0 then any = true end
+			end
+			if any then
+				rows[#rows + 1] = { stat = stat, name = Attuned.STAT_NAMES[stat] or ("Stat " .. stat), order = order, group = g }
+			end
 		end
-		if any then rows[#rows + 1] = { stat = stat, name = Attuned.STAT_NAMES[stat] or ("Stat " .. stat), order = order } end
 	end
 	return cols, rows
 end

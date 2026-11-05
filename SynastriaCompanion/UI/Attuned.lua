@@ -53,6 +53,7 @@ end
 local function sortRows(rows)
 	local key, desc = state.sort, state.desc
 	table.sort(rows, function(a, b)
+		if a.group ~= b.group then return a.group < b.group end
 		local va, vb
 		if key == "stat" or not cols[key] then
 			va, vb = a.order, b.order
@@ -80,7 +81,15 @@ local function refresh()
 		tbl:SetColumnLabel(key, col.count > 0 and ("%s (%s)"):format(col.label, commas(col.count)) or col.label)
 	end
 	sortRows(rows)
-	tbl:SetItems(rows, Attuned.HasData() and "No Attuned Stats Yet"
+	local shown, group = {}, nil
+	for _, row in ipairs(rows) do
+		if row.group ~= group then
+			group = row.group
+			shown[#shown + 1] = { header = true, label = Attuned.GROUPS[group].label }
+		end
+		shown[#shown + 1] = row
+	end
+	tbl:SetItems(shown, Attuned.HasData() and "No Attuned Stats Yet"
 		or "Click Load Stats to Get Your Attuned Stats From the Server", true)
 	panel.status:SetText(Attuned.receivedAt and ("Updated " .. ago(Attuned.receivedAt))
 		or Attuned.HasData() and "" or S.Hex(C.muted, "Not Loaded"))
@@ -151,6 +160,7 @@ local function create(parent, width, height)
 	local footerH = PAD + 14 + PAD
 	tbl = SC.Table.New(panel, "SynastriaCompanionAttunedTable", width - 2 * PAD, height + top - footerH, {
 		columns = COLUMNS, rowH = 20, cell = cell,
+		header = function(row) return row.header and row.label end,
 		onSort = function(key, desc)
 			state.sort, state.desc = key, desc
 			refresh()
