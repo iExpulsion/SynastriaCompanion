@@ -52,17 +52,22 @@ Attune.FORGES = { [0] = "Attuned", "Titanforged", "Warforged", "Lightforged" }
 local function band(a, b) return bit.band(a or 0, b) ~= 0 end
 
 local function readItem(id)
-	local name, link, quality, ilvl, req, _, _, _, equipLoc, icon = GetItemInfoCustom(id)
+	local name, _, quality, ilvl, req, _, _, _, equipLoc, icon = GetItemInfoCustom(id)
 	local item
 	if name then
 		local tags1, tags2 = GetItemTagsCustom(id)
-		item = { id = id, name = name, link = link, quality = quality or 1, ilvl = ilvl or 0, req = req or 0,
+		item = { id = id, name = name, quality = quality or 1, ilvl = ilvl or 0, req = req or 0,
 			equipLoc = equipLoc or "", icon = icon, disabled = band(tags1, 32), mythic = band(tags1, 128),
 			affix = band(tags2, 1) }
 		if item.affix then item.name = name .. " of the ..." end
 		item.upper = item.name:upper()
 	end
 	return item
+end
+
+-- The cache holds thousands of items, so links (long strings) are looked up only when one is needed.
+function Attune.Link(item)
+	return select(2, GetItemInfoCustom(item.id))
 end
 
 local SCAN_PER_FRAME = 3000

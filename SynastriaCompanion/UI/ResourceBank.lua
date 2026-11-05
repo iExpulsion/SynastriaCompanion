@@ -16,10 +16,7 @@ local ALL_KEY, RECENT_KEY = "\1all", "\1recent"
 local RAIL_W = 168
 local SEARCH_DELAY = 0.15
 
-local function qualityColor(q)
-	local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
-	return c and { c.r, c.g, c.b, 1 } or C.text
-end
+local qualityColor = S.QualityColor
 
 local function bags(item)
 	return GetItemCount(item.id) or 0

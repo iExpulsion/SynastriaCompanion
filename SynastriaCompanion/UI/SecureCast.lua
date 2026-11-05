@@ -9,9 +9,19 @@ local SC = NS.SC
 local SecureCast = { overlays = {} }
 SC.SecureCast = SecureCast
 
+-- Update runs every frame, so it builds nothing it doesn't have to: macros are made once per spell, and an
+-- overlay's attributes, place and size only change when they differ.
+local macros = {}
 local function macro(spell)
-	local name = GetSpellInfo(spell)
-	return name and ("/cast " .. name) or nil
+	local text = macros[spell]
+	if not text then
+		local name = GetSpellInfo(spell)
+		if name then
+			text = "/cast " .. name
+			macros[spell] = text
+		end
+	end
+	return text
 end
 
 -- spot: the control to cover. opts: spell(), the spell ID needed now or nil; onClick(mouse) runs after the cast;
@@ -49,16 +59,25 @@ local function place(o)
 	local left, bottom = spot:GetLeft(), spot:GetBottom()
 	if text and left and bottom then
 		local scale = spot:GetEffectiveScale() / UIParent:GetEffectiveScale()
-		-- only the left button casts, so a right-click can do what the spot's does
-		o:SetAttribute("type1", "macro")
-		o:SetAttribute("macrotext1", text)
-		o:ClearAllPoints()
-		o:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left * scale, bottom * scale)
-		o:SetSize(spot:GetWidth() * scale, spot:GetHeight() * scale)
-		o:SetFrameStrata(spot:GetFrameStrata())
-		o:SetFrameLevel(spot:GetFrameLevel() + 10)
-		o:Show()
-	else
+		local x, y, w, h = left * scale, bottom * scale, spot:GetWidth() * scale, spot:GetHeight() * scale
+		if o.text ~= text then
+			o.text = text
+			-- only the left button casts, so a right-click can do what the spot's does
+			o:SetAttribute("type1", "macro")
+			o:SetAttribute("macrotext1", text)
+		end
+		if o.x ~= x or o.y ~= y or o.w ~= w or o.h ~= h then
+			o.x, o.y, o.w, o.h = x, y, w, h
+			o:ClearAllPoints()
+			o:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
+			o:SetSize(w, h)
+		end
+		if not o:IsShown() then
+			o:SetFrameStrata(spot:GetFrameStrata())
+			o:SetFrameLevel(spot:GetFrameLevel() + 10)
+			o:Show()
+		end
+	elseif o:IsShown() then
 		o:Hide()
 	end
 end
@@ -73,8 +92,12 @@ local watch = CreateFrame("Frame")
 watch:SetScript("OnUpdate", SecureCast.Update)
 watch:RegisterEvent("PLAYER_REGEN_DISABLED")
 watch:SetScript("OnEvent", function()
-	-- fires just before the lockdown starts, so they can still hide here
-	for _, o in ipairs(SecureCast.overlays) do o:Hide() end
+	-- fires just before the lockdown starts, so they can still hide here; placing them again after combat starts
+	-- from scratch
+	for _, o in ipairs(SecureCast.overlays) do
+		o:Hide()
+		o.x = nil
+	end
 end)
 
 -- The spell a screen needs cast right now, or nil.

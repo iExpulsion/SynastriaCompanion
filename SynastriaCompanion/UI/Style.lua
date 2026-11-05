@@ -72,6 +72,18 @@ function S.Count(n, singular, plural)
 	return ("%d %s"):format(n, n == 1 and singular or (plural or singular .. "s"))
 end
 
+-- An item quality's color as { r, g, b, a }, made once per quality since tables ask for it on every redraw.
+local qualityColors = {}
+function S.QualityColor(q)
+	local color = qualityColors[q or -1]
+	if not color then
+		local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
+		color = c and { c.r, c.g, c.b, 1 } or S.colors.text
+		qualityColors[q or -1] = color
+	end
+	return color
+end
+
 function S.Hex(c, text)
 	return ("|cff%02x%02x%02x%s|r"):format(c[1] * 255, c[2] * 255, c[3] * 255, text)
 end

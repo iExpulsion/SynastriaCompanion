@@ -23,8 +23,10 @@ Window.SECTIONS = {
 	{ label = "Community", screens = { "leaderboards" } },
 }
 
--- The screens in sidebar order, each with its section label; screens no section names come last.
-function Window.Ordered()
+-- The screens in sidebar order, each with its section label; screens no section names come last. It's asked for
+-- every frame (by the minimap button's cast check), so it's built once and kept until a screen is added.
+local ordered
+local function buildOrder()
 	local out, placed = {}, {}
 	for _, section in ipairs(Window.SECTIONS) do
 		for _, key in ipairs(section.screens) do
@@ -43,6 +45,11 @@ function Window.Ordered()
 	return out
 end
 
+function Window.Ordered()
+	ordered = ordered or buildOrder()
+	return ordered
+end
+
 -- The screen the window opens on when no screen is named: the last one shown, or the first.
 function Window.Default()
 	local first = Window.Ordered()[1]
@@ -58,6 +65,7 @@ end
 -- hook = { open = global, close = global, frame = global frame name, extra = { [global] = handler } } }
 function Window.AddScreen(screen)
 	Window.screens[#Window.screens + 1] = screen
+	ordered = nil
 	local hook = screen.hook
 	if hook then
 		local function show(...) Window.Open(screen.key, ...) end

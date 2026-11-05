@@ -16,10 +16,7 @@ local stack = {}
 local SEARCH_DELAY = 0.25
 local HEADER_H = 36
 
-local function qualityColor(q)
-	local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
-	return c and { c.r, c.g, c.b, 1 } or C.text
-end
+local qualityColor = S.QualityColor
 
 local function setShown(f, shown)
 	if shown then f:Show() else f:Hide() end

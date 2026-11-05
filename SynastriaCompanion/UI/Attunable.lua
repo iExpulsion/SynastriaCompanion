@@ -21,10 +21,7 @@ local CLASSES = {
 }
 local TRI = { { value = false, text = "Any" }, { value = 1, text = "Yes" }, { value = -1, text = "No" } }
 
-local function qualityColor(q)
-	local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
-	return c and { c.r, c.g, c.b, 1 } or C.text
-end
+local qualityColor = S.QualityColor
 
 local function textOf(options, value, fallback)
 	for _, o in ipairs(options) do
@@ -127,7 +124,7 @@ end
 
 local function onRowClick(item, button)
 	if IsModifiedClick() then
-		HandleModifiedItemClick(item.link)
+		HandleModifiedItemClick(Attune.Link(item))
 	elseif button == "LeftButton" and OpenLootDb then
 		OpenLootDb(item.id)
 	end
@@ -254,7 +251,10 @@ local function create(parent, width, height)
 	tbl = SC.Table.New(panel, "SynastriaCompanionAttuneTable", inner, height + top - footerH, {
 		columns = COLUMNS, rowH = 20, icons = true, cell = cell,
 		icon = function(item) return item.icon end,
-		tooltip = function(tt, item) tt:SetHyperlink(item.link) end,
+		tooltip = function(tt, item)
+			local link = Attune.Link(item)
+			if link then tt:SetHyperlink(link) end
+		end,
 		onClick = onRowClick,
 		onSort = function(key, desc)
 			filter.sort, filter.desc = key, desc
