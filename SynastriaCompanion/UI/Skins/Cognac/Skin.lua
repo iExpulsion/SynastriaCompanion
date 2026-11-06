@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-14-g456e665. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-16-g36fc578. Change it there, then run tools/sync_style.py.
 -- Cognac: gold-framed painted controls on dark glass. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
@@ -18,10 +18,25 @@ local CORNERS = {
 	corner_sw = { left = 41, bottom = 25 },
 	corner_se = { right = 28, bottom = 25 },
 }
--- The straight border pieces: the bar's rows (top and bottom) or columns (sides) in the cell, the part to sample
--- across it, and, on the top and bottom, the diamond in the middle that keeps its shape.
+-- The part of each corner drawn: up to just short of the caps its bars end in, so the edges, which stretch on from
+-- the same bars, carry straight through. Columns, then rows, of the 256px cell.
+local CROPS = {
+	corner_nw = { 18, 200, 18, 200 },
+	corner_ne = { 56, 225, 17, 200 },
+	corner_sw = { 32, 200, 56, 239 },
+	corner_se = { 56, 237, 56, 239 },
+}
+-- The straight edges are a plain stretch of a corner's own bar, so they meet it seamlessly: which corner, and the
+-- columns (top and bottom) or rows (sides) of it to stretch, with the rows or columns across the bar.
+local RUNS = {
+	top = { "corner_nw", { 170, 210 }, { 18, 80 } },
+	bottom = { "corner_sw", { 170, 215 }, { 180, 239 } },
+	left = { "corner_nw", { 170, 210 }, { 18, 80 } },
+	right = { "corner_ne", { 170, 225 }, { 160, 225 } },
+}
+-- The top and bottom diamonds, from the edge pieces, laid over the middle of the bar: the edge piece's bar rows,
+-- the rows to sample, and the diamond's columns.
 local HBAR, HBAND, DIAMOND = { 103, 160 }, { 93, 163 }, { 96, 160 }
-local VBAR, VBAND = { 109, 146 }, { 106, 150 }
 -- the divider's spear: a tip at each end and a diamond in the middle keep their shape; the shafts between stretch
 local SPEAR_W, SPEAR_COLS = 12, { 102, 153 }
 local SPEAR = { { 16, 60, false }, { 60, 100, true }, { 100, 156, false }, { 156, 196, true }, { 196, 240, false } }
@@ -83,41 +98,57 @@ end
 -- the ends of the edges.
 local function chrome(f)
 	local s, o = CHROME, OUTSIDE
-	local cell, bar = 256 * s, BAR * s
+	local bar = BAR * s
 	local corners = {}
 	for key in pairs(CORNERS) do corners[key] = art(f, "OVERLAY", key) end
-	local function strips(n)
-		local list = {}
-		for i = 1, n do list[i] = f:CreateTexture(nil, "ARTWORK") end
-		return list
-	end
-	local top, bottom, sides = strips(3), strips(3), strips(2)
-	local kh, kv = bar / (HBAR[2] - HBAR[1]), bar / (VBAR[2] - VBAR[1])
-	local bandH, bandW, diamondW = (HBAND[2] - HBAND[1]) * kh, (VBAND[2] - VBAND[1]) * kv, (DIAMOND[2] - DIAMOND[1]) * kh
-	-- a top or bottom edge from x0 to x1: a run of bar each side of the diamond
-	local function edge(list, piece, x0, x1, y)
-		local mid = (x0 + x1) / 2
-		local d0, d1 = mid - diamondW / 2, mid + diamondW / 2
-		S.ArtPart(list[1], f, ATLAS, piece, 40, DIAMOND[1], HBAND[1], HBAND[2], x0, y, d0 - x0, bandH)
-		S.ArtPart(list[2], f, ATLAS, piece, DIAMOND[1], DIAMOND[2], HBAND[1], HBAND[2], d0, y, diamondW, bandH)
-		S.ArtPart(list[3], f, ATLAS, piece, DIAMOND[2], 216, HBAND[1], HBAND[2], d1, y, x1 - d1, bandH)
-	end
+	local runs = {}
+	for side in pairs(RUNS) do runs[side] = f:CreateTexture(nil, "BORDER") end
+	local diamonds = { top = f:CreateTexture(nil, "ARTWORK"), bottom = f:CreateTexture(nil, "ARTWORK") }
+	local kh = bar / (HBAR[2] - HBAR[1])
+	local diamondW, diamondH = (DIAMOND[2] - DIAMOND[1]) * kh, (HBAND[2] - HBAND[1]) * kh
 	follow(f, function(w, h)
+		-- whole screen pixels, so pieces that should meet don't land a fraction of a pixel apart
+		local es = f:GetEffectiveScale() or 1
+		local function snap(v) return math.floor(v * es + 0.5) / es end
+		local cell = snap(256 * s)
+		local k = cell / 256
 		local at = {
-			corner_nw = { o - CORNERS.corner_nw.left * s, o - CORNERS.corner_nw.top * s },
-			corner_ne = { w - o - (256 - CORNERS.corner_ne.right) * s, o - CORNERS.corner_ne.top * s },
-			corner_sw = { o - CORNERS.corner_sw.left * s, h - o - (256 - CORNERS.corner_sw.bottom) * s },
-			corner_se = { w - o - (256 - CORNERS.corner_se.right) * s, h - o - (256 - CORNERS.corner_se.bottom) * s },
+			corner_nw = { snap(o - CORNERS.corner_nw.left * k), snap(o - CORNERS.corner_nw.top * k) },
+			corner_ne = { snap(w - o - (256 - CORNERS.corner_ne.right) * k), snap(o - CORNERS.corner_ne.top * k) },
+			corner_sw = { snap(o - CORNERS.corner_sw.left * k), snap(h - o - (256 - CORNERS.corner_sw.bottom) * k) },
+			corner_se = { snap(w - o - (256 - CORNERS.corner_se.right) * k), snap(h - o - (256 - CORNERS.corner_se.bottom) * k) },
 		}
-		for key, tex in pairs(corners) do S.PlaceArt(tex, f, ATLAS, key, at[key][1], at[key][2], cell, cell) end
+		for key, tex in pairs(corners) do
+			local c = CROPS[key]
+			S.ArtPart(tex, f, ATLAS, key, c[1], c[2], c[3], c[4], at[key][1] + c[1] * k, at[key][2] + c[3] * k,
+				(c[2] - c[1]) * k, (c[4] - c[3]) * k)
+		end
 		local nw, ne, sw, se = at.corner_nw, at.corner_ne, at.corner_sw, at.corner_se
-		-- each edge runs from well inside one corner's bar to well inside the other's
-		edge(top, "border_top", nw[1] + 200 * s, ne[1] + 50 * s, o - (HBAR[1] - HBAND[1]) * kh)
-		edge(bottom, "border_bottom", sw[1] + 200 * s, se[1] + 40 * s, h - o - (HBAR[2] - HBAND[1]) * kh)
-		S.ArtPart(sides[1], f, ATLAS, "border_left", VBAND[1], VBAND[2], 60, 200, o - (VBAR[1] - VBAND[1]) * kv,
-			nw[2] + 200 * s, bandW, sw[2] + 40 * s - (nw[2] + 200 * s))
-		S.ArtPart(sides[2], f, ATLAS, "border_right", VBAND[1], VBAND[2], 60, 200, w - o - (VBAR[2] - VBAND[1]) * kv,
-			ne[2] + 200 * s, bandW, se[2] + 40 * s - (ne[2] + 200 * s))
+		-- each run starts where its corner's slice sits and ends inside the corner opposite, under it
+		local function run(side, x, y, ww, hh)
+			local r = RUNS[side]
+			S.ArtPart(runs[side], f, ATLAS, r[1], r[2][1], r[2][2], r[3][1], r[3][2], x, y, ww, hh)
+		end
+		local function horizontal(side, corner, x1)
+			local r = RUNS[side]
+			local x0 = corner[1] + r[2][1] * k
+			run(side, x0, corner[2] + r[3][1] * k, x1 - x0, (r[3][2] - r[3][1]) * k)
+		end
+		horizontal("top", nw, ne[1] + 60 * k)
+		horizontal("bottom", sw, se[1] + 60 * k)
+		-- the side runs take the slice's columns across and its rows along, the other way around
+		local l, r = RUNS.left, RUNS.right
+		local ly0 = nw[2] + l[2][1] * k
+		S.ArtPart(runs.left, f, ATLAS, l[1], l[3][1], l[3][2], l[2][1], l[2][2], nw[1] + l[3][1] * k, ly0,
+			(l[3][2] - l[3][1]) * k, sw[2] + 60 * k - ly0)
+		local ry0 = ne[2] + r[2][1] * k
+		S.ArtPart(runs.right, f, ATLAS, r[1], r[3][1], r[3][2], r[2][1], r[2][2], ne[1] + r[3][1] * k, ry0,
+			(r[3][2] - r[3][1]) * k, se[2] + 60 * k - ry0)
+		-- the diamonds sit on the middle of the top and bottom bars
+		S.ArtPart(diamonds.top, f, ATLAS, "border_top", DIAMOND[1], DIAMOND[2], HBAND[1], HBAND[2],
+			snap((w - diamondW) / 2), snap(o - (HBAR[1] - HBAND[1]) * kh), diamondW, diamondH)
+		S.ArtPart(diamonds.bottom, f, ATLAS, "border_bottom", DIAMOND[1], DIAMOND[2], HBAND[1], HBAND[2],
+			snap((w - diamondW) / 2), snap(h - o - (HBAR[2] - HBAND[1]) * kh), diamondW, diamondH)
 	end)
 end
 
@@ -201,14 +232,19 @@ S.RegisterSkin("cognac", {
 	-- a window is see-through glass, the blue-black tint over the tooltip background, in the gold border; a popup,
 	-- which sits over a window, is the same tint but solid, so the window's contents don't show through it; a menu
 	-- stays a small flat panel
+	-- the fill starts halfway into the border's bars, so nothing of it shows outside the gold
 	frame = function(f, role)
+		local inset = math.floor(OUTSIDE + BAR * CHROME / 2 + 0.5)
+		local insets = { left = inset, right = inset, top = inset, bottom = inset }
 		if role == "window" then
-			f:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16 })
+			f:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16,
+				insets = insets })
 			f:SetBackdropColor(unpack(S.colors.window))
 			chrome(f)
 		elseif role == "popup" then
 			local c = S.colors.window
-			S.Panel(f, { c[1], c[2], c[3], 0.98 })
+			f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", insets = insets })
+			f:SetBackdropColor(c[1], c[2], c[3], 0.98)
 			chrome(f)
 		else
 			S.Panel(f, S.colors.panel, S.colors.border)
