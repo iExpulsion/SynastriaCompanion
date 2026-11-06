@@ -329,8 +329,7 @@ local COLUMNS = {
 	{ key = "ilvl", label = "iLvl", width = 52, defaultDesc = true },
 	{ key = "req", label = "Req", width = 48, defaultDesc = true },
 	{ key = "sources", label = "Sources", width = 66, defaultDesc = true },
-	{ key = "affixes", label = "Affixes", width = 70, defaultDesc = true,
-		tooltip = "Affixes you haven't attuned yet, at the Affix Forge level. A dash means the item has none." },
+	{ key = "affixes", label = "Affixes", width = 70, defaultDesc = true },
 	{ key = "forge", label = "Forge", width = 92, defaultDesc = true },
 }
 
@@ -343,9 +342,9 @@ local function cell(item, key)
 		local n = Attune.SourceCount(item)
 		return n > 0 and tostring(n) or "", C.muted
 	elseif key == "affixes" then
-		-- a faint dash for items that can't roll affixes, so a blank never looks like a missing count
-		local n = Attune.AffixesLeft(item, filter.affixForge or 0)
-		if n then return tostring(n), n == 0 and C.good or C.text end
+		-- attuned/total at the Affix Forge level; a faint dash for items that can't roll affixes
+		local attuned, total = Attune.AffixCounts(item, filter.affixForge or 0)
+		if total then return attuned .. "/" .. total, attuned == total and C.good or C.text end
 		return "-", C.outline
 	elseif key == "forge" then return forgeCell(item)
 	end

@@ -220,17 +220,29 @@ local function affixLeftAt(m, index)
 	return bit.band(m[word], b) ~= 0 and bit.band(m[word + 2], b) == 0
 end
 
--- How many of an item's affixes aren't attuned yet at a forge level; nil for an item that doesn't track affixes.
-function Attune.AffixesLeft(item, forge)
+-- How many of an item's affixes are attuned at a forge level, and how many it can roll; nil for an item that
+-- doesn't track affixes.
+function Attune.AffixCounts(item, forge)
 	local m = masks(item, forge)
-	local left
+	local attuned, total
 	if m then
-		left = 0
+		attuned, total = 0, 0
 		for index = 0, 63 do
-			if affixLeftAt(m, index) then left = left + 1 end
+			local word = index < 32 and 1 or 2
+			local b = bit.lshift(1, index % 32)
+			if bit.band(m[word], b) ~= 0 then
+				total = total + 1
+				if bit.band(m[word + 2], b) ~= 0 then attuned = attuned + 1 end
+			end
 		end
 	end
-	return left
+	return attuned, total
+end
+
+-- How many of an item's affixes aren't attuned yet at a forge level; nil for an item that doesn't track affixes.
+function Attune.AffixesLeft(item, forge)
+	local attuned, total = Attune.AffixCounts(item, forge)
+	return total and total - attuned
 end
 
 -- Whether an item can roll an affix (by name) that isn't attuned yet at a forge level.
