@@ -59,7 +59,6 @@ local function readItem(id)
 		item = { id = id, name = name, quality = quality or 1, ilvl = ilvl or 0, req = req or 0,
 			equipLoc = equipLoc or "", icon = icon, disabled = band(tags1, 32), mythic = band(tags1, 128),
 			affix = band(tags2, 1), prop = band(tags2, 8), tracksAffix = band(tags2, 16), bop = band(tags2, 0x80) }
-		if item.affix then item.name = name .. " of the ..." end
 		item.upper = item.name:upper()
 	end
 	return item

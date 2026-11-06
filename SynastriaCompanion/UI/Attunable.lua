@@ -18,6 +18,7 @@ local QUERY_DELAY = 0.15
 local ROWS = 6
 local ROW_GAP = 6
 local LABEL_W = 72
+local TWO_OPTION_W = 70
 
 local CLASSES = {
 	{ 1, "WARRIOR" }, { 2, "PALADIN" }, { 3, "HUNTER" }, { 4, "ROGUE" }, { 5, "PRIEST" }, { 6, "DEATHKNIGHT" },
@@ -178,10 +179,11 @@ local function triDropdown(parent, width, key)
 	return d
 end
 
-local function numberBox(parent, name, key)
-	local e = S.Input(parent, name, 44, "", 3)
+local function numberBox(parent, name, key, placeholder)
+	local e = S.Input(parent, name, 44, placeholder, 3)
 	e:SetNumeric(true)
 	e:SetJustifyH("CENTER")
+	e.placeholder:SetJustifyH("CENTER")
 	e:HookScript("OnTextChanged", function(self, user)
 		if user then
 			local n = tonumber(self:GetText())
@@ -193,8 +195,9 @@ local function numberBox(parent, name, key)
 	return e
 end
 
+-- Filter labels are a shade dimmer than the controls, so they read as headings for them.
 local function label(parent, text, width)
-	local fs = S.Text(parent, "small", C.muted)
+	local fs = S.Text(parent, "small", C.outline)
 	fs:SetText(text)
 	if width then
 		fs:SetWidth(width)
@@ -332,8 +335,12 @@ local function create(parent, width, height)
 	local col2 = x0 + colW + GAP
 	local area = colW - LABEL_W - GAP
 
+	-- rows 1 and 2 share four equal columns; the search takes two of them unless the class dropdown needs one
+	local dropW = math.floor((inner - 3 * GAP) / 4)
+	panel.dropW = dropW
+
 	-- row 1: search, mode, class, reset
-	panel.name = S.Input(panel, "SynastriaCompanionAttuneName", 260, "Search Items", 60)
+	panel.name = S.Input(panel, "SynastriaCompanionAttuneName", 2 * dropW + GAP, "Search Items", 60)
 	panel.name:SetPoint("TOPLEFT", x0, rowY(1))
 	panel.name:HookScript("OnTextChanged", function(self, user)
 		if user then
@@ -343,11 +350,11 @@ local function create(parent, width, height)
 	end)
 	panel.name:SetScript("OnEnterPressed", panel.name.ClearFocus)
 
-	panel.mode = S.Dropdown(panel, 150, function(v) set("mode", v) end)
+	panel.mode = S.Dropdown(panel, dropW, function(v) set("mode", v) end)
 	panel.mode:SetOptions(Attune.MODES)
 	panel.mode:SetPoint("LEFT", panel.name, "RIGHT", GAP, 0)
 
-	panel.class = S.Dropdown(panel, 150, function(v) set("class", v or nil) end)
+	panel.class = S.Dropdown(panel, dropW, function(v) set("class", v or nil) end)
 	panel.class:SetPoint("LEFT", panel.mode, "RIGHT", GAP, 0)
 
 	local reset = S.Button(panel, "Reset Filters", "ghost", 100, function()
@@ -360,7 +367,6 @@ local function create(parent, width, height)
 	reset:SetPoint("TOPRIGHT", -PAD, rowY(1))
 
 	-- row 2: four equal dropdowns across the full width
-	local dropW = math.floor((inner - 3 * GAP) / 4)
 	panel.rarity = S.Dropdown(panel, dropW, function(v) set("rarity", v or nil) end)
 	local rarities = { { value = false, text = "All" } }
 	for _, r in ipairs(Attune.RARITIES) do rarities[#rarities + 1] = r end
@@ -389,9 +395,10 @@ local function create(parent, width, height)
 	local _, expGroup = toggleGroup("Expansion", "exp", EXPANSIONS, "multi", col2, rowY(4), area)
 	panel.lootGroups = { kindGroup, expGroup }
 
-	-- row 5: the two either/or filters
-	toggleGroup("Bind", "bind", BINDS, "clearable", x0, rowY(5), area)
-	toggleGroup("Mythic", "mythic", MYTHIC, "clearable", col2, rowY(5), area)
+	-- row 5: the two either/or filters, at a toggle's width rather than stretched across the column
+	local pairW = 2 * TWO_OPTION_W - 1
+	toggleGroup("Bind", "bind", BINDS, "clearable", x0, rowY(5), pairW)
+	toggleGroup("Mythic", "mythic", MYTHIC, "clearable", col2, rowY(5), pairW)
 
 	-- row 6: zone, then the level ranges
 	local zoneLabel = label(panel, "Zone", LABEL_W)
@@ -409,12 +416,14 @@ local function create(parent, width, height)
 	panel.zoneClear = S.Button(panel, "Clear", "secondary", 44, function() set("zone", nil) end, "Any zone again.")
 	panel.zoneClear:SetPoint("LEFT", panel.zoneHere, "RIGHT", 4, 0)
 
-	-- each range is a min and max box with a dash between; the two ranges split the column's control area
-	local boxW = math.floor((area - 2 * 12 - GAP - 64) / 4)
+	-- each range is a min and max box with a dash between; the two ranges, and the iLvl label right before its
+	-- boxes, fill the column's control area
+	local DASH_W, ILVL_W = 12, 24
+	local boxW = math.floor((area - 2 * DASH_W - PAD - ILVL_W - GAP) / 4)
 	local reqLabel = label(panel, "Req. Level", LABEL_W)
 	reqLabel:SetPoint("LEFT", panel, "TOPLEFT", col2, rowY(6) - CONTROL_H / 2)
 	local function range(minKey, maxKey, minName, maxName, anchor, dx)
-		panel[minKey] = numberBox(panel, minName, minKey)
+		panel[minKey] = numberBox(panel, minName, minKey, "Min")
 		panel[minKey]:SetWidth(boxW)
 		if anchor then
 			panel[minKey]:SetPoint("LEFT", anchor, "RIGHT", dx, 0)
@@ -422,18 +431,17 @@ local function create(parent, width, height)
 			panel[minKey]:SetPoint("TOPLEFT", col2 + LABEL_W + GAP, rowY(6))
 		end
 		local dash = label(panel, "-")
-		dash:SetWidth(12)
+		dash:SetWidth(DASH_W)
 		dash:SetJustifyH("CENTER")
 		dash:SetPoint("LEFT", panel[minKey], "RIGHT", 0, 0)
-		panel[maxKey] = numberBox(panel, maxName, maxKey)
+		panel[maxKey] = numberBox(panel, maxName, maxKey, "Max")
 		panel[maxKey]:SetWidth(boxW)
 		panel[maxKey]:SetPoint("LEFT", dash, "RIGHT", 0, 0)
 		return panel[maxKey]
 	end
 	local reqEnd = range("minReq", "maxReq", "SynastriaCompanionAttuneMinReq", "SynastriaCompanionAttuneMaxReq")
-	local lvlLabel = label(panel, "iLvl", 64 - GAP)
-	lvlLabel:SetJustifyH("RIGHT")
-	lvlLabel:SetPoint("LEFT", reqEnd, "RIGHT", GAP, 0)
+	local lvlLabel = label(panel, "iLvl", ILVL_W)
+	lvlLabel:SetPoint("LEFT", reqEnd, "RIGHT", PAD, 0)
 	range("minLvl", "maxLvl", "SynastriaCompanionAttuneMinLvl", "SynastriaCompanionAttuneMaxLvl", lvlLabel, GAP)
 
 	-- results
@@ -477,6 +485,7 @@ end
 local function show()
 	local multi = CMCGetClassCount and CMCGetClassCount() >= 2
 	setShown(panel.class, multi)
+	panel.name:SetWidth(multi and panel.dropW or 2 * panel.dropW + GAP)
 	if multi then
 		local options = { { value = false, text = "Mine" } }
 		for _, c in ipairs(CLASSES) do
