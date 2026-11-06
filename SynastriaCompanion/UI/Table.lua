@@ -38,10 +38,6 @@ local function newRow(self, i)
 	for c, col in ipairs(self.columns) do
 		local fs = S.Text(row, "small")
 		fs:SetJustifyH(col.justify or "LEFT")
-		fs:ClearAllPoints()
-		local x = col.x + 6 + ((c == 1 and self.icons) and self.rowH or 0)
-		fs:SetPoint("LEFT", row, "LEFT", x, TEXT_Y)
-		fs:SetWidth(col.width - 12 - (col.barInset or 0) - ((c == 1 and self.icons) and self.rowH or 0))
 		fs:SetHeight(self.rowH)
 		row.cells[c] = fs
 	end
@@ -87,28 +83,55 @@ local function paintHeader(self)
 	end
 end
 
+-- Places the shown columns left to right; the last shown one takes any spare width and keeps its text clear of the
+-- scroll bar, since the rows run under the bar to the table's edge.
+local function layout(self)
+	local x, last = 0, nil
+	for _, col in ipairs(self.columns) do
+		col.x, col.width, col.barInset = x, col.baseWidth, nil
+		if not col.hidden then
+			x = x + col.width
+			last = col
+		end
+	end
+	if last then
+		last.width = last.width + math.max(0, self.width - 2 - x)
+		last.barInset = BAR_SPACE
+	end
+	for c, col in ipairs(self.columns) do
+		local h = self.headers[c]
+		h:SetSize(col.width, HEADER_H)
+		h:SetPoint("TOPLEFT", col.x, 0)
+		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), TEXT_Y)
+		h.arrow:SetPoint("RIGHT", -4 - (col.barInset or 0), 0)
+		if col.hidden then h:Hide() else h:Show() end
+		local inset = (c == 1 and self.icons) and self.rowH or 0
+		for _, row in ipairs(self.rows) do
+			local fs = row.cells[c]
+			fs:ClearAllPoints()
+			fs:SetPoint("LEFT", row, "LEFT", col.x + 6 + inset, TEXT_Y)
+			fs:SetWidth(col.width - 12 - (col.barInset or 0) - inset)
+			if col.hidden then fs:Hide() else fs:Show() end
+		end
+	end
+end
+
 -- opts: columns = { { key, label, width, justify, sortable, defaultDesc, tooltip } }, rowH, icons (first column has an icon),
 -- cell(item, key) -> text, icon(item) -> texture, tooltip(tt, item), onClick(item, button), onSort(key, desc),
 -- header(item) -> label when the item is a group header row
 function Table.New(parent, name, width, height, opts)
 	local self = setmetatable({ columns = opts.columns, rowH = opts.rowH or 20, icons = opts.icons, cell = opts.cell,
 		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, header = opts.header,
-		items = {},
+		items = {}, width = width,
 		offset = 0, rows = {}, headers = {} }, { __index = Table })
-	-- the rows run under the scroll bar to the table's edge; the last column takes any spare width and keeps its
-	-- text clear of the bar
-	local x, columns = 0, {}
+	local columns = {}
 	for i, def in ipairs(opts.columns) do
 		local col = {}
 		for k, v in pairs(def) do col[k] = v end
-		col.x = x
-		x = x + col.width
+		col.x, col.baseWidth = 0, col.width
 		columns[i] = col
 	end
 	self.columns = columns
-	local last = self.columns[#self.columns]
-	last.width = last.width + math.max(0, width - 2 - x)
-	last.barInset = BAR_SPACE
 
 	self.frame = CreateFrame("Frame", name, parent)
 	self.frame:SetSize(width, height)
@@ -127,18 +150,14 @@ function Table.New(parent, name, width, height, opts)
 	rule:SetPoint("TOPRIGHT", 0, -HEADER_H)
 	for _, col in ipairs(self.columns) do
 		local h = CreateFrame("Button", nil, self.content)
-		h:SetSize(col.width, HEADER_H)
-		h:SetPoint("TOPLEFT", col.x, 0)
 		h.col = col
 		h.label = S.Text(h, "small", C.muted)
 		h.label:SetPoint("LEFT", 6, TEXT_Y)
-		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), TEXT_Y)
 		h.label:SetJustifyH(col.justify or "LEFT")
 		h.label:SetText(col.label or "")
 		h.arrow = h:CreateTexture(nil, "OVERLAY")
 		h.arrow:SetTexture("Interface\\Buttons\\UI-SortArrow")
 		h.arrow:SetSize(9, 8)
-		h.arrow:SetPoint("RIGHT", -4 - (col.barInset or 0), 0)
 		h.arrow:SetDesaturated(true)
 		h.arrow:SetVertexColor(unpack(C.heading))
 		h.arrow:Hide()
@@ -168,6 +187,7 @@ function Table.New(parent, name, width, height, opts)
 
 	self.visible = math.floor((height - 2 - BODY_TOP) / self.rowH)
 	for i = 1, self.visible do self.rows[i] = newRow(self, i) end
+	layout(self)
 
 	local bar = CreateFrame("Slider", nil, self.frame)
 	bar:SetFrameLevel(self.content:GetFrameLevel() + 5)
@@ -211,6 +231,17 @@ function Table:SetColumnLabel(key, text)
 	for _, h in ipairs(self.headers) do
 		if h.col.key == key then h.label:SetText(text) end
 	end
+end
+
+function Table:SetColumnShown(key, shown)
+	local changed = false
+	for _, col in ipairs(self.columns) do
+		if col.key == key and not col.hidden ~= shown then
+			col.hidden = not shown
+			changed = true
+		end
+	end
+	if changed then layout(self) end
 end
 
 function Table:SetSort(key, desc)

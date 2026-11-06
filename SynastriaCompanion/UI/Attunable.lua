@@ -65,7 +65,18 @@ local function requery(delay, keepScroll)
 	panel.keepScroll = keepScroll
 end
 
+-- The Forge column only shows in modes that list attuned items; a sort on it falls back to item level.
+local function syncForgeColumn()
+	local shown = Attune.ShowsAttuned(filter.mode)
+	tbl:SetColumnShown("forge", shown)
+	if not shown and filter.sort == "forge" then
+		filter.sort, filter.desc = "ilvl", true
+		tbl:SetSort(filter.sort, filter.desc)
+	end
+end
+
 local function syncControls()
+	syncForgeColumn()
 	panel.name:SetText(filter.name or "")
 	panel.mode:SetText(textOf(Attune.MODES, filter.mode or 0, "Attunable (Char)"))
 	local class = "Mine"
@@ -130,14 +141,10 @@ local function onRowClick(item, button)
 	end
 end
 
-local function statusCell(item)
-	if item.attuned then
-		local forge = GetItemAttuneForge and GetItemAttuneForge(item.id) or 0
-		return Attune.FORGES[math.max(0, forge)] or Attune.FORGES[0], C.good
-	end
-	local p = Attune.Progress(item)
-	if p > 0 then return ("%d%%"):format(p), C.warn end
-	return "", C.muted
+local function forgeCell(item)
+	local forge = Attune.Forge(item)
+	if forge >= 0 then return Attune.FORGES[forge] or Attune.FORGES[0], C.good end
+	return ""
 end
 
 local COLUMNS = {
@@ -146,7 +153,7 @@ local COLUMNS = {
 	{ key = "ilvl", label = "iLvl", width = 52, justify = "RIGHT", defaultDesc = true },
 	{ key = "req", label = "Req", width = 48, justify = "RIGHT", defaultDesc = true },
 	{ key = "sources", label = "Sources", width = 66, justify = "RIGHT", defaultDesc = true },
-	{ key = "status", label = "Status", width = 110, defaultDesc = true },
+	{ key = "forge", label = "Forge", width = 110, defaultDesc = true },
 }
 
 local function cell(item, key)
@@ -157,7 +164,7 @@ local function cell(item, key)
 	elseif key == "sources" then
 		local n = Attune.SourceCount(item)
 		return n > 0 and tostring(n) or "", C.muted
-	elseif key == "status" then return statusCell(item)
+	elseif key == "forge" then return forgeCell(item)
 	end
 end
 

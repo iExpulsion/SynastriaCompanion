@@ -132,9 +132,16 @@ function Attune.SourceCount(item)
 	return item.sources
 end
 
--- 0..100 for an item not yet attuned.
-function Attune.Progress(item)
-	return GetItemAttuneProgress and GetItemAttuneProgress(item.id) or 0
+-- Index into Attune.FORGES for an attuned item, -1 for one that isn't.
+function Attune.Forge(item)
+	local forge = -1
+	if item.attuned then forge = math.max(0, GetItemAttuneForge and GetItemAttuneForge(item.id) or 0) end
+	return forge
+end
+
+-- Whether a mode can list attuned items, which is when the Forge column means something.
+function Attune.ShowsAttuned(mode)
+	return not UNATTUNED_ONLY[mode or 0]
 end
 
 local function tri(want, has)
@@ -180,7 +187,7 @@ local SORT_KEYS = {
 	req = function(i) return i.req end,
 	slot = function(i) return Attune.SlotLabel(i.equipLoc) end,
 	sources = Attune.SourceCount,
-	status = function(i) return i.attuned and 101 or Attune.Progress(i) end,
+	forge = Attune.Forge,
 }
 
 -- Sorts by a column, breaking ties by item level (highest first) and then name.
