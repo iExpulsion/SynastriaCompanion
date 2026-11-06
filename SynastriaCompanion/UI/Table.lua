@@ -83,23 +83,40 @@ local function paintHeader(self)
 	end
 end
 
--- Places the shown columns left to right. The shown column marked stretch (else the last shown) takes any spare
--- width, such as a hidden column's; the last shown keeps its text clear of the scroll bar, since the rows run under
--- the bar to the table's edge.
+-- The narrowest a column can be and still show its whole header: the label, its padding and the sort arrow's
+-- space, plus the scroll bar's for the last column.
+local function headerWidth(self, c, col)
+	local need = 0
+	if col.label and col.label ~= "" then
+		need = math.ceil(self.headers[c].label:GetStringWidth()) + 6 + 16 + 2 + (col.barInset or 0)
+	end
+	return need
+end
+
+-- Places the shown columns left to right. Each is at least as wide as its header needs; the shown column marked
+-- stretch (else the last shown) takes the spare width, such as a hidden column's, or gives up what the others
+-- needed. The last shown keeps its text clear of the scroll bar, since the rows run under the bar to the table's
+-- edge.
 local function layout(self)
-	local used, last, stretch = 0, nil, nil
+	local last, stretch = nil, nil
 	for _, col in ipairs(self.columns) do
 		col.width, col.barInset = col.baseWidth, nil
 		if not col.hidden then
-			used = used + col.width
 			last = col
 			if col.stretch and not stretch then stretch = col end
 		end
 	end
 	stretch = stretch or last
 	if last then
-		stretch.width = stretch.width + math.max(0, self.width - 2 - used)
 		last.barInset = BAR_SPACE
+		local used = 0
+		for c, col in ipairs(self.columns) do
+			if not col.hidden then
+				col.width = math.max(col.width, headerWidth(self, c, col))
+				used = used + col.width
+			end
+		end
+		stretch.width = stretch.width + self.width - 2 - used
 	end
 	local x = 0
 	for _, col in ipairs(self.columns) do
