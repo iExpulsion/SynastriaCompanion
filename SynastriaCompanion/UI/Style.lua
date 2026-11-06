@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-7-g1a7bc9b. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-9-g84243f0. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -195,6 +195,59 @@ function S.PlaceArt(tex, frame, atlas, piece, x, y, w, h)
 	tex:SetPoint("TOPLEFT", frame, "TOPLEFT", x + w * l, -(y + h * t))
 	tex:SetWidth(math.max(w * (1 - l - r), 1))
 	tex:SetHeight(math.max(h * (1 - t - b), 1))
+end
+
+-- A piece's original size in pixels.
+function S.ArtSize(atlas, piece)
+	local p = atlases[atlas].pieces[piece]
+	return p[9], p[10]
+end
+
+-- Shows part of a piece, given in its own pixels (x0..x1, y0..y1), at x, y (down from the frame's top left) at
+-- w by h.
+function S.ArtPart(tex, frame, atlas, piece, x0, x1, y0, y1, x, y, w, h)
+	local pw, ph = S.ArtSize(atlas, piece)
+	S.Art(tex, atlas, piece, x0 / pw, x1 / pw, y0 / ph, y1 / ph)
+	tex:ClearAllPoints()
+	tex:SetPoint("TOPLEFT", frame, "TOPLEFT", x, -y)
+	tex:SetWidth(math.max(w, 1))
+	tex:SetHeight(math.max(h, 1))
+end
+
+-- A nine-slice of a piece: corners `cut` pixels of the art square (or { left, top, right, bottom }), drawn at
+-- `scale` (default: whatever fits the frame's height), edges stretched only along their length, the middle
+-- filling the rest. :SetPiece swaps in another piece with the same cuts; :Layout(w, h) lays it over a w by h
+-- frame; :SetVertexColor, :SetAlpha, :SetBlendMode, :Show and :Hide apply to all nine.
+function S.NineSlice(frame, layer, atlas, piece, cut, scale)
+	local cuts = type(cut) == "table" and cut or { cut, cut, cut, cut }
+	local ns = { textures = {}, piece = piece }
+	for i = 1, 9 do ns.textures[i] = frame:CreateTexture(nil, layer) end
+	local function each(method, ...)
+		for _, t in ipairs(ns.textures) do t[method](t, ...) end
+	end
+	function ns:SetVertexColor(...) each("SetVertexColor", ...) end
+	function ns:SetAlpha(a) each("SetAlpha", a) end
+	function ns:SetBlendMode(m) each("SetBlendMode", m) end
+	function ns:Show() each("Show") end
+	function ns:Hide() each("Hide") end
+	function ns:SetPiece(p) self.piece = p if self.w then self:Layout(self.w, self.h) end end
+	function ns:Layout(w, h)
+		self.w, self.h = w, h
+		local pw, ph = S.ArtSize(atlas, self.piece)
+		local k = scale or h / ph
+		local sx = { 0, cuts[1], pw - cuts[3], pw }
+		local sy = { 0, cuts[2], ph - cuts[4], ph }
+		local dl, dt, dr, db = cuts[1] * k, cuts[2] * k, cuts[3] * k, cuts[4] * k
+		local dx = { 0, dl, w - dr, w }
+		local dy = { 0, dt, h - db, h }
+		for row = 1, 3 do
+			for col = 1, 3 do
+				S.ArtPart(self.textures[(row - 1) * 3 + col], frame, atlas, self.piece, sx[col], sx[col + 1],
+					sy[row], sy[row + 1], dx[col], dy[row], dx[col + 1] - dx[col], dy[row + 1] - dy[row])
+			end
+		end
+	end
+	return ns
 end
 
 -- 1px line along the bottom (or top) of a frame.

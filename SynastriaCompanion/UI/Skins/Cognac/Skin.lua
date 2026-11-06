@@ -1,14 +1,32 @@
--- Vendored from MaterialCraftUI v1.0.0-7-g1a7bc9b. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-9-g84243f0. Change it there, then run tools/sync_style.py.
 -- Cognac: gold-framed painted controls on warm brown glass. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
 local S = NS.Style
 local ATLAS = "cognac"
 
--- the window border's corner and edge strips, and the sidebar card's corners
-local CORNER, EDGE, CARD_CORNER = 36, 18, 26
--- how much of the card and search art is corner or cap, as fractions of the piece
-local CARD_CUT_U, CARD_CUT_V = 34 / 225, 34 / 149
+-- How far a window's content starts in from its edges, inside the border.
+local EDGE = 18
+-- The border is drawn at one scale, so its corners and edges are the same thickness: CHROME screen pixels per art
+-- pixel, with the outside of its bars OUTSIDE pixels in from the frame's edge. Its bars are BAR art pixels thick.
+local CHROME, OUTSIDE, BAR = 0.16, 3, 46
+-- Where each corner's bars run in its 256px cell: the outside edge of the bar along each side it touches, counted
+-- in from that side of the cell. The four corners differ by a few pixels, so each is placed by its own.
+local CORNERS = {
+	corner_nw = { left = 26, top = 26 },
+	corner_ne = { right = 40, top = 25 },
+	corner_sw = { left = 41, bottom = 25 },
+	corner_se = { right = 28, bottom = 25 },
+}
+-- The straight border pieces: the bar's rows (top and bottom) or columns (sides) in the cell, the part to sample
+-- across it, and, on the top and bottom, the diamond in the middle that keeps its shape.
+local HBAR, HBAND, DIAMOND = { 103, 160 }, { 93, 163 }, { 96, 160 }
+local VBAR, VBAND = { 109, 146 }, { 106, 150 }
+-- the divider's spear: a tip at each end and a diamond in the middle keep their shape; the shafts between stretch
+local SPEAR_W, SPEAR_COLS = 12, { 102, 153 }
+local SPEAR = { { 16, 60, false }, { 60, 100, true }, { 100, 156, false }, { 156, 196, true }, { 196, 240, false } }
+-- art pixels of corner kept unstretched on button plates and chips, on the card, and the search field's left cap
+local PLATE_CUT, CARD_CUT, CARD_CORNER = 18, 34, 26
 local SEARCH_CAP = 70 / 158
 
 local TEXT = { primary = "accent", secondary = "text", selected = "accent", danger = "bad", ghost = "text" }
@@ -30,24 +48,23 @@ local function art(frame, layer, piece)
 	return t
 end
 
--- A plate under the button's label (hidden until painted) and the additive hover glow, both sized to the button.
+-- A plate under the button's label (hidden until painted) and the additive hover glow: nine-slices scaled to the
+-- button's height, so their rims stay even however wide it is.
 local function plate(b)
-	b.plate = b:CreateTexture(nil, "BORDER")
+	b.plate = S.NineSlice(b, "BORDER", ATLAS, "button_normal", PLATE_CUT)
 	b.plate:Hide()
-	b.glow = art(b, "HIGHLIGHT", "button_hover")
+	b.glow = S.NineSlice(b, "HIGHLIGHT", ATLAS, "button_hover", PLATE_CUT)
 	b.glow:SetBlendMode("ADD")
 	follow(b, function(w, h)
-		S.PlaceArt(b.plate, b, ATLAS, b.platePiece or "button_normal", 0, 0, w, h)
-		S.PlaceArt(b.glow, b, ATLAS, "button_hover", 0, 0, w, h)
+		b.plate:Layout(w, h)
+		b.glow:Layout(w, h)
 	end)
 end
 
--- A frame sized by its anchors has no size until it's laid out; follow places the plate once it has one.
+-- A frame sized by its anchors has no size until it's laid out; follow lays the plate out once it has one.
 local function showPlate(b, piece)
 	b.platePiece = piece
-	S.Art(b.plate, ATLAS, piece)
-	local w, h = b:GetWidth(), b:GetHeight()
-	if w and h and w > 0 and h > 0 then S.PlaceArt(b.plate, b, ATLAS, piece, 0, 0, w, h) end
+	b.plate:SetPiece(piece)
 	b.plate:Show()
 end
 
@@ -60,49 +77,71 @@ local function platePiece(b, enabled)
 		or b.down and "button_pressed" or "button_normal"
 end
 
--- The window border: corners and edge strips on the frame itself, under its children, which start inside it.
+-- The window border, on the frame itself under its children, which start inside it. Each corner is placed by
+-- where its own bars run, and the straight edges between them are scaled across so their bars match the corners'
+-- thickness, stretched only along their length, with the top and bottom diamonds kept whole. Corners draw over
+-- the ends of the edges.
 local function chrome(f)
-	local pieces = {}
-	for _, key in ipairs({ "corner_nw", "corner_ne", "corner_sw", "corner_se", "border_top", "border_bottom",
-		"border_left", "border_right" }) do
-		pieces[key] = art(f, "OVERLAY", key)
+	local s, o = CHROME, OUTSIDE
+	local cell, bar = 256 * s, BAR * s
+	local corners = {}
+	for key in pairs(CORNERS) do corners[key] = art(f, "OVERLAY", key) end
+	local function strips(n)
+		local list = {}
+		for i = 1, n do list[i] = f:CreateTexture(nil, "ARTWORK") end
+		return list
+	end
+	local top, bottom, sides = strips(3), strips(3), strips(2)
+	local kh, kv = bar / (HBAR[2] - HBAR[1]), bar / (VBAR[2] - VBAR[1])
+	local bandH, bandW, diamondW = (HBAND[2] - HBAND[1]) * kh, (VBAND[2] - VBAND[1]) * kv, (DIAMOND[2] - DIAMOND[1]) * kh
+	-- a top or bottom edge from x0 to x1: a run of bar each side of the diamond
+	local function edge(list, piece, x0, x1, y)
+		local mid = (x0 + x1) / 2
+		local d0, d1 = mid - diamondW / 2, mid + diamondW / 2
+		S.ArtPart(list[1], f, ATLAS, piece, 40, DIAMOND[1], HBAND[1], HBAND[2], x0, y, d0 - x0, bandH)
+		S.ArtPart(list[2], f, ATLAS, piece, DIAMOND[1], DIAMOND[2], HBAND[1], HBAND[2], d0, y, diamondW, bandH)
+		S.ArtPart(list[3], f, ATLAS, piece, DIAMOND[2], 216, HBAND[1], HBAND[2], d1, y, x1 - d1, bandH)
 	end
 	follow(f, function(w, h)
-		local mw, mh = math.max(w - 2 * CORNER, 1), math.max(h - 2 * CORNER, 1)
-		S.PlaceArt(pieces.corner_nw, f, ATLAS, "corner_nw", 0, 0, CORNER, CORNER)
-		S.PlaceArt(pieces.corner_ne, f, ATLAS, "corner_ne", w - CORNER, 0, CORNER, CORNER)
-		S.PlaceArt(pieces.corner_sw, f, ATLAS, "corner_sw", 0, h - CORNER, CORNER, CORNER)
-		S.PlaceArt(pieces.corner_se, f, ATLAS, "corner_se", w - CORNER, h - CORNER, CORNER, CORNER)
-		S.PlaceArt(pieces.border_top, f, ATLAS, "border_top", CORNER, 0, mw, EDGE)
-		S.PlaceArt(pieces.border_bottom, f, ATLAS, "border_bottom", CORNER, h - EDGE, mw, EDGE)
-		S.PlaceArt(pieces.border_left, f, ATLAS, "border_left", 0, CORNER, EDGE, mh)
-		S.PlaceArt(pieces.border_right, f, ATLAS, "border_right", w - EDGE, CORNER, EDGE, mh)
+		local at = {
+			corner_nw = { o - CORNERS.corner_nw.left * s, o - CORNERS.corner_nw.top * s },
+			corner_ne = { w - o - (256 - CORNERS.corner_ne.right) * s, o - CORNERS.corner_ne.top * s },
+			corner_sw = { o - CORNERS.corner_sw.left * s, h - o - (256 - CORNERS.corner_sw.bottom) * s },
+			corner_se = { w - o - (256 - CORNERS.corner_se.right) * s, h - o - (256 - CORNERS.corner_se.bottom) * s },
+		}
+		for key, tex in pairs(corners) do S.PlaceArt(tex, f, ATLAS, key, at[key][1], at[key][2], cell, cell) end
+		local nw, ne, sw, se = at.corner_nw, at.corner_ne, at.corner_sw, at.corner_se
+		-- each edge runs from well inside one corner's bar to well inside the other's
+		edge(top, "border_top", nw[1] + 200 * s, ne[1] + 50 * s, o - (HBAR[1] - HBAND[1]) * kh)
+		edge(bottom, "border_bottom", sw[1] + 200 * s, se[1] + 40 * s, h - o - (HBAR[2] - HBAND[1]) * kh)
+		S.ArtPart(sides[1], f, ATLAS, "border_left", VBAND[1], VBAND[2], 60, 200, o - (VBAR[1] - VBAND[1]) * kv,
+			nw[2] + 200 * s, bandW, sw[2] + 40 * s - (nw[2] + 200 * s))
+		S.ArtPart(sides[2], f, ATLAS, "border_right", VBAND[1], VBAND[2], 60, 200, w - o - (VBAR[2] - VBAND[1]) * kv,
+			ne[2] + 200 * s, bandW, se[2] + 40 * s - (ne[2] + 200 * s))
 	end)
 end
 
 -- The framed card: a nine-slice of the card art, so its filigree corners keep their size.
 local function card(f)
-	local cuts = { { 0, CARD_CUT_U }, { CARD_CUT_U, 1 - CARD_CUT_U }, { 1 - CARD_CUT_U, 1 } }
-	local vcuts = { { 0, CARD_CUT_V }, { CARD_CUT_V, 1 - CARD_CUT_V }, { 1 - CARD_CUT_V, 1 } }
-	local slices = {}
-	for row = 1, 3 do
-		for col = 1, 3 do
-			local t = f:CreateTexture(nil, "BACKGROUND")
-			S.Art(t, ATLAS, "card", cuts[col][1], cuts[col][2], vcuts[row][1], vcuts[row][2])
-			slices[#slices + 1] = { t, col, row }
+	local slices = S.NineSlice(f, "BACKGROUND", ATLAS, "card", CARD_CUT, CARD_CORNER / CARD_CUT)
+	follow(f, function(w, h) slices:Layout(w, h) end)
+end
+
+-- The spear dividing a sidebar from the page: its tips and diamond keep their shape, its shafts stretch.
+local function spear(holder)
+	local parts = {}
+	for i = 1, #SPEAR do parts[i] = holder:CreateTexture(nil, "ARTWORK") end
+	follow(holder, function(w, h)
+		local k = w / (SPEAR_COLS[2] - SPEAR_COLS[1])
+		local fixed, stretch = 0, 0
+		for _, seg in ipairs(SPEAR) do
+			if seg[3] then stretch = stretch + 1 else fixed = fixed + (seg[2] - seg[1]) * k end
 		end
-	end
-	follow(f, function(w, h)
-		local xs = { 0, CARD_CORNER, w - CARD_CORNER }
-		local ws = { CARD_CORNER, math.max(w - 2 * CARD_CORNER, 1), CARD_CORNER }
-		local ys = { 0, CARD_CORNER, h - CARD_CORNER }
-		local hs = { CARD_CORNER, math.max(h - 2 * CARD_CORNER, 1), CARD_CORNER }
-		for _, s in ipairs(slices) do
-			local t, col, row = s[1], s[2], s[3]
-			t:ClearAllPoints()
-			t:SetPoint("TOPLEFT", f, "TOPLEFT", xs[col], -ys[row])
-			t:SetWidth(ws[col])
-			t:SetHeight(hs[row])
+		local y = 0
+		for i, seg in ipairs(SPEAR) do
+			local len = seg[3] and math.max((h - fixed) / stretch, 1) or (seg[2] - seg[1]) * k
+			S.ArtPart(parts[i], holder, ATLAS, "divider_v", SPEAR_COLS[1], SPEAR_COLS[2], seg[1], seg[2], 0, y, w, len)
+			y = y + len
 		end
 	end)
 end
@@ -160,14 +199,19 @@ S.RegisterSkin("cognac", {
 		b.plate:SetVertexColor(shade, shade, shade)
 		b.label:SetTextColor(unpack(S.colors[enabled and TEXT[b.kind] or "disabled"] or S.colors.text))
 	end,
-	-- windows and popups are the same glass in the gold border; a menu stays a small flat panel
+	-- a window is glass in the gold border; a popup, which sits over a window, is the same tint but solid, so what's
+	-- under it doesn't show through; a menu stays a small flat panel
 	frame = function(f, role)
-		if role == "menu" then
-			S.Panel(f, S.colors.panel, S.colors.border)
-		else
+		if role == "window" then
 			f:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16 })
 			f:SetBackdropColor(unpack(S.colors.window))
 			chrome(f)
+		elseif role == "popup" then
+			local c = S.colors.window
+			S.Panel(f, { c[1], c[2], c[3], 0.98 })
+			chrome(f)
+		else
+			S.Panel(f, S.colors.panel, S.colors.border)
 		end
 	end,
 	-- the framed card, like the sidebar's
@@ -179,11 +223,11 @@ S.RegisterSkin("cognac", {
 		card(side)
 		local holder = CreateFrame("Frame", nil, side:GetParent())
 		holder:SetFrameLevel(side:GetParent():GetFrameLevel() + 20)
-		holder:SetPoint("TOPLEFT", side, "TOPRIGHT", -5, 0)
-		holder:SetPoint("BOTTOMLEFT", side, "BOTTOMRIGHT", -5, 0)
-		holder:SetWidth(10)
-		local spear = art(holder, "ARTWORK", "divider_v")
-		follow(holder, function(w, h) S.PlaceArt(spear, holder, ATLAS, "divider_v", 0, 0, w, h) end)
+		holder:SetPoint("TOPLEFT", side, "TOPRIGHT", -SPEAR_W / 2, 0)
+		holder:SetPoint("BOTTOMLEFT", side, "BOTTOMRIGHT", -SPEAR_W / 2, 0)
+		holder:SetHeight(side:GetHeight() or 1)
+		holder:SetWidth(SPEAR_W)
+		spear(holder)
 	end,
 	highlight = function(f)
 		plate(f)
