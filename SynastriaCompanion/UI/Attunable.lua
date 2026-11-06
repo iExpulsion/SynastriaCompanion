@@ -143,7 +143,7 @@ end
 
 local function forgeCell(item)
 	local forge = Attune.Forge(item)
-	if forge >= 0 then return Attune.FORGES[forge] or Attune.FORGES[0], C.good end
+	if forge >= 0 then return Attune.FORGES[forge] or Attune.FORGES[0], C.forge[forge] or C.good end
 	return ""
 end
 
