@@ -32,11 +32,14 @@ function SecureCast.Overlay(spot, opts)
 	o:Hide()
 	o:RegisterForClicks(opts.right and "AnyUp" or "LeftButtonUp")
 	o.spot, o.opts = spot, opts
+	-- the spot's HIGHLIGHT layer only shows while the mouse is over the spot itself, so the overlay locks it on
 	o:SetScript("OnEnter", function()
+		if spot.LockHighlight then spot:LockHighlight() end
 		local fn = spot:GetScript("OnEnter")
 		if fn then fn(spot) end
 	end)
 	o:SetScript("OnLeave", function()
+		if spot.UnlockHighlight then spot:UnlockHighlight() end
 		local fn = spot:GetScript("OnLeave")
 		if fn then fn(spot) end
 	end)
@@ -72,13 +75,14 @@ local function place(o)
 			o:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
 			o:SetSize(w, h)
 		end
-		if not o:IsShown() then
-			o:SetFrameStrata(spot:GetFrameStrata())
-			o:SetFrameLevel(spot:GetFrameLevel() + 10)
-			o:Show()
-		end
+		-- raising the spot's window (a click on a toplevel frame does) lifts the spot above an overlay placed once
+		local strata, level = spot:GetFrameStrata(), spot:GetFrameLevel() + 10
+		if o:GetFrameStrata() ~= strata then o:SetFrameStrata(strata) end
+		if o:GetFrameLevel() ~= level then o:SetFrameLevel(level) end
+		if not o:IsShown() then o:Show() end
 	elseif o:IsShown() then
 		o:Hide()
+		if spot.UnlockHighlight then spot:UnlockHighlight() end
 	end
 end
 
@@ -97,6 +101,7 @@ watch:SetScript("OnEvent", function()
 	for _, o in ipairs(SecureCast.overlays) do
 		o:Hide()
 		o.x = nil
+		if o.spot.UnlockHighlight then o.spot:UnlockHighlight() end
 	end
 end)
 
