@@ -169,11 +169,19 @@ local function syncControls()
 	panel.zone:SetText(SC.ZonePicker.Name(filter.zone) or "Any Zone")
 
 	drawer.affixPick:SetText(textOf(AFFIX_PICKS, filter.affixPick or false, filter.affixPick or "Any Affix"))
+	-- a single-choice row's default (stored as nil) shows only in its text color, so the fully selected look is
+	-- left for filters that actually narrow the list
 	for _, t in ipairs(panel.toggles) do
 		local value = filter[t.key]
-		local on
-		if t.single then on = (value or 0) == t.value else on = bit.band(value or 0, t.value) ~= 0 end
-		t.button:SetKind(on and "selected" or "secondary")
+		local on, isDefault
+		if t.single then
+			on = (value or 0) == t.value
+			isDefault = on and value == nil
+		else
+			on = bit.band(value or 0, t.value) ~= 0
+		end
+		t.button:SetKind((on and not isDefault) and "selected" or "secondary")
+		t.button:SetText(isDefault and S.Hex(C.heading, t.text) or t.text)
 	end
 	syncDrawer()
 end
@@ -268,7 +276,8 @@ local function buttonRow(key, options, kind, x, y, area)
 			set(key, value ~= 0 and value or nil)
 		end, o.tooltip)
 		if prev then b:SetPoint("LEFT", prev, "RIGHT", -1, 0) else b:SetPoint("TOPLEFT", drawer, "TOPLEFT", x, y) end
-		panel.toggles[#panel.toggles + 1] = { button = b, key = key, value = o.value, single = kind ~= "multi" }
+		panel.toggles[#panel.toggles + 1] = { button = b, key = key, value = o.value, text = o.text,
+			single = kind ~= "multi" }
 		group[#group + 1] = b
 		prev = b
 	end
@@ -333,8 +342,10 @@ local function cell(item, key)
 		local n = Attune.SourceCount(item)
 		return n > 0 and tostring(n) or "", C.muted
 	elseif key == "affixes" then
+		-- a faint dash for items that can't roll affixes, so a blank never looks like a missing count
 		local n = Attune.AffixesLeft(item, filter.affixForge or 0)
-		return n and tostring(n) or "", n == 0 and C.good or C.text
+		if n then return tostring(n), n == 0 and C.good or C.text end
+		return "-", C.outline
 	elseif key == "forge" then return forgeCell(item)
 	end
 end
