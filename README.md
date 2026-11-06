@@ -24,6 +24,7 @@ one of its windows, Companion opens instead.
   back.
 - **Your Leaderboard Place:** every board in one list, with your rank highlighted and the speed buff times on top.
 - **The Game's Window When You Want It:** the **Game Window** button opens the game's own window for any screen.
+- **Themes:** the flat Material look, or Cognac's painted gold frames on warm brown glass.
 
 ## Installation
 
@@ -43,8 +44,9 @@ asks for them. Clicks can only ask out of combat.
 ## The Window
 
 - **Sidebar:** the screens, under Attunes, Loot and Community. Companion remembers the last one you used.
-- **Title Bar:** **Game Window** closes Companion and opens the game's own window for the screen you're on.
-  **Close** closes it.
+- **Title Bar:** **Theme** switches between Material and Cognac, after a reload; Companion offers to reload for
+  you. **Game Window** closes Companion and opens the game's own window for the screen you're on. **Close** closes
+  it.
 - **Footer:** counts sit at the bottom left, and the bottom right shows what clicking a row does.
 
 ### Attuned Stats
@@ -164,8 +166,14 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp minimap` | Hides or shows the minimap button |
 | `/scomp minimap reset` | Puts the minimap button back on the minimap |
 | `/scomp reset` | Moves the window back to the center of the screen |
+| `/scomp theme <name>` | Switches the theme after a reload: `material` or `cognac` |
 | `/scomp replace <screen> off` | Gives a screen back to the game's own window; `on` takes it back |
+
+## Credits
+
+Thanks to **Lulleh** for finding the cause of the window's drag lag.
 
 ## License
 
-Synastria Companion is released under the [MIT License](LICENSE).
+Synastria Companion's code is released under the [MIT License](LICENSE). The Cognac art in
+`SynastriaCompanion/UI/Skins/Cognac` isn't covered by it.

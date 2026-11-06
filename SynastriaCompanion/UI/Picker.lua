@@ -30,23 +30,25 @@ local function refresh()
 	popup.keepScroll = nil
 end
 
+-- The list and search keep their size in every skin; the popup grows around them by the skin's padding.
 local function create()
+	local inset, innerW, innerH = S.metrics.inset, W - 2 * S.PAD, H - 2 * S.PAD
 	popup = CreateFrame("Frame", "SynastriaCompanionPicker", UIParent)
-	popup:SetSize(W, H)
+	popup:SetSize(innerW + 2 * inset, innerH + 2 * inset)
 	popup:SetFrameStrata("DIALOG")
 	popup:SetToplevel(true)
 	popup:EnableMouse(true)
-	S.Panel(popup, C.panel, C.border)
+	S.Frame(popup, "popup")
 	tinsert(UISpecialFrames, "SynastriaCompanionPicker")
 
-	popup.search = S.Input(popup, "SynastriaCompanionPickerSearch", W - 2 * S.PAD, "Search", 60)
-	popup.search:SetPoint("TOPLEFT", S.PAD, -S.PAD)
+	popup.search = S.Input(popup, "SynastriaCompanionPickerSearch", innerW, "Search", 60)
+	popup.search:SetPoint("TOPLEFT", inset, -inset)
 	popup.search:HookScript("OnTextChanged", function(_, user)
 		if user then refresh() end
 	end)
 
-	popup.list = SC.Table.New(popup, nil, W - 2 * S.PAD, H - 3 * S.PAD - S.CONTROL_H, {
-		columns = { { key = "text", label = "", width = W - 2 * S.PAD - 2, sortable = false } },
+	popup.list = SC.Table.New(popup, nil, innerW, innerH - S.PAD - S.CONTROL_H, {
+		columns = { { key = "text", label = "", width = innerW - 2, sortable = false } },
 		cell = function(item)
 			local on = spec.isSelected and spec.isSelected(item.value)
 			if spec.multi then return (on and "|cffffc400+|r  " or "    ") .. item.text, on and C.heading or C.text end

@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-4-g48c643a. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -44,6 +44,9 @@ local M3 = {}
 S.colors = {}
 local BUTTONS, DISABLED = {}, {}
 local qualityColors = {}
+-- the skin in use: how controls are drawn, set by S.UseSkin; the flat Material one is filled in further down
+local skin = {}
+local skins = {}
 
 local function withAlpha(c, a)
 	return { c[1], c[2], c[3], a }
@@ -78,6 +81,15 @@ local function build()
 	c.warn = M3.warning
 	c.bad = M3.error
 	c.badDim = M3.errorContainer
+	-- roles a skin can set apart from the scheme: table rows, the selected entry of a navigation list, dropdown
+	-- arrows and scrollbar thumbs
+	c.rowHover = c.hover
+	c.rowSelected = c.selected
+	c.navSelected = c.heading
+	c.arrow = c.muted
+	c.scrollThumb = c.border
+	c.scrollThumbHover = c.outline
+	if skin.colors then skin.colors(c, M3) end
 
 	-- Filled (primary, one per view), tonal (secondary), text (ghost), and the selected side of a segmented button
 	-- (selected: a primary tint with primary text); hover is an 8% layer of the label color.
@@ -110,6 +122,12 @@ S.SetTheme()
 -- One spacing scale for every panel: PAD inside a panel's edges (the same on all sides), GAP between neighboring
 -- controls, and one height for every button, input and dropdown so rows line up.
 S.PAD, S.GAP, S.CONTROL_H = 12, 8, 24
+
+-- What a skin's frame decoration takes up: edge, the border S.Frame draws around a "window", which its content
+-- stays inside; inset, the padding inside a "popup"; navInset, how far in from a sidebar's sides its entries sit.
+local METRICS = { edge = 0, inset = S.PAD, navInset = 0 }
+S.metrics = {}
+for k, v in pairs(METRICS) do S.metrics[k] = v end
 
 -- "1 item", "3 items".
 function S.Count(n, singular, plural)
@@ -147,6 +165,37 @@ function S.Solid(parent, layer, color)
 	return t
 end
 
+-- Atlases: painted pieces packed into one texture by tools/pack_art.py, which writes the RegisterAtlas call. Each
+-- piece is u0, u1, v0, v1 on the atlas, then how much trimming took off its left, top, right and bottom, as
+-- fractions of its original size. The texture sits in the addon at UI\Skins\<file>\<file>.
+local atlases = {}
+
+function S.RegisterAtlas(name, file, pieces)
+	atlases[name] = { path = "Interface\\AddOns\\" .. ADDON .. "\\UI\\Skins\\" .. file .. "\\" .. file, pieces = pieces }
+end
+
+-- Points a texture at a piece of an atlas, or at part of it: fu0..fu1 and fv0..fv1 are fractions of the piece's
+-- original size (default: all of it).
+function S.Art(tex, atlas, piece, fu0, fu1, fv0, fv1)
+	local a = atlases[atlas]
+	local p = a.pieces[piece]
+	local u0, u1, v0, v1, l, t, r, b = unpack(p)
+	local function along(f, lo, hi, cut0, cut1) return lo + (hi - lo) * (f - cut0) / (1 - cut0 - cut1) end
+	tex:SetTexture(a.path)
+	tex:SetTexCoord(along(fu0 or 0, u0, u1, l, r), along(fu1 or 1, u0, u1, l, r),
+		along(fv0 or 0, v0, v1, t, b), along(fv1 or 1, v0, v1, t, b))
+end
+
+-- Places a texture showing a piece as if the piece were untrimmed and drawn at x, y (down from the frame's top
+-- left) at w by h. One anchor and an explicit size, which draws painted art at the size asked for on this client.
+function S.PlaceArt(tex, frame, atlas, piece, x, y, w, h)
+	local _, _, _, _, l, t, r, b = unpack(atlases[atlas].pieces[piece])
+	tex:ClearAllPoints()
+	tex:SetPoint("TOPLEFT", frame, "TOPLEFT", x + w * l, -(y + h * t))
+	tex:SetWidth(math.max(w * (1 - l - r), 1))
+	tex:SetHeight(math.max(h * (1 - t - b), 1))
+end
+
 -- 1px line along the bottom (or top) of a frame.
 function S.Rule(parent, where)
 	local t = S.Solid(parent, "BORDER", S.colors.border)
@@ -174,9 +223,9 @@ function S.ScrollBar(scroll, scrollName)
 	bar:SetThumbTexture(WHITE)
 	local thumb = bar:GetThumbTexture()
 	thumb:SetSize(6, 40)
-	thumb:SetVertexColor(unpack(S.colors.border))
-	bar:HookScript("OnEnter", function() thumb:SetVertexColor(unpack(S.colors.outline)) end)
-	bar:HookScript("OnLeave", function() thumb:SetVertexColor(unpack(S.colors.border)) end)
+	thumb:SetVertexColor(unpack(S.colors.scrollThumb))
+	bar:HookScript("OnEnter", function() thumb:SetVertexColor(unpack(S.colors.scrollThumbHover)) end)
+	bar:HookScript("OnLeave", function() thumb:SetVertexColor(unpack(S.colors.scrollThumb)) end)
 	return bar
 end
 
@@ -233,11 +282,7 @@ function S.Text(parent, size, color, layer)
 end
 
 local function paint(b)
-	local enabled = b:IsEnabled() == 1 or b:IsEnabled() == true
-	local kind = enabled and BUTTONS[b.kind] or DISABLED
-	b:SetBackdropColor(unpack(b.hovered and enabled and kind.hover or kind.bg))
-	b:SetBackdropBorderColor(unpack(kind.border))
-	b.label:SetTextColor(unpack(kind.text))
+	skin.paintButton(b, b:IsEnabled() == 1 or b:IsEnabled() == true)
 end
 
 -- `template` makes it from a frame template; a secure one keeps the template's own click handler, so onClick is
@@ -245,13 +290,22 @@ end
 function S.Button(parent, label, kind, width, onClick, tooltip, template)
 	local b = CreateFrame("Button", nil, parent, template)
 	b:SetSize(width or 90, S.CONTROL_H)
-	b:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 })
 	b.kind = kind or "secondary"
+	skin.button(b)
 	b.label = S.FontString(b, "small")
 	b.label:SetPoint("CENTER")
 	b.label:SetText(label)
 	b.tooltipText = tooltip
 	if not template then b:SetScript("OnClick", onClick) end
+	-- held down, for skins with a pressed look
+	b:HookScript("OnMouseDown", function(self)
+		self.down = true
+		paint(self)
+	end)
+	b:HookScript("OnMouseUp", function(self)
+		self.down = false
+		paint(self)
+	end)
 	b:SetScript("OnEnter", function(self)
 		self.hovered = true
 		paint(self)
@@ -263,6 +317,7 @@ function S.Button(parent, label, kind, width, onClick, tooltip, template)
 	end)
 	b:SetScript("OnLeave", function(self)
 		self.hovered = false
+		self.down = false
 		paint(self)
 		GameTooltip:Hide()
 	end)
@@ -278,6 +333,7 @@ function S.Button(parent, label, kind, width, onClick, tooltip, template)
 	function b:SetLabel(text)
 		self.label:SetText(text)
 		self:SetWidth(math.max(self.minWidth or 70, self.label:GetStringWidth() + 24))
+		paint(self)
 	end
 	-- changes the label and keeps the width; the button's own SetText would set a text it doesn't show
 	function b:SetText(text)
@@ -409,7 +465,7 @@ function S.AddArrow(b)
 	arrow:SetSize(9, 8)
 	arrow:SetPoint("RIGHT", -10, -2)
 	arrow:SetDesaturated(true)
-	arrow:SetVertexColor(unpack(S.colors.muted))
+	arrow:SetVertexColor(unpack(S.colors.arrow))
 	b.arrow = arrow
 	return b
 end
@@ -440,8 +496,7 @@ function S.Dropdown(parent, width, onSelect)
 				item:SetHeight(S.CONTROL_H)
 				item:SetPoint("TOPLEFT", 1, -1 - (i - 1) * S.CONTROL_H)
 				item:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * S.CONTROL_H)
-				local hover = S.Solid(item, "HIGHLIGHT", S.colors.hover)
-				hover:SetAllPoints()
+				S.Highlight(item)
 				item.text = S.Text(item, "small")
 				item.text:SetPoint("LEFT", 8, 0)
 				item.text:SetPoint("RIGHT", -8, 0)
@@ -484,7 +539,7 @@ function S.Input(parent, name, width, placeholder, maxLetters, lines)
 	e:SetSize(width, tall and (lines * 13 + 12) or S.CONTROL_H)
 	e:SetAutoFocus(false)
 	e:SetMaxLetters(maxLetters or 40)
-	S.Panel(e, S.colors.well, S.colors.border)
+	skin.input(e, tall)
 	e.placeholder = S.Text(e, "small", S.colors.muted)
 	if tall then
 		e:SetMultiLine(true)
@@ -502,10 +557,9 @@ function S.Input(parent, name, width, placeholder, maxLetters, lines)
 	e.placeholder:SetJustifyH("LEFT")
 	e.placeholder:SetWordWrap(false)
 	e.placeholder:SetText(placeholder or "")
-	-- the soft border at rest, the stronger outline on hover, the accent while focused
 	local function update(self)
 		if self.focused or self:GetText() ~= "" then self.placeholder:Hide() else self.placeholder:Show() end
-		self:SetBackdropBorderColor(unpack(self.focused and S.colors.accent or self.hovered and S.colors.outline or S.colors.border))
+		skin.paintInput(self)
 	end
 	e:SetScript("OnEditFocusGained", function(self) self.focused = true update(self) end)
 	e:SetScript("OnEditFocusLost", function(self) self.focused = false update(self) end)
@@ -518,3 +572,125 @@ function S.Input(parent, name, width, placeholder, maxLetters, lines)
 	inputs[#inputs + 1] = e
 	return e
 end
+
+-- Frame decoration in the skin's look. role: "window" for a main window (S.metrics.edge says how far in its
+-- content has to start), "popup" for a dialog or picker (S.metrics.inset is the padding inside it), "menu" for a
+-- small list that drops from a control.
+function S.Frame(frame, role)
+	skin.frame(frame, role or "popup")
+	return frame
+end
+
+-- The background of a window's navigation sidebar, with its dividing edge on the right.
+function S.Sidebar(side)
+	skin.sidebar(side)
+	return side
+end
+
+-- The hover look for a clickable row: a menu item, a list entry, a column heading.
+function S.Highlight(frame)
+	skin.highlight(frame)
+	return frame
+end
+
+-- An entry in a navigation sidebar: its label (b.label, in the "normal" size) and its hover and selected look.
+-- b:SetSelected(on) repaints it.
+function S.NavEntry(b, text)
+	b.label = S.Text(b, "normal")
+	b.label:SetText(text)
+	skin.navEntry(b)
+	function b:SetSelected(on)
+		self.selected = on
+		skin.paintNav(self, on)
+		self.label:SetTextColor(unpack(on and S.colors.navSelected or S.colors.text))
+	end
+	b:SetSelected(false)
+	return b
+end
+
+-- Skins: how the controls above are drawn. A skin can carry a scheme of its own (roles, as S.SetTheme takes them),
+-- set colors apart from the scheme (colors(c, M3), run after the scheme fills S.colors), and change S.metrics.
+-- label names it in a picker, credit says who made it. The drawing functions: button(b) and
+-- paintButton(b, enabled) (b.kind, b.hovered, b.down), frame(f, role), sidebar(side), highlight(f), navEntry(b) and
+-- paintNav(b, on), input(e, tall) and paintInput(e) (e.focused, e.hovered).
+function S.RegisterSkin(key, def)
+	skins[key] = def
+end
+
+-- Switches to a skin and its scheme; `roles` is the scheme for a skin without one of its own (default: the kit's).
+-- Like S.SetTheme, call it before building any frames.
+function S.UseSkin(key, roles)
+	local def = skins[key] or error("MaterialCraftUI: unknown skin " .. tostring(key), 2)
+	skin = def
+	for k, v in pairs(METRICS) do S.metrics[k] = v end
+	for k, v in pairs(def.metrics or {}) do S.metrics[k] = v end
+	S.SetTheme(def.roles or roles)
+end
+
+function S.Skin()
+	for key, def in pairs(skins) do
+		if def == skin then return key end
+	end
+end
+
+-- Every registered skin as { key, label, credit }, Material first and the rest by label.
+function S.Skins()
+	local list = {}
+	for key, def in pairs(skins) do list[#list + 1] = { key = key, label = def.label or key, credit = def.credit } end
+	table.sort(list, function(a, b)
+		if (a.key == "material") ~= (b.key == "material") then return a.key == "material" end
+		return a.label < b.label
+	end)
+	return list
+end
+
+-- The flat Material look: 1px borders, state layers and tinted fills.
+S.RegisterSkin("material", {
+	label = "Material",
+	button = function(b)
+		b:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 })
+	end,
+	paintButton = function(b, enabled)
+		local kind = enabled and BUTTONS[b.kind] or DISABLED
+		b:SetBackdropColor(unpack(b.hovered and enabled and kind.hover or kind.bg))
+		b:SetBackdropBorderColor(unpack(kind.border))
+		b.label:SetTextColor(unpack(kind.text))
+	end,
+	frame = function(f, role)
+		S.Panel(f, role == "window" and S.colors.window or S.colors.panel, S.colors.border)
+	end,
+	sidebar = function(side)
+		local fill = S.Solid(side, "BACKGROUND", S.colors.sidebar)
+		fill:SetPoint("TOPLEFT", 1, 0)
+		fill:SetPoint("BOTTOMRIGHT", 0, 1)
+		local edge = S.Solid(side, "BORDER", S.colors.border)
+		edge:SetWidth(1)
+		edge:SetPoint("TOPRIGHT")
+		edge:SetPoint("BOTTOMRIGHT")
+	end,
+	highlight = function(f)
+		S.Solid(f, "HIGHLIGHT", S.colors.hover):SetAllPoints()
+	end,
+	-- a tint and an accent bar on the selected entry, whose label sits in from its section heading
+	navEntry = function(b)
+		S.Highlight(b)
+		b.selectedTex = S.Solid(b, "BACKGROUND", S.colors.selected)
+		b.selectedTex:SetAllPoints()
+		b.bar = S.Solid(b, "BORDER", S.colors.accent)
+		b.bar:SetWidth(3)
+		b.bar:SetPoint("TOPLEFT")
+		b.bar:SetPoint("BOTTOMLEFT")
+		b.label:SetPoint("LEFT", S.PAD + 8, 0)
+	end,
+	paintNav = function(b, on)
+		if on then b.bar:Show() b.selectedTex:Show() else b.bar:Hide() b.selectedTex:Hide() end
+	end,
+	input = function(e)
+		S.Panel(e, S.colors.well, S.colors.border)
+	end,
+	-- the soft border at rest, the stronger outline on hover, the accent while focused
+	paintInput = function(e)
+		e:SetBackdropBorderColor(unpack(e.focused and S.colors.accent or e.hovered and S.colors.outline or S.colors.border))
+	end,
+})
+skin = skins.material

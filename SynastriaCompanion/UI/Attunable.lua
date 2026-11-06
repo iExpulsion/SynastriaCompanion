@@ -136,7 +136,7 @@ local function syncDrawer()
 	local open = filter.advanced and true or false
 	setShown(drawer, open)
 	local window = SC.Window.Frame()
-	if window then window:SetClampRectInsets(0, open and (DRAWER_W - 1) or 0, 0, 0) end
+	if window then window:SetClampRectInsets(0, open and (DRAWER_W + 2 * S.metrics.edge - 1) or 0, 0, 0) end
 	panel.advanced:SetKind(open and "selected" or "secondary")
 	local n = Attune.AdvancedCount(filter)
 	panel.advanced:SetText((open and n > 0) and ("Advanced (" .. n .. ")") or "Advanced")
@@ -350,20 +350,24 @@ local function cell(item, key)
 	end
 end
 
--- The Advanced drawer: one section per filter, each a dim heading over controls the drawer's full width.
+-- The Advanced drawer: one section per filter, each a dim heading over controls the drawer's full width. The
+-- skin's window border goes around the same contents, like the window's.
 local function createDrawer(window)
+	local edge = S.metrics.edge
+	local x = edge + PAD
 	drawer = CreateFrame("Frame", nil, panel)
-	drawer:SetWidth(DRAWER_W)
+	drawer:SetWidth(DRAWER_W + 2 * edge)
 	drawer:SetPoint("TOPLEFT", window, "TOPRIGHT", -1, 0)
 	drawer:SetPoint("BOTTOMLEFT", window, "BOTTOMRIGHT", -1, 0)
+	drawer:SetHeight(window:GetHeight())
 	drawer:EnableMouse(true)
-	S.Panel(drawer, C.window, C.border)
+	S.Frame(drawer, "window")
 	drawer:Hide()
 	panel.drawer = drawer
 
 	local head = CreateFrame("Frame", nil, drawer)
-	head:SetPoint("TOPLEFT")
-	head:SetPoint("TOPRIGHT")
+	head:SetPoint("TOPLEFT", edge, -edge)
+	head:SetPoint("TOPRIGHT", -edge, -edge)
 	head:SetHeight(DRAWER_HEAD_H)
 	S.Rule(head, "BOTTOM")
 	local title = S.Text(head, "normal")
@@ -371,13 +375,13 @@ local function createDrawer(window)
 	title:SetText("Advanced Filters")
 
 	local w = DRAWER_W - 2 * PAD
-	local y = -DRAWER_HEAD_H - PAD
+	local y = -edge - DRAWER_HEAD_H - PAD
 	local function section(text)
-		S.SectionHeading(drawer, text, PAD, y, PAD)
+		S.SectionHeading(drawer, text, x, y, x)
 		y = y - 20
 	end
 	local function row(key, options, kind)
-		local group = buttonRow(key, options, kind, PAD, y, w)
+		local group = buttonRow(key, options, kind, x, y, w)
 		y = y - CONTROL_H - 4
 		return group
 	end
@@ -386,7 +390,7 @@ local function createDrawer(window)
 	section("Affix")
 	drawer.affixPick = S.AddArrow(S.Button(drawer, "Any Affix", "secondary", w, openAffixPicker,
 		"Items with affixes left to attune, or that can roll one affix you haven't attuned."))
-	drawer.affixPick:SetPoint("TOPLEFT", PAD, y)
+	drawer.affixPick:SetPoint("TOPLEFT", x, y)
 	y = y - CONTROL_H - 4
 	endSection()
 
@@ -406,7 +410,7 @@ local function createDrawer(window)
 	-- the filters that need the game's loot data
 	local lootGroups = {}
 	local function lootSection(text, key, options)
-		local heading, rule = S.SectionHeading(drawer, text, PAD, y, PAD)
+		local heading, rule = S.SectionHeading(drawer, text, x, y, x)
 		y = y - 20
 		local group = row(key, options, "multi")
 		group[#group + 1], group[#group + 2] = heading, rule

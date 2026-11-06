@@ -12,24 +12,26 @@ local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 local W, H = 460, 260
 local dialog
 
+-- The contents keep their size in every skin; the dialog grows around them by the skin's padding.
 local function create()
+	local inset = S.metrics.inset
 	dialog = CreateFrame("Frame", "SynastriaCompanionTextDialog", UIParent)
-	dialog:SetSize(W, H)
+	dialog:SetSize(W - 2 * PAD + 2 * inset, H - 2 * PAD + 2 * inset)
 	dialog:SetFrameStrata("DIALOG")
 	dialog:SetToplevel(true)
 	dialog:EnableMouse(true)
-	S.Panel(dialog, C.panel, C.border)
+	S.Frame(dialog, "popup")
 	tinsert(UISpecialFrames, "SynastriaCompanionTextDialog")
 
 	dialog.title = S.Text(dialog, "normal", C.heading)
-	dialog.title:SetPoint("TOPLEFT", PAD, -PAD)
+	dialog.title:SetPoint("TOPLEFT", inset, -inset)
 	dialog.note = S.Text(dialog, "small", C.muted)
 	dialog.note:SetPoint("TOPLEFT", dialog.title, "BOTTOMLEFT", 0, -4)
-	dialog.note:SetPoint("RIGHT", -PAD, 0)
+	dialog.note:SetPoint("RIGHT", -inset, 0)
 
 	local well = CreateFrame("Frame", nil, dialog)
-	well:SetPoint("TOPLEFT", PAD, -PAD - 40)
-	well:SetPoint("BOTTOMRIGHT", -PAD, PAD + CONTROL_H + GAP)
+	well:SetPoint("TOPLEFT", inset, -inset - 40)
+	well:SetPoint("BOTTOMRIGHT", -inset, inset + CONTROL_H + GAP)
 	S.Panel(well, C.well, C.border)
 	local scroll = CreateFrame("ScrollFrame", "SynastriaCompanionTextDialogScroll", well, "UIPanelScrollFrameTemplate")
 	scroll:SetPoint("TOPLEFT", 6, -6)
@@ -52,7 +54,7 @@ local function create()
 		dialog:Hide()
 		if dialog.onOk then dialog.onOk(text) end
 	end)
-	dialog.ok:SetPoint("BOTTOMRIGHT", -PAD, PAD)
+	dialog.ok:SetPoint("BOTTOMRIGHT", -inset, inset)
 	dialog.cancel = S.Button(dialog, "Close", "ghost", 70, function() dialog:Hide() end)
 	dialog.cancel:SetPoint("RIGHT", dialog.ok, "LEFT", -GAP, 0)
 	dialog:SetScript("OnHide", function() edit:ClearFocus() end)

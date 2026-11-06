@@ -8,7 +8,6 @@ local MinimapButton = {}
 SC.MinimapButton = MinimapButton
 
 local S = SC.Style
-local C = S.colors
 
 local ICON = "Interface\\Icons\\INV_Misc_Spyglass_02"
 local DEFAULT_ANGLE = 220
@@ -69,7 +68,7 @@ local function createMenu()
 	menu:SetFrameStrata("FULLSCREEN_DIALOG")
 	menu:SetWidth(MENU_W)
 	menu:EnableMouse(true)
-	S.Panel(menu, C.panel, C.border)
+	S.Frame(menu, "menu")
 	menu:Hide()
 	tinsert(UISpecialFrames, "SynastriaCompanionMinimapMenu")
 	local y, section = 4, nil
@@ -83,8 +82,8 @@ local function createMenu()
 		item:SetHeight(ROW_H)
 		item:SetPoint("TOPLEFT", 1, -y)
 		item:SetPoint("TOPRIGHT", -1, -y)
-		local hover = S.Solid(item, "HIGHLIGHT", C.hover)
-		hover:SetAllPoints()
+		item:SetWidth(MENU_W - 2)
+		S.Highlight(item)
 		local text = S.Text(item, "small")
 		text:SetPoint("LEFT", S.PAD + 6, 0)
 		text:SetText(screen.label)

@@ -9,6 +9,8 @@ local DEFAULTS = {
 	-- per screen: false gives that screen back to the game's own window
 	replace = {},
 	attunable = {},
+	-- the style kit's skin: "material" or "cognac"
+	skin = "material",
 }
 
 function SC:Print(fmt, ...)

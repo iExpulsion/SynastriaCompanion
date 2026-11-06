@@ -1,8 +1,9 @@
 local _, NS = ...
 local SC = NS.SC
 
--- The Companion window: a movable flat panel with a sidebar of screens on the left and the selected screen on the
--- right. Each screen builds its own content once and is told when it's shown.
+-- The Companion window: a movable panel with a sidebar of screens on the left and the selected screen on the
+-- right. Each screen builds its own content once and is told when it's shown. The skin's border (S.metrics.edge)
+-- goes around the same content area, so screens are the same size in every skin.
 local Window = { screens = {} }
 SC.Window = Window
 
@@ -88,17 +89,35 @@ local function savePosition(f)
 end
 
 local function paintNav()
-	for _, b in ipairs(frame.nav) do
-		local on = b.screen.key == current
-		if on then b.bar:Show() b.selectedTex:Show() else b.bar:Hide() b.selectedTex:Hide() end
-		b.label:SetTextColor(unpack(on and C.heading or C.text))
-	end
+	for _, b in ipairs(frame.nav) do b:SetSelected(b.screen.key == current) end
 end
 
-local function createTitleBar(f)
+-- The theme picker: every skin the kit has, with who made it on hover. A change applies after a reload.
+local function createThemePicker(bar, anchor)
+	local label = S.Text(bar, "small", C.muted)
+	label:SetPoint("LEFT", anchor, "RIGHT", 2 * S.GAP, 0)
+	label:SetText("Theme")
+	local options, inUse = {}, nil
+	for _, skin in ipairs(S.Skins()) do
+		options[#options + 1] = { value = skin.key, text = skin.label, tooltip = skin.credit }
+		if skin.key == S.Skin() then inUse = skin.label end
+	end
+	local picker
+	picker = S.Dropdown(bar, 96, function(key)
+		SC.SetSkin(key)
+		for _, opt in ipairs(options) do
+			if opt.value == key then picker:SetText(opt.text) end
+		end
+	end)
+	picker:SetOptions(options)
+	picker:SetText(inUse or "")
+	picker:SetPoint("LEFT", label, "RIGHT", S.GAP, 0)
+end
+
+local function createTitleBar(f, edge)
 	local bar = CreateFrame("Frame", nil, f)
-	bar:SetPoint("TOPLEFT")
-	bar:SetPoint("TOPRIGHT")
+	bar:SetPoint("TOPLEFT", edge, -edge)
+	bar:SetPoint("TOPRIGHT", -edge, -edge)
 	bar:SetHeight(TITLE_H)
 	bar:EnableMouse(true)
 	bar:RegisterForDrag("LeftButton")
@@ -120,6 +139,7 @@ local function createTitleBar(f)
 	local version = S.Text(bar, "small", C.muted)
 	version:SetPoint("LEFT", title, "RIGHT", S.GAP, 0)
 	version:SetText("v" .. SC.version)
+	createThemePicker(bar, version)
 
 	local inset = (TITLE_H - S.CONTROL_H) / 2
 	local close = S.Button(bar, "Close", "ghost", 56, function() f:Hide() end)
@@ -132,44 +152,30 @@ local function createTitleBar(f)
 	f.gameWindow:SetPoint("RIGHT", close, "LEFT", -S.GAP, 0)
 end
 
-local function createSidebar(f)
+local function createSidebar(f, edge)
 	local side = CreateFrame("Frame", nil, f)
-	side:SetPoint("TOPLEFT", 0, -TITLE_H)
-	side:SetPoint("BOTTOMLEFT")
+	side:SetPoint("TOPLEFT", edge, -edge - TITLE_H)
+	side:SetPoint("BOTTOMLEFT", edge, edge)
 	side:SetWidth(SIDEBAR_W)
-	local fill = S.Solid(side, "BACKGROUND", C.sidebar)
-	fill:SetPoint("TOPLEFT", 1, 0)
-	fill:SetPoint("BOTTOMRIGHT", 0, 1)
-	local edge = S.Solid(side, "BORDER", C.border)
-	edge:SetWidth(1)
-	edge:SetPoint("TOPRIGHT")
-	edge:SetPoint("BOTTOMRIGHT")
+	side:SetHeight(H - TITLE_H)
+	S.Sidebar(side)
+	local inset = 1 + S.metrics.navInset
 
 	f.nav = {}
 	local y, section = S.GAP, nil
 	for i, screen in ipairs(Window.Ordered()) do
 		if screen.section ~= section then
 			section = screen.section
-			S.SectionHeading(side, section or "", S.PAD, -y - (i > 1 and S.GAP or 0) - 4)
+			S.SectionHeading(side, section or "", inset + S.PAD - 1, -y - (i > 1 and S.GAP or 0) - 4)
 			y = y + (i > 1 and S.GAP or 0) + SECTION_H
 		end
 		local b = CreateFrame("Button", nil, side)
 		b:SetHeight(NAV_H)
-		b:SetPoint("TOPLEFT", 1, -y)
-		b:SetPoint("TOPRIGHT", -1, -y)
+		b:SetPoint("TOPLEFT", inset, -y)
+		b:SetPoint("TOPRIGHT", -inset, -y)
+		b:SetWidth(SIDEBAR_W - 2 * inset)
 		y = y + NAV_H
-		local hover = S.Solid(b, "HIGHLIGHT", C.hover)
-		hover:SetAllPoints()
-		b.selectedTex = S.Solid(b, "BACKGROUND", C.selected)
-		b.selectedTex:SetAllPoints()
-		b.bar = S.Solid(b, "BORDER", C.accent)
-		b.bar:SetWidth(3)
-		b.bar:SetPoint("TOPLEFT")
-		b.bar:SetPoint("BOTTOMLEFT")
-		b.label = S.Text(b, "normal")
-		-- entries sit in from their section heading
-		b.label:SetPoint("LEFT", S.PAD + 8, 0)
-		b.label:SetText(screen.label)
+		S.NavEntry(b, screen.label)
 		b.screen = screen
 		b:SetScript("OnClick", function() Window.Open(screen.key) end)
 		-- a screen that needs its spell cast gets it cast by the same click
@@ -183,7 +189,8 @@ local function create()
 	S.RefreshFonts()
 	local f = CreateFrame("Frame", "SynastriaCompanionFrame", UIParent)
 	frame = f
-	f:SetSize(W, H)
+	local edge = S.metrics.edge
+	f:SetSize(W + 2 * edge, H + 2 * edge)
 	f:SetFrameStrata("HIGH")
 	f:SetToplevel(true)
 	f:EnableMouse(true)
@@ -191,15 +198,15 @@ local function create()
 	f:SetClampedToScreen(true)
 	local pos = SC.db.window
 	if pos and pos.point then f:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y) else f:SetPoint("CENTER") end
-	S.Panel(f, C.window, C.border)
+	S.Frame(f, "window")
 	tinsert(UISpecialFrames, "SynastriaCompanionFrame")
 	f:Hide()
 
-	createTitleBar(f)
-	createSidebar(f)
+	createTitleBar(f, edge)
+	createSidebar(f, edge)
 	f.main = CreateFrame("Frame", nil, f)
-	f.main:SetPoint("TOPLEFT", SIDEBAR_W, -TITLE_H)
-	f.main:SetPoint("BOTTOMRIGHT")
+	f.main:SetPoint("TOPLEFT", edge + SIDEBAR_W, -edge - TITLE_H)
+	f.main:SetPoint("BOTTOMRIGHT", -edge, edge)
 	f.panels = {}
 
 	f:SetScript("OnShow", function() PlaySound("igCharacterInfoOpen") end)
