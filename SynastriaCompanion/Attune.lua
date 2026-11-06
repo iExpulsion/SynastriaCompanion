@@ -315,15 +315,38 @@ local function anyOf(mask, flags)
 	return mask == nil or bit.band(mask, flags or 0) ~= 0
 end
 
--- The affix filter: nil any, 1 has random affixes, -1 doesn't, "left" has affixes not attuned yet, or an affix name.
+-- The game's affix filter (f.affix: 1 has random affixes, -1 doesn't) and the advanced one (f.affixPick: "left"
+-- has affixes not attuned yet, or an affix name that isn't).
 local function affixMatches(item, f)
-	local want = f.affix
-	local ok = true
-	if want == "left" then ok = (Attune.AffixesLeft(item, f.affixForge) or 0) > 0
-	elseif type(want) == "string" then ok = Attune.AffixOpen(item, want, f.affixForge)
-	elseif want ~= nil then ok = tri(want, item.affix)
+	local pick = f.affixPick
+	local ok = type(f.affix) ~= "number" or tri(f.affix, item.affix)
+	if pick == "left" then ok = ok and (Attune.AffixesLeft(item, f.affixForge) or 0) > 0
+	elseif type(pick) == "string" then ok = ok and Attune.AffixOpen(item, pick, f.affixForge)
 	end
 	return ok
+end
+
+-- The filter keys that belong to the Advanced filters, which apply only while those are on.
+Attune.ADVANCED = { "affixPick", "affixForge", "level", "bind", "kind", "exp" }
+
+-- The filter a query should use: the advanced keys dropped while they're off.
+function Attune.Effective(f)
+	local out = f
+	if not f.advanced then
+		out = {}
+		for k, v in pairs(f) do out[k] = v end
+		for _, k in ipairs(Attune.ADVANCED) do out[k] = nil end
+	end
+	return out
+end
+
+-- How many advanced filters are set (Affix Forge counts once it's off the base level).
+function Attune.AdvancedCount(f)
+	local n = 0
+	for _, k in ipairs(Attune.ADVANCED) do
+		if f[k] ~= nil and f[k] ~= 0 then n = n + 1 end
+	end
+	return n
 end
 
 local function matches(item, f, isAttuned)

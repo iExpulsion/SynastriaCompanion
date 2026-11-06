@@ -62,11 +62,15 @@ for what it counts, and sort by any column to see your biggest bonuses first.
 
 The attune search, rebuilt. Every result is shown (the game's window stops at 500), and the filters apply as you
 type. It has the game's filters: the mode (Attunable or Attuned, for this character or the account, or All), class
-for multi-class characters, rarity, slot, Mythic, more than five sources, required level, item level and zone.
-**Current** picks the zone you're in. On top of those:
+for multi-class characters, rarity, slot, Mythic, Affix, more than five sources, required level, item level and
+zone. The zone list starts with **Current Zone** for the zone you're in.
 
-- **Affix:** items with or without affixes, items with affixes you haven't attuned yet, or every item that can roll
-  one affix you still need, such as "of the Bear".
+**Advanced** opens a drawer beside the window with filters the game's window doesn't have. They apply only while
+the drawer is open, and the button shows how many are set; close it and you're back to the game's filters, with
+your advanced choices kept for next time.
+
+- **Affix:** items with affixes you haven't attuned yet, or every item that can roll one affix you still need, such
+  as "of the Bear".
 - **Affix Forge:** whether affixes count as attuned at the base level, Titanforged, Warforged or Lightforged.
 - **Attunement:** Not Attuned, Attuned, or the best forge level reached (TF, WF, LF). Pick several to combine them.
   The mode follows: an attuned level switches Attunable (Char) to Attuned (Char), and mixing in Not Attuned
@@ -78,8 +82,8 @@ for multi-class characters, rarity, slot, Mythic, more than five sources, requir
 
 Source and Expansion read every item's sources the first time you use them, which takes a few seconds.
 
-The table sorts by item, slot, item level, required level, sources or affixes left. **Affixes Left** counts the
-affixes you haven't attuned at the Affix Forge level. In the modes that list attuned items, a **Forge** column shows
+The table sorts by item, slot, item level, required level or sources. While Advanced is open, an **Affixes Left**
+column counts the affixes you haven't attuned at the Affix Forge level. In the modes that list attuned items, a **Forge** column shows
 each item's forge level in the game's colors. The footer shows the attuned share of everything your filters match.
 
 Click an item to open it in the Item Database, or Shift-click it to link it.

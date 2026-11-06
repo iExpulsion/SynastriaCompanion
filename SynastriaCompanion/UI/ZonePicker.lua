@@ -23,8 +23,12 @@ function ZonePicker.Available()
 	return ALL_ZONE_LIST ~= nil and #ALL_ZONE_LIST > 0
 end
 
-function ZonePicker.Open(anchor, pick, selected)
-	SC.Picker.Open(anchor, { items = zones(), placeholder = "Search Zones", emptyText = "No Zones Match",
+-- `extras` are entries listed above the zones ({ value, text, tooltip }), such as "Any Zone".
+function ZonePicker.Open(anchor, pick, selected, extras)
+	local items = {}
+	for _, e in ipairs(extras or {}) do items[#items + 1] = e end
+	for _, z in ipairs(zones()) do items[#items + 1] = z end
+	SC.Picker.Open(anchor, { items = items, placeholder = "Search Zones", emptyText = "No Zones Match",
 		isSelected = function(i) return i == selected end, onPick = pick })
 end
 
