@@ -1,5 +1,5 @@
--- Vendored from MaterialCraftUI v1.0.0-9-g84243f0. Change it there, then run tools/sync_style.py.
--- Cognac: gold-framed painted controls on warm brown glass. Load it after Style.lua and Atlas.lua;
+-- Vendored from MaterialCraftUI v1.0.0-12-gebc7df5. Change it there, then run tools/sync_style.py.
+-- Cognac: gold-framed painted controls on dark panels. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
 local S = NS.Style
@@ -176,10 +176,9 @@ S.RegisterSkin("cognac", {
 		surfaceHigh = "2e2820", onSurface = "e6e1d6", onSurfaceVariant = "a9a396", outline = "9a8458",
 		outlineVariant = "6e5a38", primary = "f0d090", onPrimary = "2a220c", error = "e07068", errorContainer = "6a2824",
 	},
-	-- the glass is a blue-black tint over the tooltip background; selected rows and chips are teal, the selected
-	-- sidebar entry mint
+	-- windows are a blue-black tint; selected rows and chips are teal, the selected sidebar entry mint
 	colors = function(c)
-		c.window = { 0.045, 0.045, 0.06, 0.96 }
+		c.window = { 0.045, 0.045, 0.06, 0.98 }
 		c.sidebar = { 16 / 255, 16 / 255, 24 / 255, 1 }
 		c.rowHover = { 0.94, 0.78, 0.45, 0.16 }
 		c.rowSelected = { 0.25, 0.82, 0.78, 0.18 }
@@ -199,19 +198,14 @@ S.RegisterSkin("cognac", {
 		b.plate:SetVertexColor(shade, shade, shade)
 		b.label:SetTextColor(unpack(S.colors[enabled and TEXT[b.kind] or "disabled"] or S.colors.text))
 	end,
-	-- a window is glass in the gold border; a popup, which sits over a window, is the same tint but solid, so what's
-	-- under it doesn't show through; a menu stays a small flat panel
+	-- windows and popups are the blue-black tint in the gold border, close to solid so the game world and frames
+	-- behind them don't show through; a menu stays a small flat panel
 	frame = function(f, role)
-		if role == "window" then
-			f:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16 })
-			f:SetBackdropColor(unpack(S.colors.window))
-			chrome(f)
-		elseif role == "popup" then
-			local c = S.colors.window
-			S.Panel(f, { c[1], c[2], c[3], 0.98 })
-			chrome(f)
-		else
+		if role == "menu" then
 			S.Panel(f, S.colors.panel, S.colors.border)
+		else
+			S.Panel(f, S.colors.window)
+			chrome(f)
 		end
 	end,
 	-- the framed card, like the sidebar's

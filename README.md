@@ -24,7 +24,7 @@ one of its windows, Companion opens instead.
   back.
 - **Your Leaderboard Place:** every board in one list, with your rank highlighted and the speed buff times on top.
 - **The Game's Window When You Want It:** the **Game Window** button opens the game's own window for any screen.
-- **Themes:** the flat Material look, or Cognac's painted gold frames on warm brown glass.
+- **Themes:** the flat Material look, or Cognac's painted gold frames on dark panels.
 
 ## Installation
 
