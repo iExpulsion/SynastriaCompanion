@@ -460,7 +460,8 @@ local function create(parent, width, height)
 		syncControls()
 		requery()
 	end, "Clear every filter and the search, advanced ones too.")
-	reset:SetPoint("TOPRIGHT", -PAD, rowY(1))
+	-- on the fourth column's right edge, which the rounded column widths leave short of the panel's padding
+	reset:SetPoint("TOPLEFT", colX(4) + colW - 56, rowY(1))
 	panel.advanced = S.Button(panel, "Advanced", "secondary", colW - 56 - 4, function()
 		S.CloseMenus()
 		filter.advanced = not filter.advanced or nil
