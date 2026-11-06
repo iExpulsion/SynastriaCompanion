@@ -35,7 +35,7 @@ one of its windows, Companion opens instead.
 
 Open Synastria Companion with `/scomp`, the minimap button, or anything that would open one of the game's windows,
 such as its View spells. Left-click the minimap button to open or close the window, or right-click it to pick a
-screen. Drag the title bar to move the window, and `/scomp reset` puts it back in the center.
+screen. Drag it to move it around the minimap, or Shift-drag it to place it anywhere on screen. Drag the title bar to move the window, and `/scomp reset` puts it back in the center.
 
 The server only sends your attuned stats when asked, so the first time you open **Attuned Stats** the same click
 asks for them. Clicks can only ask out of combat.
@@ -162,6 +162,7 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp lootdb` | Opens the Item Database (also `itemdb`) |
 | `/scomp leaderboards` | Opens Leaderboards |
 | `/scomp minimap` | Hides or shows the minimap button |
+| `/scomp minimap reset` | Puts the minimap button back on the minimap |
 | `/scomp reset` | Moves the window back to the center of the screen |
 | `/scomp replace <screen> off` | Gives a screen back to the game's own window; `on` takes it back |
 

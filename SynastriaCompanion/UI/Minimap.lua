@@ -2,7 +2,7 @@ local _, NS = ...
 local SC = NS.SC
 
 -- Minimap button: left-click opens or closes the window, right-click opens a menu of the screens, drag moves it
--- around the minimap. Position and visibility are saved in SynastriaCompanionDB.minimap. When a LibDataBroker
+-- around the minimap and Shift-drag anywhere on screen. Position and visibility are saved in SynastriaCompanionDB.minimap. When a LibDataBroker
 -- display is installed, a launcher is registered there too.
 local MinimapButton = {}
 SC.MinimapButton = MinimapButton
@@ -32,21 +32,34 @@ local SHAPES = {
 	["TRICORNER-BOTTOMRIGHT"] = { true, true, true, false },
 }
 
+-- Shift-drag frees the button: it moves to UIParent at a saved spot (db.minimap.free), so it stays up even when
+-- the minimap is hidden. A plain drag puts it back on the minimap's edge.
 local function place()
-	local angle = math.rad(SC.db.minimap.angle or DEFAULT_ANGLE)
-	local x, y = math.cos(angle), math.sin(angle)
-	local quadrant = 1 + (x < 0 and 1 or 0) + (y > 0 and 2 or 0)
-	local shape = GetMinimapShape and GetMinimapShape() or "ROUND"
-	local radius = Minimap:GetWidth() / 2 + 5
-	if (SHAPES[shape] or SHAPES.ROUND)[quadrant] then
-		x, y = x * radius, y * radius
-	else
-		local diagonal = math.sqrt(2 * radius * radius) - 10
-		x = math.max(-radius, math.min(x * diagonal, radius))
-		y = math.max(-radius, math.min(y * diagonal, radius))
-	end
+	local free = SC.db.minimap.free
 	button:ClearAllPoints()
-	button:SetPoint("CENTER", Minimap, "CENTER", x, y)
+	if free then
+		button:SetParent(UIParent)
+		button:SetFrameStrata("MEDIUM")
+		button:SetFrameLevel(8)
+		button:SetPoint("CENTER", UIParent, "BOTTOMLEFT", free.x, free.y)
+	else
+		button:SetParent(Minimap)
+		button:SetFrameStrata("MEDIUM")
+		button:SetFrameLevel(8)
+		local angle = math.rad(SC.db.minimap.angle or DEFAULT_ANGLE)
+		local x, y = math.cos(angle), math.sin(angle)
+		local quadrant = 1 + (x < 0 and 1 or 0) + (y > 0 and 2 or 0)
+		local shape = GetMinimapShape and GetMinimapShape() or "ROUND"
+		local radius = Minimap:GetWidth() / 2 + 5
+		if (SHAPES[shape] or SHAPES.ROUND)[quadrant] then
+			x, y = x * radius, y * radius
+		else
+			local diagonal = math.sqrt(2 * radius * radius) - 10
+			x = math.max(-radius, math.min(x * diagonal, radius))
+			y = math.max(-radius, math.min(y * diagonal, radius))
+		end
+		button:SetPoint("CENTER", Minimap, "CENTER", x, y)
+	end
 end
 
 -- The screen menu: section headings and a row per screen, like the window's sidebar.
@@ -118,22 +131,27 @@ local function fillTooltip(tt)
 	tt:AddLine("Synastria Companion", 1, 0.77, 0)
 	tt:AddLine("Left-click to open or close the window.", 0.8, 0.8, 0.8)
 	tt:AddLine("Right-click to pick a screen.", 0.8, 0.8, 0.8)
-	tt:AddLine("Drag to move. /scomp minimap hides it.", 0.6, 0.6, 0.66)
+	tt:AddLine("Drag to move it around the minimap, Shift-drag to place it anywhere.", 0.6, 0.6, 0.66)
+	tt:AddLine("/scomp minimap hides it; /scomp minimap reset puts it back.", 0.6, 0.6, 0.66)
 end
 
 local function onDragUpdate()
-	local mx, my = Minimap:GetCenter()
 	local px, py = GetCursorPosition()
-	local scale = Minimap:GetEffectiveScale()
-	SC.db.minimap.angle = math.deg(math.atan2(py / scale - my, px / scale - mx)) % 360
+	if SC.db.minimap.free then
+		local scale = UIParent:GetEffectiveScale()
+		SC.db.minimap.free.x, SC.db.minimap.free.y = px / scale, py / scale
+	else
+		local mx, my = Minimap:GetCenter()
+		local scale = Minimap:GetEffectiveScale()
+		SC.db.minimap.angle = math.deg(math.atan2(py / scale - my, px / scale - mx)) % 360
+	end
 	place()
 end
 
 local function create()
 	button = CreateFrame("Button", "SynastriaCompanionMinimapButton", Minimap)
 	button:SetSize(31, 31)
-	button:SetFrameStrata("MEDIUM")
-	button:SetFrameLevel(8)
+	button:SetClampedToScreen(true)
 	button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	button:RegisterForDrag("LeftButton")
 	button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
@@ -161,6 +179,7 @@ local function create()
 	button:SetScript("OnDragStart", function(self)
 		GameTooltip:Hide()
 		if menu then menu:Hide() end
+		SC.db.minimap.free = IsShiftKeyDown() and (SC.db.minimap.free or {}) or nil
 		self:SetScript("OnUpdate", onDragUpdate)
 	end)
 	button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
@@ -199,6 +218,12 @@ function MinimapButton.Toggle()
 	SC.db.minimap.hide = not SC.db.minimap.hide
 	MinimapButton.Refresh()
 	SC:Print(SC.db.minimap.hide and "Minimap button hidden. /scomp minimap shows it again." or "Minimap button shown.")
+end
+
+function MinimapButton.ResetPosition()
+	SC.db.minimap.free, SC.db.minimap.angle = nil, nil
+	place()
+	SC:Print("Minimap button moved back to the minimap.")
 end
 
 function MinimapButton.Frame()

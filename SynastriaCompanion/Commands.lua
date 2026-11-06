@@ -15,7 +15,8 @@ local function usage()
 	local keys = {}
 	for _, s in ipairs(SC.Window.Ordered()) do keys[#keys + 1] = s.key end
 	SC:Print("/scomp opens the window. /scomp <screen> opens a screen: %s.", table.concat(keys, ", "))
-	SC:Print("/scomp minimap shows or hides the minimap button. /scomp reset moves the window back to the center.")
+	SC:Print("/scomp minimap shows or hides the minimap button, and /scomp minimap reset puts it back on the minimap.")
+	SC:Print("/scomp reset moves the window back to the center.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
 end
 
@@ -28,6 +29,8 @@ SlashCmdList.SYNASTRIACOMPANION = function(msg)
 		SC.Window.Toggle()
 	elseif cmd == "help" then
 		usage()
+	elseif cmd == "minimap" and arg == "reset" then
+		SC.MinimapButton.ResetPosition()
 	elseif cmd == "minimap" then
 		SC.MinimapButton.Toggle()
 	elseif cmd == "reset" then
