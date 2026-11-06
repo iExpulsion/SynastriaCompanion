@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-16-g36fc578. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-18-g9607ac4. Change it there, then run tools/sync_style.py.
 -- Cognac: gold-framed painted controls on dark glass. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
@@ -10,32 +10,15 @@ local EDGE = 18
 -- The border is drawn at one scale, so its corners and edges are the same thickness: CHROME screen pixels per art
 -- pixel, with the outside of its bars OUTSIDE pixels in from the frame's edge. Its bars are BAR art pixels thick.
 local CHROME, OUTSIDE, BAR = 0.16, 3, 46
--- Where each corner's bars run in its 256px cell: the outside edge of the bar along each side it touches, counted
--- in from that side of the cell. The four corners differ by a few pixels, so each is placed by its own.
-local CORNERS = {
-	corner_nw = { left = 26, top = 26 },
-	corner_ne = { right = 40, top = 25 },
-	corner_sw = { left = 41, bottom = 25 },
-	corner_se = { right = 28, bottom = 25 },
-}
--- The part of each corner drawn: up to just short of the caps its bars end in, so the edges, which stretch on from
--- the same bars, carry straight through. Columns, then rows, of the 256px cell.
-local CROPS = {
-	corner_nw = { 18, 200, 18, 200 },
-	corner_ne = { 56, 225, 17, 200 },
-	corner_sw = { 32, 200, 56, 239 },
-	corner_se = { 56, 237, 56, 239 },
-}
--- The straight edges are a plain stretch of a corner's own bar, so they meet it seamlessly: which corner, and the
--- columns (top and bottom) or rows (sides) of it to stretch, with the rows or columns across the bar.
-local RUNS = {
-	top = { "corner_nw", { 170, 210 }, { 18, 80 } },
-	bottom = { "corner_sw", { 170, 215 }, { 180, 239 } },
-	left = { "corner_nw", { 170, 210 }, { 18, 80 } },
-	right = { "corner_ne", { 170, 225 }, { 160, 225 } },
-}
--- The top and bottom diamonds, from the edge pieces, laid over the middle of the bar: the edge piece's bar rows,
--- the rows to sample, and the diamond's columns.
+-- The border is built from the two top corners, and the bottom half is their mirror image, since the painted bottom
+-- corners sit a few pixels differently and their bars never quite met the edges. For each top corner: where its
+-- bars' outside edges run in its 256px cell, counted in from the cell's sides; the part of it drawn, short of the
+-- caps its bars end in (columns, then rows); and the stretch of its bar the edges are made of, so they meet it
+-- seamlessly (columns along the top bar, rows along the side bar, and the rows or columns across each).
+local NW = { left = 26, top = 26, crop = { 18, 200, 18, 200 }, along = { 170, 210 }, across = { 18, 80 } }
+local NE = { right = 40, top = 25, crop = { 56, 225, 17, 200 }, along = { 170, 225 }, across = { 160, 225 } }
+-- The top diamond, from the top edge piece, laid over the middle of the bar: the edge piece's bar rows, the rows to
+-- sample, and the diamond's columns.
 local HBAR, HBAND, DIAMOND = { 103, 160 }, { 93, 163 }, { 96, 160 }
 -- the divider's spear: a tip at each end and a diamond in the middle keep their shape; the shafts between stretch
 local SPEAR_W, SPEAR_COLS = 12, { 102, 153 }
@@ -55,12 +38,6 @@ local function follow(frame, layout)
 	frame:HookScript("OnSizeChanged", run)
 	frame:HookScript("OnShow", run)
 	run()
-end
-
-local function art(frame, layer, piece)
-	local t = frame:CreateTexture(nil, layer)
-	S.Art(t, ATLAS, piece)
-	return t
 end
 
 -- A plate under the button's label (hidden until painted) and the additive hover glow: nine-slices scaled to the
@@ -92,63 +69,51 @@ local function platePiece(b, enabled)
 		or b.down and "button_pressed" or "button_normal"
 end
 
--- The window border, on the frame itself under its children, which start inside it. Each corner is placed by
--- where its own bars run, and the straight edges between them are scaled across so their bars match the corners'
--- thickness, stretched only along their length, with the top and bottom diamonds kept whole. Corners draw over
+-- The window border, on the frame itself under its children, which start inside it. The top corners are placed by
+-- where their bars run; the top edge and both sides are stretches of those same bars, so they meet the corners
+-- seamlessly; and the bottom corners, bottom edge and bottom diamond are the top ones flipped. Corners draw over
 -- the ends of the edges.
 local function chrome(f)
 	local s, o = CHROME, OUTSIDE
 	local bar = BAR * s
-	local corners = {}
-	for key in pairs(CORNERS) do corners[key] = art(f, "OVERLAY", key) end
-	local runs = {}
-	for side in pairs(RUNS) do runs[side] = f:CreateTexture(nil, "BORDER") end
-	local diamonds = { top = f:CreateTexture(nil, "ARTWORK"), bottom = f:CreateTexture(nil, "ARTWORK") }
+	local function tex(layer) return f:CreateTexture(nil, layer) end
+	local corners = { nw = tex("OVERLAY"), ne = tex("OVERLAY"), sw = tex("OVERLAY"), se = tex("OVERLAY") }
+	local runs = { top = tex("BORDER"), bottom = tex("BORDER"), left = tex("BORDER"), right = tex("BORDER") }
+	local diamonds = { top = tex("ARTWORK"), bottom = tex("ARTWORK") }
 	local kh = bar / (HBAR[2] - HBAR[1])
 	local diamondW, diamondH = (DIAMOND[2] - DIAMOND[1]) * kh, (HBAND[2] - HBAND[1]) * kh
 	follow(f, function(w, h)
 		-- whole screen pixels, so pieces that should meet don't land a fraction of a pixel apart
 		local es = f:GetEffectiveScale() or 1
 		local function snap(v) return math.floor(v * es + 0.5) / es end
-		local cell = snap(256 * s)
-		local k = cell / 256
-		local at = {
-			corner_nw = { snap(o - CORNERS.corner_nw.left * k), snap(o - CORNERS.corner_nw.top * k) },
-			corner_ne = { snap(w - o - (256 - CORNERS.corner_ne.right) * k), snap(o - CORNERS.corner_ne.top * k) },
-			corner_sw = { snap(o - CORNERS.corner_sw.left * k), snap(h - o - (256 - CORNERS.corner_sw.bottom) * k) },
-			corner_se = { snap(w - o - (256 - CORNERS.corner_se.right) * k), snap(h - o - (256 - CORNERS.corner_se.bottom) * k) },
-		}
-		for key, tex in pairs(corners) do
-			local c = CROPS[key]
-			S.ArtPart(tex, f, ATLAS, key, c[1], c[2], c[3], c[4], at[key][1] + c[1] * k, at[key][2] + c[3] * k,
-				(c[2] - c[1]) * k, (c[4] - c[3]) * k)
+		local k = snap(256 * s) / 256
+		-- part of a piece (its pixels x0..x1, y0..y1) at x, y by ww, hh, and the same mirrored into the bottom half
+		local function draw(t, mirror, piece, x0, x1, y0, y1, x, y, ww, hh)
+			S.ArtPart(t, f, ATLAS, piece, x0, x1, y0, y1, x, y, ww, hh)
+			if mirror then S.ArtPart(mirror, f, ATLAS, piece, x0, x1, y1, y0, x, snap(h - y - hh), ww, hh) end
 		end
-		local nw, ne, sw, se = at.corner_nw, at.corner_ne, at.corner_sw, at.corner_se
-		-- each run starts where its corner's slice sits and ends inside the corner opposite, under it
-		local function run(side, x, y, ww, hh)
-			local r = RUNS[side]
-			S.ArtPart(runs[side], f, ATLAS, r[1], r[2][1], r[2][2], r[3][1], r[3][2], x, y, ww, hh)
-		end
-		local function horizontal(side, corner, x1)
-			local r = RUNS[side]
-			local x0 = corner[1] + r[2][1] * k
-			run(side, x0, corner[2] + r[3][1] * k, x1 - x0, (r[3][2] - r[3][1]) * k)
-		end
-		horizontal("top", nw, ne[1] + 60 * k)
-		horizontal("bottom", sw, se[1] + 60 * k)
-		-- the side runs take the slice's columns across and its rows along, the other way around
-		local l, r = RUNS.left, RUNS.right
-		local ly0 = nw[2] + l[2][1] * k
-		S.ArtPart(runs.left, f, ATLAS, l[1], l[3][1], l[3][2], l[2][1], l[2][2], nw[1] + l[3][1] * k, ly0,
-			(l[3][2] - l[3][1]) * k, sw[2] + 60 * k - ly0)
-		local ry0 = ne[2] + r[2][1] * k
-		S.ArtPart(runs.right, f, ATLAS, r[1], r[3][1], r[3][2], r[2][1], r[2][2], ne[1] + r[3][1] * k, ry0,
-			(r[3][2] - r[3][1]) * k, se[2] + 60 * k - ry0)
-		-- the diamonds sit on the middle of the top and bottom bars
-		S.ArtPart(diamonds.top, f, ATLAS, "border_top", DIAMOND[1], DIAMOND[2], HBAND[1], HBAND[2],
+		local nw = { snap(o - NW.left * k), snap(o - NW.top * k) }
+		local ne = { snap(w - o - (256 - NE.right) * k), snap(o - NE.top * k) }
+		local c = NW.crop
+		draw(corners.nw, corners.sw, "corner_nw", c[1], c[2], c[3], c[4], nw[1] + c[1] * k, nw[2] + c[3] * k,
+			(c[2] - c[1]) * k, (c[4] - c[3]) * k)
+		c = NE.crop
+		draw(corners.ne, corners.se, "corner_ne", c[1], c[2], c[3], c[4], ne[1] + c[1] * k, ne[2] + c[3] * k,
+			(c[2] - c[1]) * k, (c[4] - c[3]) * k)
+		-- the top edge: the top-left corner's bar from where its slice sits to inside the top-right corner
+		local x0 = nw[1] + NW.along[1] * k
+		draw(runs.top, runs.bottom, "corner_nw", NW.along[1], NW.along[2], NW.across[1], NW.across[2], x0,
+			nw[2] + NW.across[1] * k, ne[1] + 60 * k - x0, (NW.across[2] - NW.across[1]) * k)
+		-- the sides: each top corner's side bar, rows along and columns across, down to its mirror at the bottom
+		local ly = nw[2] + NW.along[1] * k
+		draw(runs.left, nil, "corner_nw", NW.across[1], NW.across[2], NW.along[1], NW.along[2],
+			nw[1] + NW.across[1] * k, ly, (NW.across[2] - NW.across[1]) * k, h - 2 * ly)
+		local ry = ne[2] + NE.along[1] * k
+		draw(runs.right, nil, "corner_ne", NE.across[1], NE.across[2], NE.along[1], NE.along[2],
+			ne[1] + NE.across[1] * k, ry, (NE.across[2] - NE.across[1]) * k, h - 2 * ry)
+		-- the diamond on the middle of the top bar, and its mirror on the bottom
+		draw(diamonds.top, diamonds.bottom, "border_top", DIAMOND[1], DIAMOND[2], HBAND[1], HBAND[2],
 			snap((w - diamondW) / 2), snap(o - (HBAR[1] - HBAND[1]) * kh), diamondW, diamondH)
-		S.ArtPart(diamonds.bottom, f, ATLAS, "border_bottom", DIAMOND[1], DIAMOND[2], HBAND[1], HBAND[2],
-			snap((w - diamondW) / 2), snap(h - o - (HBAR[2] - HBAND[1]) * kh), diamondW, diamondH)
 	end)
 end
 
