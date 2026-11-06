@@ -36,16 +36,16 @@ local SHAPES = {
 -- the minimap is hidden. A plain drag puts it back on the minimap's edge.
 local function place()
 	local free = SC.db.minimap.free
+	local parent = free and UIParent or Minimap
+	if button:GetParent() ~= parent then
+		button:SetParent(parent)
+		button:SetFrameStrata("MEDIUM")
+		button:SetFrameLevel(8)
+	end
 	button:ClearAllPoints()
 	if free then
-		button:SetParent(UIParent)
-		button:SetFrameStrata("MEDIUM")
-		button:SetFrameLevel(8)
 		button:SetPoint("CENTER", UIParent, "BOTTOMLEFT", free.x, free.y)
 	else
-		button:SetParent(Minimap)
-		button:SetFrameStrata("MEDIUM")
-		button:SetFrameLevel(8)
 		local angle = math.rad(SC.db.minimap.angle or DEFAULT_ANGLE)
 		local x, y = math.cos(angle), math.sin(angle)
 		local quadrant = 1 + (x < 0 and 1 or 0) + (y > 0 and 2 or 0)
@@ -135,17 +135,22 @@ local function fillTooltip(tt)
 	tt:AddLine("/scomp minimap hides it; /scomp minimap reset puts it back.", 0.6, 0.6, 0.66)
 end
 
-local function onDragUpdate()
-	local px, py = GetCursorPosition()
-	if SC.db.minimap.free then
-		local scale = UIParent:GetEffectiveScale()
-		SC.db.minimap.free.x, SC.db.minimap.free.y = px / scale, py / scale
+-- Ends on the mouse release itself: a reparent mid-drag can cost the OnDragStop.
+local function onDragUpdate(self)
+	if IsMouseButtonDown("LeftButton") then
+		local px, py = GetCursorPosition()
+		if SC.db.minimap.free then
+			local scale = UIParent:GetEffectiveScale()
+			SC.db.minimap.free.x, SC.db.minimap.free.y = px / scale, py / scale
+		else
+			local mx, my = Minimap:GetCenter()
+			local scale = Minimap:GetEffectiveScale()
+			SC.db.minimap.angle = math.deg(math.atan2(py / scale - my, px / scale - mx)) % 360
+		end
+		place()
 	else
-		local mx, my = Minimap:GetCenter()
-		local scale = Minimap:GetEffectiveScale()
-		SC.db.minimap.angle = math.deg(math.atan2(py / scale - my, px / scale - mx)) % 360
+		self:SetScript("OnUpdate", nil)
 	end
-	place()
 end
 
 local function create()
