@@ -9,7 +9,7 @@ local DEFAULTS = {
 	-- per screen: false gives that screen back to the game's own window
 	replace = {},
 	attunable = {},
-	-- the style kit's skin: "material" or "cognac"
+	-- the style kit's skin: "material", "classic" or "cognac"
 	skin = "material",
 	-- scale windows so their units are whole screen pixels
 	pixelScale = true,
