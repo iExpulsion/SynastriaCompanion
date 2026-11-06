@@ -15,7 +15,9 @@ local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 local panel, tbl
 local filter
 local QUERY_DELAY = 0.15
-local ROWS = 5
+local ROWS = 6
+local ROW_GAP = 6
+local LABEL_W = 72
 
 local CLASSES = {
 	{ 1, "WARRIOR" }, { 2, "PALADIN" }, { 3, "HUNTER" }, { 4, "ROGUE" }, { 5, "PRIEST" }, { 6, "DEATHKNIGHT" },
@@ -35,6 +37,10 @@ local AFFIX_FORGES = {
 	{ value = 1, text = "TF", width = 36, tooltip = "Count affixes attuned at Titanforged." },
 	{ value = 2, text = "WF", width = 38, tooltip = "Count affixes attuned at Warforged." },
 	{ value = 3, text = "LF", width = 36, tooltip = "Count affixes attuned at Lightforged." },
+}
+local MYTHIC = {
+	{ value = 1, text = "Yes", width = 40, tooltip = "Only Mythic items." },
+	{ value = -1, text = "No", width = 40, tooltip = "No Mythic items." },
 }
 local BINDS = {
 	{ value = Attune.BOP, text = "BoP", width = 44, tooltip = "Bind on pickup." },
@@ -145,7 +151,6 @@ local function syncControls()
 		if s[1] == filter.slot then slot = s[2] end
 	end
 	panel.slot:SetText("Slot: " .. slot)
-	panel.mythic:SetText("Mythic: " .. textOf(TRI, filter.mythic or false, "Any"))
 	panel.sources:SetText("5+ Sources: " .. textOf(TRI, filter.sources or false, "Any"))
 	panel.affix:SetText(affixLabel())
 	for _, t in ipairs(panel.toggles) do
@@ -188,35 +193,77 @@ local function numberBox(parent, name, key)
 	return e
 end
 
-local function label(parent, text)
+local function label(parent, text, width)
 	local fs = S.Text(parent, "small", C.muted)
 	fs:SetText(text)
+	if width then
+		fs:SetWidth(width)
+		fs:SetJustifyH("LEFT")
+	end
 	return fs
 end
 
--- A label and a row of joined buttons for one filter. Multi groups keep a bit mask in filter[key] (nil: any);
--- a single group keeps the chosen value, with 0 stored as nil. Returns the label and the last button.
-local function toggleGroup(text, key, options, single)
-	local fs = label(panel, text)
+-- Button widths that fill `area` exactly (joined buttons overlap by their 1px border). Each option's width is its
+-- minimum; the narrow ones grow first, so the buttons come out as even as their labels allow.
+local function fitWidths(options, area)
+	local n = #options
+	local avail = area + n - 1
+	local wide, wideW, even = {}, 0, 0
+	local changed = true
+	while changed do
+		changed = false
+		local count = 0
+		for i = 1, n do
+			if not wide[i] then count = count + 1 end
+		end
+		even = math.floor((avail - wideW) / math.max(1, count))
+		for i, o in ipairs(options) do
+			if not wide[i] and o.width > even then
+				wide[i], wideW, changed = true, wideW + o.width, true
+			end
+		end
+	end
+	local widths, used = {}, 0
+	for i, o in ipairs(options) do
+		widths[i] = wide[i] and o.width or even
+		used = used + widths[i]
+	end
+	widths[n] = widths[n] + avail - used
+	return widths
+end
+
+-- A label and a row of joined buttons for one filter, filling `area` pixels after the label, at (x, y).
+-- kind "multi" keeps a bit mask in filter[key] (nil: any); "single" keeps the chosen value, with 0 stored as nil;
+-- "clearable" is single, and clicking the chosen button again clears it. Returns the label and its regions.
+local function toggleGroup(text, key, options, kind, x, y, area)
+	local fs = label(panel, text, LABEL_W)
+	fs:SetPoint("LEFT", panel, "TOPLEFT", x, y - CONTROL_H / 2)
 	local group = { fs }
 	local prev
-	for _, o in ipairs(options) do
-		local b = S.Button(panel, o.text, "secondary", o.width, function()
+	for i, width in ipairs(fitWidths(options, area)) do
+		local o = options[i]
+		local b = S.Button(panel, o.text, "secondary", width, function()
 			local value
-			if single then
-				value = o.value
-			else
+			if kind == "multi" then
 				value = bit.bxor(filter[key] or 0, o.value)
+			elseif kind == "clearable" and filter[key] == o.value then
+				value = 0
+			else
+				value = o.value
 			end
 			if key == "level" then filter.mode = Attune.ModeForLevel(filter.mode, value) end
 			set(key, value ~= 0 and value or nil)
 		end, o.tooltip)
-		if prev then b:SetPoint("LEFT", prev, "RIGHT", -1, 0) else b:SetPoint("LEFT", fs, "RIGHT", GAP, 0) end
-		panel.toggles[#panel.toggles + 1] = { button = b, key = key, value = o.value, single = single }
+		if prev then
+			b:SetPoint("LEFT", prev, "RIGHT", -1, 0)
+		else
+			b:SetPoint("TOPLEFT", panel, "TOPLEFT", x + LABEL_W + GAP, y)
+		end
+		panel.toggles[#panel.toggles + 1] = { button = b, key = key, value = o.value, single = kind ~= "multi" }
 		group[#group + 1] = b
 		prev = b
 	end
-	return fs, prev, group
+	return fs, group
 end
 
 local function openAffixPicker(button)
@@ -279,7 +326,11 @@ local function create(parent, width, height)
 	panel = CreateFrame("Frame", nil, parent)
 	panel.toggles = {}
 	local x0, inner = PAD, width - 2 * PAD
-	local function rowY(n) return -PAD - (n - 1) * (CONTROL_H + GAP) end
+	local function rowY(n) return -PAD - (n - 1) * (CONTROL_H + ROW_GAP) end
+	-- rows 3 to 6 are two columns, each a fixed-width label and controls filling the rest of the column
+	local colW = math.floor((inner - GAP) / 2)
+	local col2 = x0 + colW + GAP
+	local area = colW - LABEL_W - GAP
 
 	-- row 1: search, mode, class, reset
 	panel.name = S.Input(panel, "SynastriaCompanionAttuneName", 260, "Search Items", 60)
@@ -308,72 +359,85 @@ local function create(parent, width, height)
 	end, "Clear every filter and the search.")
 	reset:SetPoint("TOPRIGHT", -PAD, rowY(1))
 
-	-- row 2: rarity, slot, yes/no filters, affix
-	panel.rarity = S.Dropdown(panel, 120, function(v) set("rarity", v or nil) end)
+	-- row 2: four equal dropdowns across the full width
+	local dropW = math.floor((inner - 3 * GAP) / 4)
+	panel.rarity = S.Dropdown(panel, dropW, function(v) set("rarity", v or nil) end)
 	local rarities = { { value = false, text = "All" } }
 	for _, r in ipairs(Attune.RARITIES) do rarities[#rarities + 1] = r end
 	panel.rarity:SetOptions(rarities)
 	panel.rarity:SetPoint("TOPLEFT", x0, rowY(2))
 
-	panel.slot = S.Dropdown(panel, 130, function(v) set("slot", v or nil) end)
+	panel.slot = S.Dropdown(panel, dropW, function(v) set("slot", v or nil) end)
 	local slots = { { value = false, text = "All" } }
 	for _, s in ipairs(Attune.SLOTS) do slots[#slots + 1] = { value = s[1], text = s[2] } end
 	panel.slot:SetOptions(slots)
 	panel.slot:SetPoint("LEFT", panel.rarity, "RIGHT", GAP, 0)
 
-	panel.mythic = triDropdown(panel, 100, "mythic")
-	panel.mythic:SetPoint("LEFT", panel.slot, "RIGHT", GAP, 0)
-	panel.sources = triDropdown(panel, 120, "sources")
-	panel.sources:SetPoint("LEFT", panel.mythic, "RIGHT", GAP, 0)
-	panel.sources.tooltipText = "Items with more than five places they come from."
-	panel.affix = S.AddArrow(S.Button(panel, "Affix: Any", "secondary", 196, openAffixPicker,
+	panel.affix = S.AddArrow(S.Button(panel, "Affix: Any", "secondary", dropW, openAffixPicker,
 		"Items with or without affixes, with affixes left to attune, or that can roll one affix you haven't attuned."))
-	panel.affix:SetPoint("LEFT", panel.sources, "RIGHT", GAP, 0)
+	panel.affix:SetPoint("LEFT", panel.slot, "RIGHT", GAP, 0)
+	panel.sources = triDropdown(panel, inner - 3 * (dropW + GAP), "sources")
+	panel.sources:SetPoint("LEFT", panel.affix, "RIGHT", GAP, 0)
+	panel.sources.tooltipText = "Items with more than five places they come from."
 
-	-- row 3: attunement level, the forge level affixes are counted at
-	local levelLabel, levelEnd = toggleGroup("Attunement", "level", LEVELS)
-	levelLabel:SetPoint("TOPLEFT", x0, rowY(3) - 6)
-	local forgeLabel = toggleGroup("Affix Forge", "affixForge", AFFIX_FORGES, true)
-	forgeLabel:SetPoint("LEFT", levelEnd, "RIGHT", PAD, 0)
+	-- row 3: attunement level, and the forge level affixes are counted at
+	toggleGroup("Attunement", "level", LEVELS, "multi", x0, rowY(3), area)
+	toggleGroup("Affix Forge", "affixForge", AFFIX_FORGES, "single", col2, rowY(3), area)
 
-	-- row 4: bind, then the filters that need the game's loot data
-	local bindLabel, bindEnd = toggleGroup("Bind", "bind", BINDS)
-	bindLabel:SetPoint("TOPLEFT", x0, rowY(4) - 6)
-	local kindLabel, kindEnd, kindGroup = toggleGroup("Source", "kind", KINDS)
-	kindLabel:SetPoint("LEFT", bindEnd, "RIGHT", PAD, 0)
-	local expLabel, _, expGroup = toggleGroup("Expansion", "exp", EXPANSIONS)
-	expLabel:SetPoint("LEFT", kindEnd, "RIGHT", PAD, 0)
+	-- row 4: the filters that need the game's loot data
+	local _, kindGroup = toggleGroup("Source", "kind", KINDS, "multi", x0, rowY(4), area)
+	local _, expGroup = toggleGroup("Expansion", "exp", EXPANSIONS, "multi", col2, rowY(4), area)
 	panel.lootGroups = { kindGroup, expGroup }
 
-	-- row 5: level ranges and zone
-	local reqLabel = label(panel, "Req. Level")
-	reqLabel:SetPoint("TOPLEFT", x0, rowY(5) - 6)
-	panel.minReq = numberBox(panel, "SynastriaCompanionAttuneMinReq", "minReq")
-	panel.minReq:SetPoint("LEFT", reqLabel, "RIGHT", GAP, 0)
-	panel.maxReq = numberBox(panel, "SynastriaCompanionAttuneMaxReq", "maxReq")
-	panel.maxReq:SetPoint("LEFT", panel.minReq, "RIGHT", 4, 0)
+	-- row 5: the two either/or filters
+	toggleGroup("Bind", "bind", BINDS, "clearable", x0, rowY(5), area)
+	toggleGroup("Mythic", "mythic", MYTHIC, "clearable", col2, rowY(5), area)
 
-	local lvlLabel = label(panel, "Item Level")
-	lvlLabel:SetPoint("LEFT", panel.maxReq, "RIGHT", PAD, 0)
-	panel.minLvl = numberBox(panel, "SynastriaCompanionAttuneMinLvl", "minLvl")
-	panel.minLvl:SetPoint("LEFT", lvlLabel, "RIGHT", GAP, 0)
-	panel.maxLvl = numberBox(panel, "SynastriaCompanionAttuneMaxLvl", "maxLvl")
-	panel.maxLvl:SetPoint("LEFT", panel.minLvl, "RIGHT", 4, 0)
-
-	panel.zone = S.AddArrow(S.Button(panel, "Any Zone", "secondary", 170, function(self)
+	-- row 6: zone, then the level ranges
+	local zoneLabel = label(panel, "Zone", LABEL_W)
+	zoneLabel:SetPoint("LEFT", panel, "TOPLEFT", x0, rowY(6) - CONTROL_H / 2)
+	panel.zoneLabel = zoneLabel
+	panel.zone = S.AddArrow(S.Button(panel, "Any Zone", "secondary", area - (4 + 60) - (4 + 44), function(self)
 		SC.ZonePicker.Open(self, function(index) set("zone", index) end, filter.zone)
 	end, "Only items that come from one zone."))
-	panel.zone:SetPoint("LEFT", panel.maxLvl, "RIGHT", PAD, 0)
-	panel.zoneHere = S.Button(panel, "Current", "secondary", 64, function()
+	panel.zone:SetPoint("TOPLEFT", x0 + LABEL_W + GAP, rowY(6))
+	panel.zoneHere = S.Button(panel, "Current", "secondary", 60, function()
 		local index = SC.ZonePicker.CurrentIndex()
 		if index then set("zone", index) else panel.status:SetText(S.Hex(C.bad, "Couldn't Tell Which Zone You're In")) end
 	end, "Only items from the zone you're in.")
 	panel.zoneHere:SetPoint("LEFT", panel.zone, "RIGHT", 4, 0)
-	panel.zoneClear = S.Button(panel, "Clear", "secondary", 52, function() set("zone", nil) end, "Any zone again.")
+	panel.zoneClear = S.Button(panel, "Clear", "secondary", 44, function() set("zone", nil) end, "Any zone again.")
 	panel.zoneClear:SetPoint("LEFT", panel.zoneHere, "RIGHT", 4, 0)
 
+	-- each range is a min and max box with a dash between; the two ranges split the column's control area
+	local boxW = math.floor((area - 2 * 12 - GAP - 64) / 4)
+	local reqLabel = label(panel, "Req. Level", LABEL_W)
+	reqLabel:SetPoint("LEFT", panel, "TOPLEFT", col2, rowY(6) - CONTROL_H / 2)
+	local function range(minKey, maxKey, minName, maxName, anchor, dx)
+		panel[minKey] = numberBox(panel, minName, minKey)
+		panel[minKey]:SetWidth(boxW)
+		if anchor then
+			panel[minKey]:SetPoint("LEFT", anchor, "RIGHT", dx, 0)
+		else
+			panel[minKey]:SetPoint("TOPLEFT", col2 + LABEL_W + GAP, rowY(6))
+		end
+		local dash = label(panel, "-")
+		dash:SetWidth(12)
+		dash:SetJustifyH("CENTER")
+		dash:SetPoint("LEFT", panel[minKey], "RIGHT", 0, 0)
+		panel[maxKey] = numberBox(panel, maxName, maxKey)
+		panel[maxKey]:SetWidth(boxW)
+		panel[maxKey]:SetPoint("LEFT", dash, "RIGHT", 0, 0)
+		return panel[maxKey]
+	end
+	local reqEnd = range("minReq", "maxReq", "SynastriaCompanionAttuneMinReq", "SynastriaCompanionAttuneMaxReq")
+	local lvlLabel = label(panel, "iLvl", 64 - GAP)
+	lvlLabel:SetJustifyH("RIGHT")
+	lvlLabel:SetPoint("LEFT", reqEnd, "RIGHT", GAP, 0)
+	range("minLvl", "maxLvl", "SynastriaCompanionAttuneMinLvl", "SynastriaCompanionAttuneMaxLvl", lvlLabel, GAP)
+
 	-- results
-	local top = rowY(ROWS + 1)
+	local top = rowY(ROWS) - CONTROL_H - GAP
 	local footerH = PAD + 14 + PAD
 	tbl = SC.Table.New(panel, "SynastriaCompanionAttuneTable", inner, height + top - footerH, {
 		columns = COLUMNS, rowH = 20, icons = true, cell = cell,
@@ -426,6 +490,7 @@ local function show()
 	end
 	local lootData = Attune.HasLootData()
 	local zones = SC.ZonePicker.Available() and lootData
+	setShown(panel.zoneLabel, zones)
 	setShown(panel.zone, zones)
 	setShown(panel.zoneHere, zones)
 	setShown(panel.zoneClear, zones)
