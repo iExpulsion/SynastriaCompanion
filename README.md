@@ -107,9 +107,9 @@ The game's Loot Database:
 - `/scomp replace attunable off`: gives a screen back to the game's own window (`on` takes it back).
 
 The **minimap button** opens or closes the window on a left-click and lists the screens on a right-click; drag it to
-move it. Screens whose data the server only sends on request (Attuned Stats, and Resource Bank or Auto Loot while
-they're empty) ask for it on the same click, from the minimap button, its menu or the sidebar, so you don't need the
-game's View spells on your bars. That needs you out of combat. The **Game Window** button in the title bar opens the game's own window for the screen you're on.
+move it. The server only sends Attuned Stats when asked, so opening that screen asks for them on the same click,
+from the minimap button, its menu or the sidebar. You don't need the game's View spells on your bars. That needs you
+out of combat. The **Game Window** button in the title bar opens the game's own window for the screen you're on.
 
 ## Install
 

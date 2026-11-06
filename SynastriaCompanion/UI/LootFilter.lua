@@ -646,9 +646,6 @@ end
 SC.Window.AddScreen({
 	key = "lootfilter",
 	label = "Auto Loot",
-	-- View Auto-loot Options, for when the game hasn't sent the filter yet
-	spell = 80413,
-	needsSpell = function() return not LF.Available() end,
 	create = create,
 	show = show,
 	hook = {
