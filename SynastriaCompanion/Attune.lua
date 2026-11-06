@@ -166,6 +166,9 @@ end
 
 -- Affixes: the game's affix list gives each affix bit a name, separately for suffixes ("of the Bear") and random
 -- properties. byName[prop][name] = the bits with that name.
+-- Index 52 ("of X Protection", "of X Resistance") is a stand-in for every resistance school that no item rolls;
+-- the schools themselves are indexes 0 to 4.
+local GROUPS = { [52] = { 0, 1, 2, 3, 4 } }
 local byName, affixNames
 local function affixTables()
 	if not byName and ItemAttuneAffix then
@@ -176,7 +179,7 @@ local function affixTables()
 				if name then
 					local list = byName[afx.prop and true or false][name] or {}
 					byName[afx.prop and true or false][name] = list
-					list[#list + 1] = afx.index
+					for _, index in ipairs(GROUPS[afx.index] or { afx.index }) do list[#list + 1] = index end
 					if not seen[name] then
 						seen[name] = true
 						affixNames[#affixNames + 1] = name
@@ -287,6 +290,20 @@ end
 -- Bit flags for the multi-choice filters; none set means any.
 Attune.BOP, Attune.BOE = 1, 2
 Attune.NOT_ATTUNED = 1
+
+-- The mode an Attunement Level choice needs: attuned levels need a mode that lists attuned items (keeping Char or
+-- Acc), Not Attuned needs one that lists unattuned items, and both need All. Any other mode is kept.
+local TO_ATTUNED, TO_UNATTUNED = { [0] = 1, [4] = 2 }, { [1] = 0, [2] = 4 }
+function Attune.ModeForLevel(mode, level)
+	mode = mode or 0
+	local attuned = bit.band(level or 0, 2 + 4 + 8 + 16) ~= 0
+	local unattuned = bit.band(level or 0, Attune.NOT_ATTUNED) ~= 0
+	if attuned and unattuned then mode = 3
+	elseif attuned then mode = TO_ATTUNED[mode] or mode
+	elseif unattuned then mode = TO_UNATTUNED[mode] or mode
+	end
+	return mode
+end
 
 -- The Attunement Level flag for an item: Not Attuned, or 2, 4, 8, 16 for Attuned through Lightforged.
 local function levelFlag(item, isAttuned)

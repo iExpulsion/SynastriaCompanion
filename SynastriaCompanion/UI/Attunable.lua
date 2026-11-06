@@ -208,6 +208,7 @@ local function toggleGroup(text, key, options, single)
 			else
 				value = bit.bxor(filter[key] or 0, o.value)
 			end
+			if key == "level" then filter.mode = Attune.ModeForLevel(filter.mode, value) end
 			set(key, value ~= 0 and value or nil)
 		end, o.tooltip)
 		if prev then b:SetPoint("LEFT", prev, "RIGHT", -1, 0) else b:SetPoint("LEFT", fs, "RIGHT", GAP, 0) end

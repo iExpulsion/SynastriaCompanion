@@ -69,6 +69,8 @@ for multi-class characters, rarity, slot, Mythic, more than five sources, requir
   one affix you still need, such as "of the Bear".
 - **Affix Forge:** whether affixes count as attuned at the base level, Titanforged, Warforged or Lightforged.
 - **Attunement:** Not Attuned, Attuned, or the best forge level reached (TF, WF, LF). Pick several to combine them.
+  The mode follows: an attuned level switches Attunable (Char) to Attuned (Char), and mixing in Not Attuned
+  switches to All.
 - **Bind:** BoP or BoE.
 - **Source:** items that drop in dungeons, raids or the open world.
 - **Expansion:** Classic, The Burning Crusade or Wrath of the Lich King, from the zones the item comes from (or
