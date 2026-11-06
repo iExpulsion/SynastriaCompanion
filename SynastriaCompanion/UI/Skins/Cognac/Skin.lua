@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-18-g9607ac4. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-20-gddbe1ed. Change it there, then run tools/sync_style.py.
 -- Cognac: gold-framed painted controls on dark glass. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
@@ -87,10 +87,18 @@ local function chrome(f)
 		local es = f:GetEffectiveScale() or 1
 		local function snap(v) return math.floor(v * es + 0.5) / es end
 		local k = snap(256 * s) / 256
-		-- part of a piece (its pixels x0..x1, y0..y1) at x, y by ww, hh, and the same mirrored into the bottom half
+		-- part of a piece (its pixels x0..x1, y0..y1) at x, y by ww, hh, and the same mirrored into the bottom half:
+		-- anchored to the frame's bottom edge by the same offset, since its height isn't always whole screen pixels
 		local function draw(t, mirror, piece, x0, x1, y0, y1, x, y, ww, hh)
 			S.ArtPart(t, f, ATLAS, piece, x0, x1, y0, y1, x, y, ww, hh)
-			if mirror then S.ArtPart(mirror, f, ATLAS, piece, x0, x1, y1, y0, x, snap(h - y - hh), ww, hh) end
+			if mirror then
+				local pw, ph = S.ArtSize(ATLAS, piece)
+				S.Art(mirror, ATLAS, piece, x0 / pw, x1 / pw, y1 / ph, y0 / ph)
+				mirror:ClearAllPoints()
+				mirror:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", x, y)
+				mirror:SetWidth(math.max(ww, 1))
+				mirror:SetHeight(math.max(hh, 1))
+			end
 		end
 		local nw = { snap(o - NW.left * k), snap(o - NW.top * k) }
 		local ne = { snap(w - o - (256 - NE.right) * k), snap(o - NE.top * k) }
