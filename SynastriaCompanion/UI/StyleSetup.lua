@@ -32,6 +32,29 @@ SC:OnLoad(function()
 	S.UseSkin(SC.db.skin, YELLOW)
 end)
 
+-- Companion's windows, dialogs and popups are pixel-scaled (S.PixelScale) unless the player turned it off, so their
+-- edges and 1px borders land on whole screen pixels. SC.PixelScale registers one as it's made.
+local pixelFrames = {}
+
+function SC.PixelScale(frame)
+	pixelFrames[#pixelFrames + 1] = frame
+	S.PixelScale(frame, SC.db.pixelScale)
+	return frame
+end
+
+-- Snaps a window's position to whole pixels, when pixel scaling is on.
+function SC.SnapPosition(frame)
+	if SC.db.pixelScale then S.SnapPosition(frame) end
+end
+
+function SC.SetPixelScale(on)
+	SC.db.pixelScale = on
+	for _, frame in ipairs(pixelFrames) do
+		S.PixelScale(frame, on)
+		SC.SnapPosition(frame)
+	end
+end
+
 StaticPopupDialogs.SYNASTRIA_COMPANION_RELOAD = {
 	text = "Synastria Companion switches to the %s theme after a reload. Reload now?",
 	button1 = "Reload",

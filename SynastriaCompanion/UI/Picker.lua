@@ -38,6 +38,7 @@ local function create()
 	popup:SetFrameStrata("DIALOG")
 	popup:SetToplevel(true)
 	popup:EnableMouse(true)
+	SC.PixelScale(popup)
 	S.Frame(popup, "popup")
 	tinsert(UISpecialFrames, "SynastriaCompanionPicker")
 

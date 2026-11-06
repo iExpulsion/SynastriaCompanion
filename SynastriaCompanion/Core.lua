@@ -11,6 +11,8 @@ local DEFAULTS = {
 	attunable = {},
 	-- the style kit's skin: "material" or "cognac"
 	skin = "material",
+	-- scale windows so their units are whole screen pixels
+	pixelScale = true,
 }
 
 function SC:Print(fmt, ...)

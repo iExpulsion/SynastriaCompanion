@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-20-gddbe1ed. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-22-gb2950cf. Change it there, then run tools/sync_style.py.
 -- Cognac: gold-framed painted controls on dark glass. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
@@ -84,8 +84,7 @@ local function chrome(f)
 	local diamondW, diamondH = (DIAMOND[2] - DIAMOND[1]) * kh, (HBAND[2] - HBAND[1]) * kh
 	follow(f, function(w, h)
 		-- whole screen pixels, so pieces that should meet don't land a fraction of a pixel apart
-		local es = f:GetEffectiveScale() or 1
-		local function snap(v) return math.floor(v * es + 0.5) / es end
+		local function snap(v) return S.Snap(f, v) end
 		local k = snap(256 * s) / 256
 		-- part of a piece (its pixels x0..x1, y0..y1) at x, y by ww, hh, and the same mirrored into the bottom half:
 		-- anchored to the frame's bottom edge by the same offset, since its height isn't always whole screen pixels

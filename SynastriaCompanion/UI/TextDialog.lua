@@ -20,6 +20,7 @@ local function create()
 	dialog:SetFrameStrata("DIALOG")
 	dialog:SetToplevel(true)
 	dialog:EnableMouse(true)
+	SC.PixelScale(dialog)
 	S.Frame(dialog, "popup")
 	tinsert(UISpecialFrames, "SynastriaCompanionTextDialog")
 

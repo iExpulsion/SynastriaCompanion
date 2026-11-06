@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-20-gddbe1ed. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-22-gb2950cf. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -165,6 +165,65 @@ function S.Solid(parent, layer, color)
 	t:SetVertexColor(unpack(color))
 	return t
 end
+
+-- Pixels. The client lays out in UI units, and one unit is effective scale x screen height / 768 screen pixels,
+-- rarely a whole number, so a 1px border or an edge can fall between two pixel rows and blur or shift. A window
+-- given S.PixelScale is scaled so one of its units is a whole number of screen pixels, the number nearest to the
+-- UI scale; then every whole-unit position and size inside it lands on real pixels.
+local function screenHeight()
+	local h = tonumber(((GetCVar and GetCVar("gxResolution")) or ""):match("%d+x(%d+)"))
+	if not h and GetScreenResolutions and GetCurrentResolution then
+		h = tonumber((select(GetCurrentResolution(), GetScreenResolutions()) or ""):match("%d+x(%d+)"))
+	end
+	return h or 768
+end
+
+-- One screen pixel, in a region's own units.
+function S.PixelSize(region)
+	return 768 / (screenHeight() * region:GetEffectiveScale())
+end
+
+-- A length or offset in a region's units, rounded to whole screen pixels.
+function S.Snap(region, v)
+	local p = S.PixelSize(region)
+	return math.floor(v / p + 0.5) * p
+end
+
+local pixelFrames = {}
+
+local function applyPixelScale(frame)
+	local parent = frame:GetParent() or UIParent
+	local perUnit = parent:GetEffectiveScale() * screenHeight() / 768
+	frame:SetScale(math.max(1, math.floor(perUnit + 0.5)) / perUnit)
+end
+
+-- Moves a frame so its top left corner sits on a screen pixel, anchored to UIParent's bottom left. Run it after
+-- the frame is placed and after it's dragged.
+function S.SnapPosition(frame)
+	local left, top = frame:GetLeft(), frame:GetTop()
+	if left and top then
+		frame:ClearAllPoints()
+		frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", S.Snap(frame, left), S.Snap(frame, top))
+	end
+end
+
+-- Scales a top-level window so its units are whole screen pixels (on = false puts its scale back to 1), and keeps
+-- it so when the UI scale or the screen size changes.
+function S.PixelScale(frame, on)
+	pixelFrames[frame] = on ~= false or nil
+	if on == false then frame:SetScale(1) else applyPixelScale(frame) end
+	return frame
+end
+
+local pixelWatch = CreateFrame("Frame")
+pixelWatch:RegisterEvent("UI_SCALE_CHANGED")
+pixelWatch:RegisterEvent("DISPLAY_SIZE_CHANGED")
+pixelWatch:SetScript("OnEvent", function()
+	for frame in pairs(pixelFrames) do
+		applyPixelScale(frame)
+		S.SnapPosition(frame)
+	end
+end)
 
 -- Atlases: painted pieces packed into one texture by tools/pack_art.py, which writes the RegisterAtlas call. Each
 -- piece is u0, u1, v0, v1 on the atlas, then how much trimming took off its left, top, right and bottom, as

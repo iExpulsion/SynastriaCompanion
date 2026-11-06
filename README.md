@@ -167,7 +167,12 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp minimap reset` | Puts the minimap button back on the minimap |
 | `/scomp reset` | Moves the window back to the center of the screen |
 | `/scomp theme <name>` | Switches the theme after a reload: `material` or `cognac` |
+| `/scomp pixel` | Turns pixel snapping off or back on (see below) |
 | `/scomp replace <screen> off` | Gives a screen back to the game's own window; `on` takes it back |
+
+Companion's windows snap to whole screen pixels, so their borders stay crisp. At most UI scales that makes the
+window a little larger or smaller than the rest of your UI; `/scomp pixel` turns it off if you'd rather it matched
+exactly.
 
 ## Credits
 

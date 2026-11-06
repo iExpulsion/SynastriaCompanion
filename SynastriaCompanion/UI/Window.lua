@@ -84,6 +84,7 @@ local function find(key)
 end
 
 local function savePosition(f)
+	SC.SnapPosition(f)
 	local point, _, relPoint, x, y = f:GetPoint()
 	SC.db.window = { point = point, relPoint = relPoint, x = x, y = y }
 end
@@ -196,8 +197,10 @@ local function create()
 	f:EnableMouse(true)
 	f:SetMovable(true)
 	f:SetClampedToScreen(true)
+	SC.PixelScale(f)
 	local pos = SC.db.window
 	if pos and pos.point then f:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y) else f:SetPoint("CENTER") end
+	SC.SnapPosition(f)
 	S.Frame(f, "window")
 	tinsert(UISpecialFrames, "SynastriaCompanionFrame")
 	f:Hide()
@@ -254,6 +257,7 @@ function Window.ResetPosition()
 	if frame then
 		frame:ClearAllPoints()
 		frame:SetPoint("CENTER")
+		SC.SnapPosition(frame)
 	end
 end
 
