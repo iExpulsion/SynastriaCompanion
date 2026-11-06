@@ -25,7 +25,7 @@ Attune.SLOTS = {
 	{ "INVTYPE_HAND", "Hands" }, { "INVTYPE_FINGER", "Finger" }, { "INVTYPE_TRINKET", "Trinket" },
 	{ "INVTYPE_CLOAK", "Cloak" },
 	{ "INVTYPE_WEAPON", "One-Hand", "INVTYPE_WEAPONMAINHAND", "INVTYPE_WEAPONOFFHAND" },
-	{ "INVTYPE_2HWEAPON", "Two-Hand" }, { "INVTYPE_SHIELD", "Shield" }, { "INVTYPE_HOLDABLE", "Held in Off-Hand" },
+	{ "INVTYPE_2HWEAPON", "Two-Hand" }, { "INVTYPE_SHIELD", "Shield" }, { "INVTYPE_HOLDABLE", "Off-Hand" },
 	{ "INVTYPE_RANGED", "Ranged", "INVTYPE_THROWN", "INVTYPE_RANGEDRIGHT" }, { "INVTYPE_RELIC", "Relic" },
 	{ "INVTYPE_TABARD", "Tabard" },
 }
