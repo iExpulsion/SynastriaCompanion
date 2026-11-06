@@ -61,13 +61,24 @@ for what it counts, and sort by any column to see your biggest bonuses first.
 ### Attunable Items
 
 The attune search, rebuilt. Every result is shown (the game's window stops at 500), and the filters apply as you
-type. They're the same as the game's: the mode (Attunable or Attuned, for this character or the account, or All),
-class for multi-class characters, rarity, slot, Mythic, Has Affix, more than five sources, required level, item
-level and zone. **Current** picks the zone you're in.
+type. It has the game's filters: the mode (Attunable or Attuned, for this character or the account, or All), class
+for multi-class characters, rarity, slot, Mythic, more than five sources, required level, item level and zone.
+**Current** picks the zone you're in. On top of those:
 
-The table sorts by item, slot, item level, required level or sources. In the modes that list attuned items, a
-**Forge** column shows each item's forge level in the game's colors. The footer shows the attuned share of
-everything your filters match.
+- **Affix:** items with or without affixes, items with affixes you haven't attuned yet, or every item that can roll
+  one affix you still need, such as "of the Bear".
+- **Affix Forge:** whether affixes count as attuned at the base level, Titanforged, Warforged or Lightforged.
+- **Attunement:** Not Attuned, Attuned, or the best forge level reached (TF, WF, LF). Pick several to combine them.
+- **Bind:** BoP or BoE.
+- **Source:** items that drop in dungeons, raids or the open world.
+- **Expansion:** Classic, The Burning Crusade or Wrath of the Lich King, from the zones the item comes from (or
+  its required level when none is known).
+
+Source and Expansion read every item's sources the first time you use them, which takes a few seconds.
+
+The table sorts by item, slot, item level, required level, sources or affixes left. **Affixes Left** counts the
+affixes you haven't attuned at the Affix Forge level. In the modes that list attuned items, a **Forge** column shows
+each item's forge level in the game's colors. The footer shows the attuned share of everything your filters match.
 
 Click an item to open it in the Item Database, or Shift-click it to link it.
 
