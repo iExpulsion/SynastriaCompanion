@@ -61,6 +61,7 @@ local SOURCE_SORT = {
 	zone = function(r) return r.zone end,
 	chance = function(r) return r.chance end,
 	per = function(r) return r.per end,
+	spawns = function(r) return r.spawns or 0 end,
 }
 
 local function top()
@@ -139,11 +140,12 @@ local SEARCH_COLUMNS = {
 	{ key = "status", label = "Status", width = 113, defaultDesc = true },
 }
 local SOURCE_COLUMNS = {
-	{ key = "name", label = "Source", width = 236 },
-	{ key = "type", label = "Type", width = 110 },
-	{ key = "zone", label = "Zone", width = 177 },
+	{ key = "name", label = "Source", width = 210 },
+	{ key = "type", label = "Type", width = 100 },
+	{ key = "zone", label = "Zone", width = 143 },
 	{ key = "chance", label = "Chance", width = 80, justify = "RIGHT", defaultDesc = true },
 	{ key = "per", label = "Per 1000", width = 90, justify = "RIGHT", defaultDesc = true },
+	{ key = "spawns", label = "Spawned", width = 70, justify = "RIGHT", defaultDesc = true },
 }
 local LOOT_COLUMNS = {
 	{ key = "name", label = "Item", width = 300 },
@@ -174,6 +176,8 @@ local function sourceCell(s, key)
 		return (s.srcType == 2 or s.srcType == 9) and "" or LootDB.ChanceText(s.chance)
 	elseif key == "per" then
 		return (s.srcType == 2 or s.srcType == 9) and "" or LootDB.PerText(s.per), C.muted
+	elseif key == "spawns" then
+		return (s.spawns and s.spawns > 0) and LootDB.PerText(s.spawns) or "", C.muted
 	end
 end
 
