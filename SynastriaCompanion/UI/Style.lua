@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-4-g48c643a. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-7-g1a7bc9b. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -124,8 +124,9 @@ S.SetTheme()
 S.PAD, S.GAP, S.CONTROL_H = 12, 8, 24
 
 -- What a skin's frame decoration takes up: edge, the border S.Frame draws around a "window", which its content
--- stays inside; inset, the padding inside a "popup"; navInset, how far in from a sidebar's sides its entries sit.
-local METRICS = { edge = 0, inset = S.PAD, navInset = 0 }
+-- stays inside; inset, the padding inside a "popup"; navInset, how far in from a sidebar's sides its entries sit;
+-- wellInset, extra padding inside an S.Well for its frame.
+local METRICS = { edge = 0, inset = S.PAD, navInset = 0, wellInset = 0 }
 S.metrics = {}
 for k, v in pairs(METRICS) do S.metrics[k] = v end
 
@@ -581,6 +582,12 @@ function S.Frame(frame, role)
 	return frame
 end
 
+-- A sunken area holding text or a list, such as a multi-line text box's surround.
+function S.Well(frame)
+	skin.well(frame)
+	return frame
+end
+
 -- The background of a window's navigation sidebar, with its dividing edge on the right.
 function S.Sidebar(side)
 	skin.sidebar(side)
@@ -611,7 +618,7 @@ end
 -- Skins: how the controls above are drawn. A skin can carry a scheme of its own (roles, as S.SetTheme takes them),
 -- set colors apart from the scheme (colors(c, M3), run after the scheme fills S.colors), and change S.metrics.
 -- label names it in a picker, credit says who made it. The drawing functions: button(b) and
--- paintButton(b, enabled) (b.kind, b.hovered, b.down), frame(f, role), sidebar(side), highlight(f), navEntry(b) and
+-- paintButton(b, enabled) (b.kind, b.hovered, b.down), frame(f, role), well(f), sidebar(side), highlight(f), navEntry(b) and
 -- paintNav(b, on), input(e, tall) and paintInput(e) (e.focused, e.hovered).
 function S.RegisterSkin(key, def)
 	skins[key] = def
@@ -658,6 +665,9 @@ S.RegisterSkin("material", {
 	end,
 	frame = function(f, role)
 		S.Panel(f, role == "window" and S.colors.window or S.colors.panel, S.colors.border)
+	end,
+	well = function(f)
+		S.Panel(f, S.colors.well, S.colors.border)
 	end,
 	sidebar = function(side)
 		local fill = S.Solid(side, "BACKGROUND", S.colors.sidebar)
