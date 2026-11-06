@@ -394,7 +394,7 @@ local SORT_KEYS = {
 	forge = Attune.Forge,
 }
 
--- Sorts by the Affixes Left column at the filter's forge level; items without affixes go last.
+-- Sorts by the Affixes column (affixes left to attune) at the filter's forge level; items without affixes go last.
 function Attune.SetAffixSortForge(forge)
 	SORT_KEYS.affixes = function(i) return Attune.AffixesLeft(i, forge) or -1 end
 end

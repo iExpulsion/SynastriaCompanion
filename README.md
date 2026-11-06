@@ -82,8 +82,8 @@ your advanced choices kept for next time.
 
 Source and Expansion read every item's sources the first time you use them, which takes a few seconds.
 
-The table sorts by item, slot, item level, required level or sources. While Advanced is open, an **Affixes Left**
-column counts the affixes you haven't attuned at the Affix Forge level. In the modes that list attuned items, a **Forge** column shows
+The table sorts by item, slot, item level, required level or sources. While Advanced is open, an **Affixes**
+column counts the affixes you haven't attuned at the Affix Forge level (a dash for items without affixes). In the modes that list attuned items, a **Forge** column shows
 each item's forge level in the game's colors. The footer shows the attuned share of everything your filters match.
 
 Click an item to open it in the Item Database, or Shift-click it to link it.

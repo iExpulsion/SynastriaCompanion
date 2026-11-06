@@ -329,7 +329,8 @@ local COLUMNS = {
 	{ key = "ilvl", label = "iLvl", width = 52, defaultDesc = true },
 	{ key = "req", label = "Req", width = 48, defaultDesc = true },
 	{ key = "sources", label = "Sources", width = 66, defaultDesc = true },
-	{ key = "affixes", label = "Affixes Left", width = 84, defaultDesc = true },
+	{ key = "affixes", label = "Affixes", width = 70, defaultDesc = true,
+		tooltip = "Affixes you haven't attuned yet, at the Affix Forge level. A dash means the item has none." },
 	{ key = "forge", label = "Forge", width = 92, defaultDesc = true },
 }
 
