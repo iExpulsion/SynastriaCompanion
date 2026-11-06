@@ -55,11 +55,32 @@ function SecureCast.Overlay(spot, opts)
 	return o
 end
 
+local suspended = false
+
+local function hide(o)
+	if o:IsShown() then
+		o:Hide()
+		o.x = nil
+		if o.spot.UnlockHighlight then o.spot:UnlockHighlight() end
+	end
+end
+
+-- Reading a spot's position makes the client resolve the layout of the window it's in, which fights StartMoving
+-- and makes a dragged window lag. So positions are read only for overlays that have a spell to cast, and a window
+-- drag suspends them all until it ends.
+function SecureCast.SetSuspended(on)
+	suspended = on
+	if on and not InCombatLockdown() then
+		for _, o in ipairs(SecureCast.overlays) do hide(o) end
+	end
+end
+
 local function place(o)
 	local spot = o.spot
 	local spell = spot:IsVisible() and o.opts.spell()
 	local text = spell and macro(spell)
-	local left, bottom = spot:GetLeft(), spot:GetBottom()
+	local left, bottom
+	if text then left, bottom = spot:GetLeft(), spot:GetBottom() end
 	if text and left and bottom then
 		local scale = spot:GetEffectiveScale() / UIParent:GetEffectiveScale()
 		local x, y, w, h = left * scale, bottom * scale, spot:GetWidth() * scale, spot:GetHeight() * scale
@@ -80,14 +101,13 @@ local function place(o)
 		if o:GetFrameStrata() ~= strata then o:SetFrameStrata(strata) end
 		if o:GetFrameLevel() ~= level then o:SetFrameLevel(level) end
 		if not o:IsShown() then o:Show() end
-	elseif o:IsShown() then
-		o:Hide()
-		if spot.UnlockHighlight then spot:UnlockHighlight() end
+	else
+		hide(o)
 	end
 end
 
 function SecureCast.Update()
-	if not InCombatLockdown() then
+	if not suspended and not InCombatLockdown() then
 		for _, o in ipairs(SecureCast.overlays) do place(o) end
 	end
 end
@@ -98,11 +118,7 @@ watch:RegisterEvent("PLAYER_REGEN_DISABLED")
 watch:SetScript("OnEvent", function()
 	-- fires just before the lockdown starts, so they can still hide here; placing them again after combat starts
 	-- from scratch
-	for _, o in ipairs(SecureCast.overlays) do
-		o:Hide()
-		o.x = nil
-		if o.spot.UnlockHighlight then o.spot:UnlockHighlight() end
-	end
+	for _, o in ipairs(SecureCast.overlays) do hide(o) end
 end)
 
 -- The spell a screen needs cast right now, or nil.

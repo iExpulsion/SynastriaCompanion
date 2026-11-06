@@ -104,11 +104,13 @@ local function createTitleBar(f)
 	bar:RegisterForDrag("LeftButton")
 	bar:SetScript("OnDragStart", function()
 		S.Dismiss()
+		SC.SecureCast.SetSuspended(true)
 		f:StartMoving()
 	end)
 	bar:SetScript("OnDragStop", function()
 		f:StopMovingOrSizing()
 		savePosition(f)
+		SC.SecureCast.SetSuspended(false)
 	end)
 	S.Rule(bar, "BOTTOM")
 
@@ -204,6 +206,9 @@ local function create()
 	f:SetScript("OnHide", function()
 		PlaySound("igCharacterInfoClose")
 		S.Dismiss()
+		-- closing mid-drag (Escape) can skip OnDragStop
+		f:StopMovingOrSizing()
+		SC.SecureCast.SetSuspended(false)
 	end)
 	return f
 end
