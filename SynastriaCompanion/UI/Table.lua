@@ -83,20 +83,28 @@ local function paintHeader(self)
 	end
 end
 
--- Places the shown columns left to right; the last shown one takes any spare width and keeps its text clear of the
--- scroll bar, since the rows run under the bar to the table's edge.
+-- Places the shown columns left to right. The shown column marked stretch (else the last shown) takes any spare
+-- width, such as a hidden column's; the last shown keeps its text clear of the scroll bar, since the rows run under
+-- the bar to the table's edge.
 local function layout(self)
-	local x, last = 0, nil
+	local used, last, stretch = 0, nil, nil
 	for _, col in ipairs(self.columns) do
-		col.x, col.width, col.barInset = x, col.baseWidth, nil
+		col.width, col.barInset = col.baseWidth, nil
 		if not col.hidden then
-			x = x + col.width
+			used = used + col.width
 			last = col
+			if col.stretch and not stretch then stretch = col end
 		end
 	end
+	stretch = stretch or last
 	if last then
-		last.width = last.width + math.max(0, self.width - 2 - x)
+		stretch.width = stretch.width + math.max(0, self.width - 2 - used)
 		last.barInset = BAR_SPACE
+	end
+	local x = 0
+	for _, col in ipairs(self.columns) do
+		col.x = x
+		if not col.hidden then x = x + col.width end
 	end
 	for c, col in ipairs(self.columns) do
 		local h = self.headers[c]
@@ -116,7 +124,7 @@ local function layout(self)
 	end
 end
 
--- opts: columns = { { key, label, width, justify, sortable, defaultDesc, tooltip } }, rowH, icons (first column has an icon),
+-- opts: columns = { { key, label, width, justify, sortable, defaultDesc, tooltip, stretch } }, rowH, icons (first column has an icon),
 -- cell(item, key) -> text, icon(item) -> texture, tooltip(tt, item), onClick(item, button), onSort(key, desc),
 -- header(item) -> label when the item is a group header row
 function Table.New(parent, name, width, height, opts)

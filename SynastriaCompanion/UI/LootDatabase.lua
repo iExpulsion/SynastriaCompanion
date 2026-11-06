@@ -134,13 +134,13 @@ end
 -- Builders ----------------------------------------------------------------------------------------------------
 
 local SEARCH_COLUMNS = {
-	{ key = "name", label = "Item", width = 360 },
+	{ key = "name", label = "Item", width = 360, stretch = true },
 	{ key = "kind", label = "Type", width = 160 },
 	{ key = "ilvl", label = "iLvl", width = 60, justify = "RIGHT", defaultDesc = true },
 	{ key = "status", label = "Status", width = 113, defaultDesc = true },
 }
 local SOURCE_COLUMNS = {
-	{ key = "name", label = "Source", width = 210 },
+	{ key = "name", label = "Source", width = 210, stretch = true },
 	{ key = "type", label = "Type", width = 100 },
 	{ key = "zone", label = "Zone", width = 143 },
 	{ key = "chance", label = "Chance", width = 80, justify = "RIGHT", defaultDesc = true },
@@ -148,7 +148,7 @@ local SOURCE_COLUMNS = {
 	{ key = "spawns", label = "Spawned", width = 70, justify = "RIGHT", defaultDesc = true },
 }
 local LOOT_COLUMNS = {
-	{ key = "name", label = "Item", width = 300 },
+	{ key = "name", label = "Item", width = 300, stretch = true },
 	{ key = "type", label = "Type", width = 120 },
 	{ key = "chance", label = "Chance", width = 80, justify = "RIGHT", defaultDesc = true },
 	{ key = "per", label = "Per 1000", width = 90, justify = "RIGHT", defaultDesc = true },

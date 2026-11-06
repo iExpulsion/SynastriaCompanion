@@ -122,12 +122,12 @@ end
 
 local PLAIN_COLUMNS = {
 	{ key = "place", label = "#", width = 46, justify = "RIGHT" },
-	{ key = "name", label = "Player", width = 330 },
+	{ key = "name", label = "Player", width = 330, stretch = true },
 	{ key = "value", label = "Score", width = 140, justify = "RIGHT" },
 }
 local DATED_COLUMNS = {
 	{ key = "place", label = "#", width = 46, justify = "RIGHT" },
-	{ key = "name", label = "Player", width = 260 },
+	{ key = "name", label = "Player", width = 260, stretch = true },
 	{ key = "value", label = "Score", width = 110, justify = "RIGHT" },
 	{ key = "ts", label = "Date", width = 100 },
 }

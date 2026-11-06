@@ -315,7 +315,7 @@ local function forgeCell(item)
 end
 
 local COLUMNS = {
-	{ key = "name", label = "Item", width = 251 },
+	{ key = "name", label = "Item", width = 251, stretch = true },
 	{ key = "slot", label = "Slot", width = 100 },
 	{ key = "ilvl", label = "iLvl", width = 52, justify = "RIGHT", defaultDesc = true },
 	{ key = "req", label = "Req", width = 48, justify = "RIGHT", defaultDesc = true },
