@@ -121,14 +121,14 @@ local function selectBoard(t, arg)
 end
 
 local PLAIN_COLUMNS = {
-	{ key = "place", label = "#", width = 46, justify = "RIGHT" },
+	{ key = "place", label = "#", width = 46 },
 	{ key = "name", label = "Player", width = 330, stretch = true },
-	{ key = "value", label = "Score", width = 140, justify = "RIGHT" },
+	{ key = "value", label = "Score", width = 140 },
 }
 local DATED_COLUMNS = {
-	{ key = "place", label = "#", width = 46, justify = "RIGHT" },
+	{ key = "place", label = "#", width = 46 },
 	{ key = "name", label = "Player", width = 260, stretch = true },
-	{ key = "value", label = "Score", width = 110, justify = "RIGHT" },
+	{ key = "value", label = "Score", width = 110 },
 	{ key = "ts", label = "Date", width = 100 },
 }
 

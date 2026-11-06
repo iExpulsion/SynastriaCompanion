@@ -125,9 +125,9 @@ end
 
 local COLUMNS = {
 	{ key = "name", label = "Material", width = 228, stretch = true },
-	{ key = "count", label = "In Bank", width = 100, justify = "RIGHT", defaultDesc = true },
-	{ key = "bags", label = "In Bags", width = 100, justify = "RIGHT", defaultDesc = true },
-	{ key = "recent", label = "Looted", width = 100, justify = "RIGHT", defaultDesc = true },
+	{ key = "count", label = "In Bank", width = 100, defaultDesc = true },
+	{ key = "bags", label = "In Bags", width = 100, defaultDesc = true },
+	{ key = "recent", label = "Looted", width = 100, defaultDesc = true },
 }
 
 local function cell(row, key)

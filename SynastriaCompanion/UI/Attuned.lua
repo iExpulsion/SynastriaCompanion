@@ -35,14 +35,14 @@ end
 
 local COLUMNS = {
 	{ key = "stat", label = "Stat", width = 156 },
-	{ key = "total", label = "Total", width = 110, justify = "RIGHT", defaultDesc = true,
+	{ key = "total", label = "Total", width = 110, defaultDesc = true,
 		tooltip = "What this character gets: Misc, its armor type and Weapon added up." },
-	{ key = "misc", label = "Misc", width = 106, justify = "RIGHT", defaultDesc = true,
+	{ key = "misc", label = "Misc", width = 106, defaultDesc = true,
 		tooltip = "Jewelry, cloaks and other gear any class can wear." },
-	{ key = "armor", label = "Armor", width = 106, justify = "RIGHT", defaultDesc = true,
+	{ key = "armor", label = "Armor", width = 106, defaultDesc = true,
 		tooltip = "Armor of this character's type." },
-	{ key = "weapon", label = "Weapon", width = 106, justify = "RIGHT", defaultDesc = true },
-	{ key = "inactive", label = "Inactive", width = 118, justify = "RIGHT", defaultDesc = true,
+	{ key = "weapon", label = "Weapon", width = 106, defaultDesc = true },
+	{ key = "inactive", label = "Inactive", width = 118, defaultDesc = true,
 		tooltip = "Attuned gear this character's armor type or class can't use, so it adds nothing here. Attune progress is account-wide." },
 }
 

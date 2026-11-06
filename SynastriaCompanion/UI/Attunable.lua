@@ -326,10 +326,10 @@ end
 local COLUMNS = {
 	{ key = "name", label = "Item", width = 251, stretch = true },
 	{ key = "slot", label = "Slot", width = 100 },
-	{ key = "ilvl", label = "iLvl", width = 52, justify = "RIGHT", defaultDesc = true },
-	{ key = "req", label = "Req", width = 48, justify = "RIGHT", defaultDesc = true },
-	{ key = "sources", label = "Sources", width = 66, justify = "RIGHT", defaultDesc = true },
-	{ key = "affixes", label = "Affixes Left", width = 84, justify = "RIGHT", defaultDesc = true },
+	{ key = "ilvl", label = "iLvl", width = 52, defaultDesc = true },
+	{ key = "req", label = "Req", width = 48, defaultDesc = true },
+	{ key = "sources", label = "Sources", width = 66, defaultDesc = true },
+	{ key = "affixes", label = "Affixes Left", width = 84, defaultDesc = true },
 	{ key = "forge", label = "Forge", width = 92, defaultDesc = true },
 }
 

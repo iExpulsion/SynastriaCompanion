@@ -127,19 +127,8 @@ local function layout(self)
 		local h = self.headers[c]
 		h:SetSize(col.width, HEADER_H)
 		h:SetPoint("TOPLEFT", col.x, 0)
-		local bar = col.barInset or 0
-		h.label:ClearAllPoints()
-		h.arrow:ClearAllPoints()
-		if col.justify == "RIGHT" then
-			-- the label ends where the cells' text does, with the sort arrow just left of it
-			h.label:SetPoint("LEFT", 22, TEXT_Y)
-			h.label:SetPoint("RIGHT", -6 - bar, TEXT_Y)
-			h.arrow:SetPoint("RIGHT", -6 - bar - math.ceil(h.label:GetStringWidth()) - 3, 0)
-		else
-			h.label:SetPoint("LEFT", 6, TEXT_Y)
-			h.label:SetPoint("RIGHT", -16 - bar, TEXT_Y)
-			h.arrow:SetPoint("RIGHT", -4 - bar, 0)
-		end
+		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), TEXT_Y)
+		h.arrow:SetPoint("RIGHT", -4 - (col.barInset or 0), 0)
 		if col.hidden then h:Hide() else h:Show() end
 		local inset = (c == 1 and self.icons) and self.rowH or 0
 		for _, row in ipairs(self.rows) do
