@@ -81,9 +81,11 @@ acquired. Items you haven't show in red and won't apply. The preview on the righ
 drag it to turn it around.
 
 Click a slot to pick its appearance. The list has a type filter (armor type or weapon type) and a search, and
-hovering an appearance tries it on the preview. Click one to choose it. **Naked** previews it with nothing else on,
-**Show Background** puts your race's background behind the preview, and **Show Duplicates** also lists items that
+hovering an appearance tries it on the preview. Click one to choose it. **Show Duplicates** also lists items that
 look the same as one already listed. Right-click a slot to go back to your equipped look.
+
+Along the bottom of the preview, **Naked** shows only what you're trying, with nothing else on, and **Show
+Background** puts your race's background behind your character.
 
 **Sets** lists the game's item sets, from dungeon and tier sets to PvP gear, filtered to your class and armor type
 or every set, with a search. **Pieces** shows how many of a set's pieces you can use, and hovering a set tries it

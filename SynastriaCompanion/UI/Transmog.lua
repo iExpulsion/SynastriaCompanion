@@ -108,6 +108,10 @@ function TransmogUI.Preview(override)
 	p.want = outfitFor(state.look, override)
 	local bg = T.HasOption(T.BACKGROUND)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
+	if p.naked then
+		p.naked.check:SetChecked(T.HasOption(T.NAKED))
+		p.background.check:SetChecked(bg)
+	end
 end
 
 -- The race background is the dressing room's 320x384 picture in four files. Its last rows fade to black (the
@@ -210,6 +214,7 @@ local function createPreview(width, height)
 	end)
 	p.model = model
 
+	p.drag, p.inset = drag, wi
 	p.hint = S.Text(drag, "small", C.muted)
 	p.hint:SetPoint("TOP", 0, -wi - 6)
 	p.hint:SetText("Drag to Rotate")
@@ -329,8 +334,6 @@ local function renderPicker()
 	end
 	local searchable = T.HasSearch() and not picking.hand
 	if searchable then pk.search:Show() pk.dupes:Show() else pk.search:Hide() pk.dupes:Hide() end
-	pk.naked.check:SetChecked(T.HasOption(T.NAKED))
-	pk.background.check:SetChecked(T.HasOption(T.BACKGROUND))
 	pk.dupes.check:SetChecked(T.HasOption(T.DUPLICATES))
 
 	local rows = picking.hand and T.EnchantChoices(state.look, picking.hand)
@@ -395,8 +398,6 @@ local function renderSets()
 	local sv = panel.sets
 	sv.class:SetText(state.setClass == "all" and "All Classes" or "Your Class")
 	sv.armor:SetText(state.setArmor == 0 and "Any Armor" or T.ARMOR_TYPES[state.setArmor])
-	sv.naked.check:SetChecked(T.HasOption(T.NAKED))
-	sv.background.check:SetChecked(T.HasOption(T.BACKGROUND))
 	local q = (state.setSearch or ""):lower()
 	local rows = {}
 	for _, set in ipairs(T.Sets()) do
@@ -489,7 +490,8 @@ local function labeledCheck(parent, label, tooltip, onClick)
 	row.label = S.Text(row, "small")
 	row.label:SetPoint("LEFT", row.check, "RIGHT", 6, 0)
 	row.label:SetText(label)
-	row:SetWidth(S.CHECK_H + 6 + row.label:GetStringWidth() + 4)
+	row.w = S.CHECK_H + 6 + row.label:GetStringWidth() + 4
+	row:SetWidth(row.w)
 	row:SetScript("OnClick", function() onClick(not row.check.on) end)
 	row:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -535,14 +537,9 @@ local function createPicker(width, height)
 	end)
 	pk.search:SetScript("OnEnterPressed", pk.search.ClearFocus)
 
-	local checksY = -2 * (CONTROL_H + GAP)
-	pk.naked = labeledCheck(pk, "Naked", "Show only the appearance you're trying, with nothing else on.", option(T.NAKED))
-	pk.naked:SetPoint("TOPLEFT", 0, checksY)
-	pk.background = labeledCheck(pk, "Show Background", "Show your race's background behind the preview.", option(T.BACKGROUND))
-	pk.background:SetPoint("LEFT", pk.naked, "RIGHT", PAD, 0)
 	pk.dupes = labeledCheck(pk, "Show Duplicates", "Also list items that look the same as one already listed. A search always shows them.",
 		option(T.DUPLICATES))
-	pk.dupes:SetPoint("LEFT", pk.background, "RIGHT", PAD, 0)
+	pk.dupes:SetPoint("TOPLEFT", 0, -2 * (CONTROL_H + GAP))
 
 	local top = 3 * (CONTROL_H + GAP)
 	pk.table = SC.Table.New(pk, "SynastriaCompanionTransmogChoices", width, height - top, {
@@ -599,13 +596,7 @@ local function createSets(width, height)
 	end)
 	sv.search:SetScript("OnEnterPressed", sv.search.ClearFocus)
 
-	local checksY = -2 * (CONTROL_H + GAP)
-	sv.naked = labeledCheck(sv, "Naked", "Show only the set's pieces, with nothing else on.", option(T.NAKED))
-	sv.naked:SetPoint("TOPLEFT", 0, checksY)
-	sv.background = labeledCheck(sv, "Show Background", "Show your race's background behind the preview.", option(T.BACKGROUND))
-	sv.background:SetPoint("LEFT", sv.naked, "RIGHT", PAD, 0)
-
-	local top = 3 * (CONTROL_H + GAP)
+	local top = 2 * (CONTROL_H + GAP)
 	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSets", width, height - top, {
 		columns = {
 			{ key = "name", label = "Set", width = 200, stretch = true },
@@ -740,6 +731,18 @@ local function create(parent, width, height)
 	panel.picker:SetPoint("TOPLEFT", PAD, -PAD)
 
 	panel.preview = createPreview(PREVIEW_W, bodyH)
+	-- the preview's own options, on a strip along its bottom so they read over the background
+	local p = panel.preview
+	local strip = CreateFrame("Frame", nil, p.drag)
+	strip:SetPoint("BOTTOMLEFT", p.inset, p.inset)
+	strip:SetPoint("BOTTOMRIGHT", -p.inset, p.inset)
+	strip:SetHeight(CONTROL_H + GAP)
+	S.Solid(strip, "BACKGROUND", { 0, 0, 0, 0.55 }):SetAllPoints()
+	p.naked = labeledCheck(strip, "Naked", "Show only what you're trying, with nothing else on.", option(T.NAKED))
+	p.background = labeledCheck(strip, "Show Background", "Show your race's background behind the preview.", option(T.BACKGROUND))
+	local both = p.naked.w + PAD + p.background.w
+	p.naked:SetPoint("LEFT", strip, "CENTER", -both / 2, 0)
+	p.background:SetPoint("LEFT", p.naked, "RIGHT", PAD, 0)
 	panel.preview:SetPoint("TOPRIGHT", -PAD, -PAD)
 
 	local footerY = PAD + CONTROL_H / 2
