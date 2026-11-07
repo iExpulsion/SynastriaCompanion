@@ -45,6 +45,17 @@ local function valueText(value, enchant)
 	return text, color
 end
 
+-- The tables put tooltips right of the row, over the preview; these go left of the window instead, level with
+-- the row.
+local function besideWindow(tt)
+	local row, window = tt:GetOwner(), SC.Window.Frame()
+	if row and window and row:GetLeft() and window:GetLeft() then
+		tt:SetOwner(row, "ANCHOR_NONE")
+		tt:ClearAllPoints()
+		tt:SetPoint("TOPRIGHT", row, "TOPLEFT", window:GetLeft() - row:GetLeft() - 4, 0)
+	end
+end
+
 -- Preview ----------------------------------------------------------------------------------------------------
 
 -- The model can't wear anything until it has loaded the character, so what it should wear waits in `want` until
@@ -181,6 +192,7 @@ local function slotIcon(row)
 end
 
 local function slotTooltip(tt, row)
+	besideWindow(tt)
 	local value = rowValue(row)
 	if not row.hand and value > T.HIDDEN then
 		tt:SetHyperlink("item:" .. value)
@@ -230,6 +242,7 @@ local function choiceIcon(row)
 end
 
 local function choiceTooltip(tt, row)
+	besideWindow(tt)
 	local value = row.value
 	if not picking.hand and value > T.HIDDEN then
 		tt:SetHyperlink("item:" .. value)
