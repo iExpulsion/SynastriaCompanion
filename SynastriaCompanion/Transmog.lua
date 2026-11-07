@@ -173,9 +173,25 @@ function Transmog.SetEnchant(look, hand, value)
 end
 
 -- Whether a chosen item applies: the account must have attuned it, or acquired it when it can't be attuned.
+-- Inside Transmog.Batch the answers are remembered, since the set list asks about thousands of items per redraw.
+local usableCache
+
 function Transmog.Usable(value)
-	return value <= Transmog.HIDDEN or (HasAttunedAnyVariantOfItem(value) and true or false)
-		or (Custom_HasAcquiredItem ~= nil and Custom_HasAcquiredItem(value) and true or false)
+	local known = usableCache and usableCache[value]
+	if known == nil then
+		known = value <= Transmog.HIDDEN or (HasAttunedAnyVariantOfItem(value) and true or false)
+			or (Custom_HasAcquiredItem ~= nil and Custom_HasAcquiredItem(value) and true or false)
+		if usableCache then usableCache[value] = known end
+	end
+	return known
+end
+
+-- Runs fn with Usable's answers remembered until it returns.
+function Transmog.Batch(fn)
+	usableCache = {}
+	local ok, err = pcall(fn)
+	usableCache = nil
+	if not ok then error(err, 0) end
 end
 
 -- The slots of the look that won't apply.
@@ -364,18 +380,18 @@ function Transmog.SetForClass(set)
 	return set.mask == 0 or bit.band(set.mask, Transmog.ClassMask()) ~= 0
 end
 
--- The set's look, one piece per slot: the first the account can use, or the first there is. { slot, id, usable }
--- in slot order.
+-- The set's look, one piece per slot: the first item with that look the account can use, or the set's own piece.
+-- { slot, id, usable, piece = the set's own item } in slot order. A slot lists the set's own piece first, then
+-- every other item with the same look.
 function Transmog.SetPieces(set)
 	local bySlot, order = {}, {}
 	for _, piece in ipairs(set.pieces) do
 		local current = bySlot[piece.slot]
-		local usable = Transmog.Usable(piece.id)
 		if not current then
 			order[#order + 1] = piece.slot
-			bySlot[piece.slot] = { slot = piece.slot, id = piece.id, usable = usable }
-		elseif usable and not current.usable then
-			bySlot[piece.slot] = { slot = piece.slot, id = piece.id, usable = true }
+			bySlot[piece.slot] = { slot = piece.slot, id = piece.id, piece = piece.id, usable = Transmog.Usable(piece.id) }
+		elseif not current.usable and Transmog.Usable(piece.id) then
+			current.id, current.usable = piece.id, true
 		end
 	end
 	table.sort(order)

@@ -420,15 +420,17 @@ local function renderSets()
 	sv.armor:SetText(state.setArmor == 0 and "Any Armor" or T.ARMOR_TYPES[state.setArmor])
 	local q = (state.setSearch or ""):lower()
 	local groups = {}
-	for _, set in ipairs(T.Sets()) do
-		if setMatches(set, q) then
-			local best = T.BestVersion(set)
-			local row = versionRow(best)
-			row.set, row.shows, row.child = set, best, false
-			row.recolored = #set.versions > 1
-			groups[#groups + 1] = row
+	T.Batch(function()
+		for _, set in ipairs(T.Sets()) do
+			if setMatches(set, q) then
+				local best = T.BestVersion(set)
+				local row = versionRow(best)
+				row.set, row.shows, row.child = set, best, false
+				row.recolored = #set.versions > 1
+				groups[#groups + 1] = row
+			end
 		end
-	end
+	end)
 	local get = SET_SORT[state.setSort] or SET_SORT.name
 	table.sort(groups, function(a, b)
 		local va, vb = get(a), get(b)
@@ -437,17 +439,19 @@ local function renderSets()
 		return va < vb
 	end)
 	local rows = {}
-	for _, group in ipairs(groups) do
-		rows[#rows + 1] = group
-		group.open = group.recolored and (state.setOpen[group.set.name] or q ~= "")
-		if group.open then
-			for _, version in ipairs(group.set.versions) do
-				local row = versionRow(version)
-				row.child = true
-				rows[#rows + 1] = row
+	T.Batch(function()
+		for _, group in ipairs(groups) do
+			rows[#rows + 1] = group
+			group.open = group.recolored and (state.setOpen[group.set.name] or q ~= "")
+			if group.open then
+				for _, version in ipairs(group.set.versions) do
+					local row = versionRow(version)
+					row.child = true
+					rows[#rows + 1] = row
+				end
 			end
 		end
-	end
+	end)
 	sv.table:SetItems(rows, "No Sets Match", sv.keepScroll)
 	sv.keepScroll = nil
 	panel.status:SetText(S.Count(#groups, "Set"))
@@ -482,11 +486,15 @@ local function setPreview(version)
 	return { set = pieces }
 end
 
+-- Each slot's piece, and the item with the same look that goes in when it's not the set's own.
 local function pieceLines(tt, version)
 	for _, piece in ipairs(T.SetPieces(version)) do
-		local name = itemName(piece.id)
+		local name = itemName(piece.piece)
 		if piece.usable then
 			tt:AddDoubleLine(T.SLOTS[piece.slot].label, name, 0.6, 0.6, 0.66, 1, 1, 1)
+			if piece.id ~= piece.piece and itemName(piece.id) ~= name then
+				tt:AddDoubleLine(" ", "Same look: " .. itemName(piece.id), 1, 1, 1, 0.6, 0.6, 0.66)
+			end
 		else
 			tt:AddDoubleLine(T.SLOTS[piece.slot].label, name, 0.6, 0.6, 0.66, 1, 0.3, 0.3)
 		end

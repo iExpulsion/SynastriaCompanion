@@ -88,7 +88,8 @@ Along the bottom of the preview, **Naked** shows only what you're trying, with n
 Background** puts your race's background behind your character.
 
 **Sets** lists the game's item sets, from dungeon and tier sets to PvP gear, filtered to your class and armor type
-or every set, with a search. **Pieces** shows how many of a set's pieces you can use, and hovering a set tries it
+or every set, with a search. **Pieces** shows how many of a set's pieces you can use, counting any item you have
+with the same look as a piece (the set's tooltip names it), and hovering a set tries it
 all on the preview. A set's recolors, like the Sanctified tier pieces, the 10- and 25-player versions and each
 arena season's version, are grouped under it: its row shows the version you have the most of, and clicking it
 lists every version. Click a set (or a version) to put it on the look: its pieces you've attuned or acquired go in, the slots it
