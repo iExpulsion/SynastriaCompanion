@@ -354,17 +354,18 @@ local function weaponSelection()
 	return hand ~= nil or slot >= T.MAIN_HAND
 end
 
--- What a cell wears: the look without the selected slot (and without weapons when picking the ranged slot, as the
--- game's window does it), then the appearance it shows. An enchant visual is shown on the pair of weapons, the
--- other hand keeping its own, even with Naked on.
+-- What a cell wears: the look without the selected slot, then the appearance it shows. Armor cells leave weapons
+-- off, since their glow fills a zoomed-in cell; the ranged slot leaves the hands empty, as the game's window does
+-- it. An enchant visual is shown on the pair of weapons, the other hand keeping its own, even with Naked on.
 local function cellOutfit(value)
 	local slot, hand = selection()
 	local naked = T.HasOption(T.NAKED)
 	local outfit = {}
 	local weaponSlot = hand and (hand == 1 and T.MAIN_HAND or T.OFF_HAND)
+	local armor = not weaponSelection()
 	for i in ipairs(T.SLOTS) do
 		local isWeapon = i == T.MAIN_HAND or i == T.OFF_HAND
-		local skip = i == slot or i == 14 or i == weaponSlot or (isWeapon and slot == 14 and not hand)
+		local skip = i == slot or i == 14 or i == weaponSlot or (isWeapon and (armor or (slot == 14 and not hand)))
 		local otherHand = hand ~= nil and isWeapon and i ~= weaponSlot
 		if (not naked or otherHand) and not skip then
 			local id, enchant = T.Appearance(state.look, i)
