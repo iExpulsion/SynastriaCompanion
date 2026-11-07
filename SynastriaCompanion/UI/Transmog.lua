@@ -92,10 +92,12 @@ end
 
 -- Preview ----------------------------------------------------------------------------------------------------
 
--- Still Pose holds a model on the first moment of its standing animation, every frame, since it keeps playing.
-local STAND = 0
+-- Still Pose holds a model on one moment of its standing animation, every frame, since it keeps playing. The model
+-- still plays on by the frame's time before it's drawn, so the moment held should be one where the body is at rest
+-- (STILL_AT ms in, or SynastriaCompanionDB.transmog.stillTime while finding the best one).
+local STAND, STILL_AT = 0, 0
 local function holdStill(model)
-	if state and state.still and model.SetSequenceTime then model:SetSequenceTime(STAND, 0) end
+	if state and state.still and model.SetSequenceTime then model:SetSequenceTime(STAND, state.stillTime or STILL_AT) end
 end
 
 -- A model can't wear anything until it has loaded the character, so what it should wear waits until then.
