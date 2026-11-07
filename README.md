@@ -182,4 +182,5 @@ Thanks to **Lulleh** for finding the cause of the window's drag lag.
 ## License
 
 Synastria Companion's code is released under the [MIT License](LICENSE). The Cognac art in
-`SynastriaCompanion/UI/Skins/Cognac` isn't covered by it.
+`SynastriaCompanion/UI/Skins/Cognac` is from [AttuneNext](https://github.com/speedyrulz/AttuneNext) and isn't
+covered by it.
