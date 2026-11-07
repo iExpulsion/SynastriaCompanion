@@ -107,16 +107,27 @@ function TransmogUI.Preview(override)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
 end
 
--- The race background is the dressing room's 320x384 picture in four files. It's scaled to cover the pane without
--- stretching and centered, and textures can't be clipped to a frame, so each piece is cut to the part that shows.
+-- The race background is the dressing room's 320x384 picture in four files. The dressing room puts its model over
+-- the picture's top-left 231x320, which stands the character on the painted floor, so the model keeps that height
+-- here: the picture is scaled to cover the pane without stretching, kept to its bottom edge, and slid sideways
+-- toward the model's spot. Textures can't be clipped to a frame, so each piece is cut to the part that shows.
 local BG_W, BG_H = 320, 384
 local BG_PIECES = { { 0, 0, 256, 256 }, { 256, 0, 64, 256 }, { 0, 256, 256, 128 }, { 256, 256, 64, 128 } }
+local MODEL_W, MODEL_H = 231, 320
 
 -- Where each piece goes inside a w x h pane: { x, y, w, h, left, right, top, bottom } with texture coordinates, or
--- nil for a piece that falls outside it.
+-- nil for a piece that falls outside it; and the model's { x, y, w, h }.
 function TransmogUI.BackgroundLayout(w, h)
 	local scale = math.max(w / BG_W, h / BG_H)
-	local vx, vy = (BG_W - w / scale) / 2, (BG_H - h / scale) / 2
+	local viewW, viewH = w / scale, h / scale
+	local vx = math.max(0, math.min(BG_W - viewW, MODEL_W / 2 - viewW / 2))
+	local vy = BG_H - viewH
+	-- the floor runs the picture's whole width, so the model is centered across the pane; only its height follows
+	-- the picture, which puts its feet on the floor
+	local my = -vy * scale
+	local model = { w = math.min(w, MODEL_W * scale), y = math.max(0, my) }
+	model.x = (w - model.w) / 2
+	model.h = math.min(h, my + MODEL_H * scale) - model.y
 	local out = {}
 	for i, piece in ipairs(BG_PIECES) do
 		local px, py, pw, ph = piece[1], piece[2], piece[3], piece[4]
@@ -127,7 +138,7 @@ function TransmogUI.BackgroundLayout(w, h)
 				left = (x0 - px) / pw, right = (x1 - px) / pw, top = (y0 - py) / ph, bottom = (y1 - py) / ph }
 		end
 	end
-	return out
+	return out, model
 end
 
 function TransmogUI.Background(parent, inset, w, h)
@@ -156,9 +167,11 @@ local function createPreview(width, height)
 	local wi = 1 + S.metrics.wellInset
 	p.bg = TransmogUI.Background(p, wi, width - 2 * wi, height - 2 * wi)
 
+	-- the model stands where the dressing room puts it on the background, with or without the background shown
+	local _, spot = TransmogUI.BackgroundLayout(width - 2 * wi, height - 2 * wi)
 	local model = CreateFrame("DressUpModel", "SynastriaCompanionTransmogModel", p)
-	model:SetPoint("TOPLEFT", wi, -wi)
-	model:SetPoint("BOTTOMRIGHT", -wi, wi)
+	model:SetPoint("TOPLEFT", wi + spot.x, -wi - spot.y)
+	model:SetSize(spot.w, spot.h)
 	model:SetUnit("player")
 	model.facing = 0
 	model:EnableMouse(true)
