@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-42-g86c80a3. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-44-g6f085f7. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -208,6 +208,17 @@ function S.SnapPosition(frame)
 		frame:ClearAllPoints()
 		frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", S.Snap(frame, left), S.Snap(frame, top))
 	end
+end
+
+-- Where windows open by default: centered across the screen, their tops S.WINDOW_TOP of UIParent's units below the
+-- screen's top, so windows of different heights, and different addons', line up.
+S.WINDOW_TOP = 60
+
+-- Puts a window at that spot. The offset is converted from UIParent's units, so a window with a scale of its own
+-- (S.PixelScale) lands in the same place as one without.
+function S.PlaceWindow(frame)
+	frame:ClearAllPoints()
+	frame:SetPoint("TOP", UIParent, "TOP", 0, -S.WINDOW_TOP * UIParent:GetEffectiveScale() / frame:GetEffectiveScale())
 end
 
 -- Scales a top-level window so its units are whole screen pixels (on = false puts its scale back to 1), and keeps

@@ -83,13 +83,9 @@ local function find(key)
 	end
 end
 
--- The default spot: centered across the screen, its top TOP_OFFSET of UIParent's units below the screen's top, as
--- Build Suite's and Rotation Assist's windows are, so their tops line up whatever their heights. The offset is
--- converted from UIParent's units, since the window is pixel-scaled.
-local TOP_OFFSET = 60
+-- The default spot is the style kit's, top middle of the screen, shared with Build Suite and Rotation Assist.
 local function placeDefault(f)
-	f:ClearAllPoints()
-	f:SetPoint("TOP", UIParent, "TOP", 0, -TOP_OFFSET * UIParent:GetEffectiveScale() / f:GetEffectiveScale())
+	S.PlaceWindow(f)
 end
 
 local function savePosition(f)
