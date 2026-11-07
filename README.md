@@ -10,11 +10,12 @@ one of its windows, Companion opens instead.
 ## Features
 
 - **One Window:** every screen sits in one sidebar, grouped into Character, Attunes, Loot and Community, and a
-  minimap button opens any of them.
+  minimap button or a data bar like ElvUI's opens any of them.
 - **Perks in One Place:** every perk by category with its limit, the effect at your rank and the next, set bonuses,
   options, and what the next rank takes and how far along you are.
-- **Transmog You Can Search:** every look's slots in one list, a searchable list of appearances for each slot, item
-  sets you can put on in one click, and a preview of your character that tries each one on as you hover it.
+- **A Wardrobe for Transmog:** your character with a button for every slot, a searchable grid of models for each
+  slot's appearances, and item sets with their recolors, where you pick which pieces to put on. Hovering any of
+  them tries it on your character.
 - **No View Spells Needed:** screens that need the game's View spell cast it on the same click that opens them,
   so those spells can come off your action bars.
 - **Live Filters:** searches and filters apply as you type, with no Search button, and no cap on results.
