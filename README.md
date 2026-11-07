@@ -82,8 +82,9 @@ chooses the specs that switch it on automatically.
 Your character stands on the left, wearing the look, with a button for each slot around it and a small enchant
 visual button under each weapon. A slot can keep your **Equipped Look**, be **Hidden**, or show any item you've
 attuned or acquired; a red slot holds an item you haven't, which won't apply, and a cross marks a hidden one. Drag your character to turn it
-around. Under it, **Naked** shows only what you're trying, with nothing else on, and **Show Background** puts your
-race's background behind your character.
+around. Under it, **Naked** shows only what you're trying, with nothing else on, **Show Background** puts your
+race's background behind your character, and **Still Pose** holds your character and the appearance models still,
+standing.
 
 Click a slot to see its appearances under **Items**: a page of twelve models as big as the game's own, each
 wearing one appearance, framed on that slot. What the slot is set to now shows beside its name. There's a type filter (armor type or weapon type) and a search, the arrows or the mouse wheel turn the page,

@@ -92,6 +92,12 @@ end
 
 -- Preview ----------------------------------------------------------------------------------------------------
 
+-- Still Pose holds a model on the first moment of its standing animation, every frame, since it keeps playing.
+local STAND = 0
+local function holdStill(model)
+	if state and state.still and model.SetSequenceTime then model:SetSequenceTime(STAND, 0) end
+end
+
 -- A model can't wear anything until it has loaded the character, so what it should wear waits until then.
 local function modelReady(model)
 	local file = model:GetModel()
@@ -164,6 +170,7 @@ function TransmogUI.Preview(override)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
 	p.naked.check:SetChecked(T.HasOption(T.NAKED))
 	p.background.check:SetChecked(bg)
+	p.still.check:SetChecked(state.still == true)
 end
 
 -- The race background is the dressing room's 320x384 picture in four files. Its last rows fade to black (the
@@ -251,6 +258,7 @@ local function createCharacter(parent, x, y, w, h, fullW)
 	drag:SetScript("OnMouseUp", function() model.dragX = nil end)
 	drag:SetScript("OnHide", function() model.dragX = nil end)
 	model:SetScript("OnUpdate", function(self)
+		holdStill(self)
 		if self.dragX then
 			local cx = GetCursorPosition()
 			self.facing = self.facing + (cx - self.dragX) * ROTATE_SPEED
@@ -482,6 +490,7 @@ local function newCell(parent, w, h)
 	-- A model reports its file before it has finished loading, and finishing resets its camera and position, so a
 	-- cell is framed again twice after it first dresses.
 	model:SetScript("OnUpdate", function(self)
+		holdStill(self)
 		local now = GetTime()
 		if cell.want and modelReady(self) then
 			cell.want = nil
@@ -925,10 +934,17 @@ local function createDoll(top, height)
 	area.naked = labeledCheck(strip, "Naked", "Show only what you're trying, with nothing else on.", option(T.NAKED))
 	area.background = labeledCheck(strip, "Show Background", "Show your race's background behind your character.",
 		option(T.BACKGROUND))
+	area.still = labeledCheck(strip, "Still Pose", "Hold your character and the appearance models still, standing.",
+		function(on)
+			state.still = on or nil
+			TransmogUI.Refresh()
+		end)
 	area.naked:SetPoint("LEFT", strip, "LEFT", GAP, 0)
 	area.background:SetPoint("LEFT", area.naked, "RIGHT", PAD, 0)
-	local hint = S.Text(strip, "small", C.muted)
-	hint:SetPoint("RIGHT", strip, "RIGHT", -GAP, 0)
+	area.still:SetPoint("LEFT", area.background, "RIGHT", PAD, 0)
+	-- beside the weapons, out of the way of the options
+	local hint = S.Text(doll, "small", C.muted)
+	hint:SetPoint("BOTTOMRIGHT", -edge, wi + STRIP_H + GAP)
 	hint:SetText("Drag to Rotate")
 	return doll
 end
