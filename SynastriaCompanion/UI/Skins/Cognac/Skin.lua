@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-32-g2409e15. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-34-g3e62103. Change it there, then run tools/sync_style.py.
 -- Cognac: gold-framed painted controls on dark glass. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
@@ -23,6 +23,8 @@ local HBAR, HBAND, DIAMOND = { 103, 160 }, { 93, 163 }, { 96, 160 }
 -- the divider's spear: a tip at each end and a diamond in the middle keep their shape; the shafts between stretch
 local SPEAR_W, SPEAR_COLS = 12, { 102, 153 }
 local SPEAR = { { 16, 60, false }, { 60, 100, true }, { 100, 156, false }, { 156, 196, true }, { 196, 240, false } }
+-- the gold divider's straight run (columns along it, rows across), drawn DIVIDER_H pixels thick
+local DIVIDER_COLS, DIVIDER_ROWS, DIVIDER_H = { 60, 100 }, { 116, 140 }, 3
 -- art pixels of corner kept unstretched on button plates and chips, on the card, and the search field's left cap
 local PLATE_CUT, CARD_CUT, CARD_CORNER = 18, 34, 26
 local SEARCH_CAP = 70 / 158
@@ -128,6 +130,7 @@ end
 local function card(f)
 	local slices = S.NineSlice(f, "BACKGROUND", ATLAS, "card", CARD_CUT, CARD_CORNER / CARD_CUT)
 	follow(f, function(w, h) slices:Layout(w, h) end)
+	return slices
 end
 
 -- The spear dividing a sidebar from the page: its tips and diamond keep their shape, its shafts stretch.
@@ -226,6 +229,30 @@ S.RegisterSkin("cognac", {
 	well = function(f)
 		card(f)
 	end,
+	-- no rule under a title bar, which the painted border already sets apart; the gold divider's straight run under
+	-- table headers and beside section headings
+	line = function(parent, kind)
+		local t = parent:CreateTexture(nil, "BORDER")
+		local pw, ph = S.ArtSize(ATLAS, "divider_h")
+		S.Art(t, ATLAS, "divider_h", DIVIDER_COLS[1] / pw, DIVIDER_COLS[2] / pw, DIVIDER_ROWS[1] / ph, DIVIDER_ROWS[2] / ph)
+		if kind == "rule" then t:Hide() end
+		return t, DIVIDER_H
+	end,
+	-- the gold bezel, turning to the teal one while checked
+	check = function(b)
+		b.box = b:CreateTexture(nil, "BACKGROUND")
+		b.box:SetAllPoints()
+		b.tick = b:CreateTexture(nil, "ARTWORK")
+		b.tick:SetAllPoints()
+		S.Art(b.box, ATLAS, "bezel")
+		S.Art(b.tick, ATLAS, "bezel_selected")
+	end,
+	paintCheck = function(b)
+		if b.on then b.tick:Show() else b.tick:Hide() end
+		local shade = not b.usable and 0.45 or b.hovered and 1 or 0.85
+		b.box:SetVertexColor(shade, shade, shade)
+		b.tick:SetVertexColor(shade, shade, shade)
+	end,
 	-- the card behind the entries, and the spear dividing it from the page, which paints over both
 	sidebar = function(side)
 		card(side)
@@ -247,17 +274,18 @@ S.RegisterSkin("cognac", {
 	paintNav = function(b, on)
 		if on then showPlate(b, "chip_selected") else b.plate:Hide() end
 	end,
+	-- a tall box is the framed card, a one-line field the search plate
 	input = function(e, tall)
 		e.tall = tall
-		if tall then S.Panel(e, S.colors.well, S.colors.border) else searchField(e) end
+		if tall then e.card = card(e) else searchField(e) end
 	end,
-	-- a tall box keeps a flat rule that takes the accent while focused; a one-line field brightens its plate
+	-- both brighten while hovered and warm while focused
 	paintInput = function(e)
+		local r, g, b = 1, 1, 1
+		if e.focused then r, g, b = 1, 0.93, 0.72 elseif e.hovered then r, g, b = 1, 0.97, 0.88 end
 		if e.tall then
-			e:SetBackdropBorderColor(unpack(e.focused and S.colors.accent or e.hovered and S.colors.outline or S.colors.border))
+			e.card:SetVertexColor(r, g, b)
 		else
-			local r, g, b = 1, 1, 1
-			if e.focused then r, g, b = 1, 0.93, 0.72 elseif e.hovered then r, g, b = 1, 0.97, 0.88 end
 			for _, t in ipairs(e.slices) do t:SetVertexColor(r, g, b) end
 		end
 	end,

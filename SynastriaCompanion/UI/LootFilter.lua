@@ -543,8 +543,8 @@ local function create(parent, width, height)
 	end
 	local top = -44
 	panel.autoLoot = optionRow(LF.AUTO_LOOT, 0, top, "normal")
-	local rule = S.Solid(options, "BORDER", C.border)
-	rule:SetHeight(1)
+	local rule, ruleH = S.Divider(options)
+	rule:SetHeight(ruleH)
 	rule:SetPoint("TOPLEFT", 0, top - OPTION_H - 2)
 	rule:SetPoint("TOPRIGHT", 0, top - OPTION_H - 2)
 	local columns = { { x = 0, y = top - OPTION_H - 14 }, { x = colW, y = top - OPTION_H - 14 } }

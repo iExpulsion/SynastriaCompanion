@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-32-g2409e15. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-34-g3e62103. Change it there, then run tools/sync_style.py.
 -- Classic: the default UI's own look, drawn entirely from textures the 3.3.5 client ships, so there's no art in
 -- this folder. Dialog-box windows, red panel buttons, gold text, tooltip-bordered menus and lists, and the quest
 -- log's row highlight. Load it after Style.lua; S.UseSkin("classic") switches to it.
@@ -116,6 +116,15 @@ S.RegisterSkin("classic", {
 	end,
 	well = function(f)
 		tooltipPanel(f, 0.75)
+	end,
+	-- no rule under a title bar, which the dialog frame already sets apart; a soft gray line under table headers
+	-- and beside section headings, like the tooltip border's
+	line = function(parent, kind)
+		local t = parent:CreateTexture(nil, "BORDER")
+		t:SetTexture("Interface\\Buttons\\WHITE8X8")
+		t:SetVertexColor(0.6, 0.6, 0.6, 0.45)
+		if kind == "rule" then t:Hide() end
+		return t, 1
 	end,
 	sidebar = function(side)
 		tooltipPanel(side, 0.6)

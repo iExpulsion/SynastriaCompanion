@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-32-g2409e15. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-34-g3e62103. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -311,9 +311,22 @@ function S.NineSlice(frame, layer, atlas, piece, cut, scale)
 end
 
 -- 1px line along the bottom (or top) of a frame.
+-- A divider line in the skin's look, as a texture and its thickness. kind: "rule" under a title bar or a panel's
+-- header (a skin whose frames are drawn borders can leave it out), "header" under a table's column headers,
+-- "heading" beside a section heading.
+local function line(parent, kind)
+	return (skin.line or skins.material.line)(parent, kind)
+end
+
+-- A divider for a layout of your own: a texture to anchor and the thickness to give it. kind as above (default
+-- "heading", a divider between groups of content).
+function S.Divider(parent, kind)
+	return line(parent, kind or "heading")
+end
+
 function S.Rule(parent, where)
-	local t = S.Solid(parent, "BORDER", S.colors.border)
-	t:SetHeight(1)
+	local t, h = line(parent, "rule")
+	t:SetHeight(h)
 	t:SetPoint(where .. "LEFT")
 	t:SetPoint(where .. "RIGHT")
 	return t
@@ -555,11 +568,11 @@ function S.SectionHeading(parent, text, x, y, rightInset)
 	local label = S.Text(parent, "small", S.colors.outline)
 	label:SetPoint("TOPLEFT", x, y)
 	label:SetText(text)
-	local line = S.Solid(parent, "BORDER", S.colors.border)
-	line:SetHeight(1)
-	line:SetPoint("LEFT", label, "RIGHT", 6, 0)
-	line:SetPoint("RIGHT", parent, "RIGHT", -(rightInset or x), 0)
-	return label, line
+	local rule, h = line(parent, "heading")
+	rule:SetHeight(h)
+	rule:SetPoint("LEFT", label, "RIGHT", 6, 0)
+	rule:SetPoint("RIGHT", parent, "RIGHT", -(rightInset or x), 0)
+	return label, rule
 end
 
 -- Gives a button a dropdown's arrow and left-aligned label, for buttons that open a list (a menu or a picker).
@@ -732,16 +745,14 @@ local Table = {}
 S.Table = Table
 
 local HEADER_H, WHEEL_ROWS, BAR_SPACE = 22, 3, 10
--- rows start below the header and its 1px rule, so a highlighted first row doesn't cover the rule
-local BODY_TOP = HEADER_H + 1
 
 local function newRow(self, i)
 	local C = S.colors
 	local row = CreateFrame("Button", nil, self.content)
 	row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	row:SetHeight(self.rowH)
-	row:SetPoint("TOPLEFT", 0, -BODY_TOP - (i - 1) * self.rowH)
-	row:SetPoint("TOPRIGHT", 0, -BODY_TOP - (i - 1) * self.rowH)
+	row:SetPoint("TOPLEFT", 0, -self.bodyTop - (i - 1) * self.rowH)
+	row:SetPoint("TOPRIGHT", 0, -self.bodyTop - (i - 1) * self.rowH)
 	if i % 2 == 0 then
 		local stripe = S.Solid(row, "BACKGROUND", { C.text[1], C.text[2], C.text[3], 0.025 })
 		stripe:SetAllPoints()
@@ -896,10 +907,12 @@ function Table.New(parent, name, width, height, opts)
 	header:SetPoint("TOPLEFT")
 	header:SetPoint("TOPRIGHT")
 	header:SetHeight(HEADER_H)
-	local rule = S.Solid(self.content, "BORDER", C.border)
-	rule:SetHeight(1)
+	local rule, ruleH = line(self.content, "header")
+	rule:SetHeight(ruleH)
 	rule:SetPoint("TOPLEFT", 0, -HEADER_H)
 	rule:SetPoint("TOPRIGHT", 0, -HEADER_H)
+	-- rows start below the header and its rule, so a highlighted first row doesn't cover the rule
+	self.bodyTop = HEADER_H + ruleH
 	for _, col in ipairs(self.columns) do
 		local h = CreateFrame("Button", nil, self.content)
 		h.col = col
@@ -936,7 +949,7 @@ function Table.New(parent, name, width, height, opts)
 		self.headers[#self.headers + 1] = h
 	end
 
-	self.visible = math.floor((height - 2 * inset - BODY_TOP) / self.rowH)
+	self.visible = math.floor((height - 2 * inset - self.bodyTop) / self.rowH)
 	for i = 1, self.visible do self.rows[i] = newRow(self, i) end
 	layout(self)
 
@@ -945,7 +958,7 @@ function Table.New(parent, name, width, height, opts)
 	bar:SetOrientation("VERTICAL")
 	bar:SetWidth(6)
 	-- the same 2px gap below the header's rule as above the bottom border
-	bar:SetPoint("TOPRIGHT", -inset - 2, -inset - HEADER_H - 1 - 2)
+	bar:SetPoint("TOPRIGHT", -inset - 2, -inset - self.bodyTop - 2)
 	bar:SetPoint("BOTTOMRIGHT", -inset - 2, inset + 2)
 	local track = S.Solid(bar, "BACKGROUND", { C.text[1], C.text[2], C.text[3], 0.04 })
 	track:SetAllPoints()
@@ -973,7 +986,7 @@ function Table.New(parent, name, width, height, opts)
 	end)
 
 	self.empty = S.Text(self.content, "normal", C.muted)
-	self.empty:SetPoint("TOP", 0, -BODY_TOP - 40)
+	self.empty:SetPoint("TOP", 0, -self.bodyTop - 40)
 	self.empty:SetJustifyH("CENTER")
 	return self
 end
@@ -1065,7 +1078,8 @@ function Table:Hide() self.frame:Hide() end
 -- Skins: how the controls above are drawn. A skin can carry a scheme of its own (roles, as S.SetTheme takes them),
 -- set colors apart from the scheme (colors(c, M3), run after the scheme fills S.colors), and change S.metrics.
 -- label names it in a picker, credit says who made it. The drawing functions: button(b) and
--- paintButton(b, enabled) (b.kind, b.hovered, b.down), frame(f, role), well(f), sidebar(side), highlight(f), navEntry(b) and
+-- paintButton(b, enabled) (b.kind, b.hovered, b.down), frame(f, role), well(f), line(parent, kind) -> texture,
+-- thickness (kind "rule", "header" or "heading"), sidebar(side), highlight(f), navEntry(b) and
 -- paintNav(b, on), input(e, tall) and paintInput(e) (e.focused, e.hovered), and optionally check(b) and
 -- paintCheck(b) (b.on, b.usable, b.hovered); a skin without them gets Material's checkbox.
 function S.RegisterSkin(key, def)
@@ -1116,6 +1130,10 @@ S.RegisterSkin("material", {
 	end,
 	well = function(f)
 		S.Panel(f, S.colors.well, S.colors.border)
+	end,
+	-- every divider is a 1px line in the border color
+	line = function(parent)
+		return S.Solid(parent, "BORDER", S.colors.border), 1
 	end,
 	sidebar = function(side)
 		local fill = S.Solid(side, "BACKGROUND", S.colors.sidebar)
