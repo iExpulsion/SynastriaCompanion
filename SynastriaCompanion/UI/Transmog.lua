@@ -382,53 +382,108 @@ end
 
 -- Sets -------------------------------------------------------------------------------------------------------
 
+-- A set and its recolors are one row; a set with recolors opens to list each version under it. The row shows its
+-- best version's pieces, and hovering it previews that version.
+
 local function setMatches(set, q)
+	local named = q == ""
+	for _, version in ipairs(set.versions) do
+		named = named or version.name:lower():find(q, 1, true) ~= nil
+	end
 	return (state.setClass == "all" or T.SetForClass(set))
 		and ((state.setArmor or 0) == 0 or set.armor == state.setArmor or set.armor == 0)
-		and (q == "" or set.name:lower():find(q, 1, true) ~= nil)
+		and named
+end
+
+local function levelRange(set)
+	local low, high = set.level, set.level
+	for _, version in ipairs(set.versions) do
+		low, high = math.min(low, version.level), math.max(high, version.level)
+	end
+	return low, high
 end
 
 local SET_SORT = {
 	name = function(row) return row.set.name:upper() end,
-	level = function(row) return row.set.level end,
+	level = function(row) return select(2, levelRange(row.set)) end,
 	pieces = function(row) return row.usable * 100 + row.total end,
 }
+
+local function versionRow(version)
+	local usable, total = T.SetCount(version)
+	return { set = version, shows = version, usable = usable, total = total }
+end
 
 local function renderSets()
 	local sv = panel.sets
 	sv.class:SetText(state.setClass == "all" and "All Classes" or "Your Class")
 	sv.armor:SetText(state.setArmor == 0 and "Any Armor" or T.ARMOR_TYPES[state.setArmor])
 	local q = (state.setSearch or ""):lower()
-	local rows = {}
+	local groups = {}
 	for _, set in ipairs(T.Sets()) do
 		if setMatches(set, q) then
-			local usable, total = T.SetCount(set)
-			rows[#rows + 1] = { set = set, usable = usable, total = total }
+			local best = T.BestVersion(set)
+			local row = versionRow(best)
+			row.set, row.shows, row.child = set, best, false
+			row.recolored = #set.versions > 1
+			groups[#groups + 1] = row
 		end
 	end
 	local get = SET_SORT[state.setSort] or SET_SORT.name
-	table.sort(rows, function(a, b)
+	table.sort(groups, function(a, b)
 		local va, vb = get(a), get(b)
 		if va == vb then return a.set.name:upper() < b.set.name:upper() end
 		if state.setDesc then return va > vb end
 		return va < vb
 	end)
+	local rows = {}
+	for _, group in ipairs(groups) do
+		rows[#rows + 1] = group
+		group.open = group.recolored and (state.setOpen[group.set.name] or q ~= "")
+		if group.open then
+			for _, version in ipairs(group.set.versions) do
+				local row = versionRow(version)
+				row.child = true
+				rows[#rows + 1] = row
+			end
+		end
+	end
 	sv.table:SetItems(rows, "No Sets Match", sv.keepScroll)
 	sv.keepScroll = nil
-	panel.status:SetText(S.Count(#rows, "Set"))
-	panel.hint:SetText("Hover: Preview  |  Click: Put On")
+	panel.status:SetText(S.Count(#groups, "Set"))
+	panel.hint:SetText("Hover: Preview  |  Click: Put On or Open")
 end
 
-local function setPreview(row)
+local function setCell(row, key)
+	local text, color
+	if key == "name" and row.child then
+		text, color = "      " .. row.set.name, row.usable > 0 and C.text or C.muted
+	elseif key == "name" then
+		text = row.set.name
+		if row.recolored then
+			text = S.Hex(C.muted, row.open and "-  " or "+  ") .. text .. "  " .. S.Hex(C.muted, #row.set.versions .. " Versions")
+		end
+		color = row.usable > 0 and C.text or C.muted
+	elseif key == "level" and row.child then
+		text, color = tostring(row.set.level), C.muted
+	elseif key == "level" then
+		local low, high = levelRange(row.set)
+		text, color = low == high and tostring(low) or (low .. "-" .. high), C.muted
+	else
+		text = ("%d / %d"):format(row.usable, row.total)
+		color = row.usable == row.total and C.good or row.usable > 0 and C.text or C.muted
+	end
+	return text, color
+end
+
+local function setPreview(version)
 	local pieces = {}
-	for _, piece in ipairs(T.SetPieces(row.set)) do pieces[piece.slot] = piece.id end
+	for _, piece in ipairs(T.SetPieces(version)) do pieces[piece.slot] = piece.id end
 	return { set = pieces }
 end
 
-local function setTooltip(tt, row)
-	besideWindow(tt)
-	tt:AddLine(row.set.name, 1, 1, 1)
-	for _, piece in ipairs(T.SetPieces(row.set)) do
+local function pieceLines(tt, version)
+	for _, piece in ipairs(T.SetPieces(version)) do
 		local name = itemName(piece.id)
 		if piece.usable then
 			tt:AddDoubleLine(T.SLOTS[piece.slot].label, name, 0.6, 0.6, 0.66, 1, 1, 1)
@@ -436,15 +491,32 @@ local function setTooltip(tt, row)
 			tt:AddDoubleLine(T.SLOTS[piece.slot].label, name, 0.6, 0.6, 0.66, 1, 0.3, 0.3)
 		end
 	end
-	if row.usable < row.total then
-		tt:AddLine("Red pieces aren't attuned or acquired on your account, so they're left out.", 1, 0.3, 0.3, true)
+end
+
+local function setTooltip(tt, row)
+	besideWindow(tt)
+	tt:AddLine(row.set.name, 1, 1, 1)
+	if row.recolored and not row.child then
+		for _, version in ipairs(row.set.versions) do
+			local usable, total = T.SetCount(version)
+			local done = usable == total
+			tt:AddDoubleLine(version.name .. " (" .. version.level .. ")", ("%d / %d"):format(usable, total),
+				1, 1, 1, done and 0.3 or 1, 1, done and 0.3 or 1)
+		end
+		tt:AddLine("Showing " .. row.shows.name .. ", the version you have the most of. Click to "
+			.. (row.open and "close" or "see each version") .. ".", 0.6, 0.6, 0.66, true)
+	else
+		pieceLines(tt, row.shows)
+		if row.usable < row.total then
+			tt:AddLine("Red pieces aren't attuned or acquired on your account, so they're left out.", 1, 0.3, 0.3, true)
+		end
+		tt:AddLine("Showing on the preview. Click to put it on this look.", 0.6, 0.6, 0.66, true)
 	end
-	tt:AddLine("Showing on the preview. Click to put it on this look.", 0.6, 0.6, 0.66, true)
-	TransmogUI.Preview(setPreview(row))
+	TransmogUI.Preview(setPreview(row.shows))
 end
 
 local function putOn(row)
-	local applied, skipped = T.ApplySet(state.look, row.set)
+	local applied, skipped = T.ApplySet(state.look, row.shows)
 	PlaySound("igMainMenuOptionCheckBoxOn")
 	browsing = false
 	local text = ("Put On %d of %d Pieces"):format(applied, applied + skipped)
@@ -606,14 +678,17 @@ local function createSets(width, height)
 				tooltip = "Pieces you can use, out of the slots the set covers." },
 		},
 		rowH = ROW_H,
-		cell = function(row, key)
-			if key == "name" then return row.set.name, row.usable > 0 and C.text or C.muted end
-			if key == "level" then return tostring(row.set.level), C.muted end
-			return ("%d / %d"):format(row.usable, row.total),
-				row.usable == row.total and C.good or row.usable > 0 and C.text or C.muted
-		end,
+		cell = setCell,
 		tooltip = setTooltip,
-		onClick = function(row) putOn(row) end,
+		onClick = function(row)
+			if row.recolored and not row.child then
+				state.setOpen[row.set.name] = not row.open or nil
+				sv.keepScroll = true
+				TransmogUI.Refresh()
+			else
+				putOn(row)
+			end
+		end,
 		onSort = function(key, desc)
 			state.setSort, state.setDesc = key, desc
 			sv.keepScroll = true
@@ -647,6 +722,7 @@ local function create(parent, width, height)
 	state = SC.db.transmog
 	state.look = state.look or (T.HasData() and T.Active() > 0 and T.Active()) or 1
 	state.setClass = state.setClass or "mine"
+	state.setOpen = state.setOpen or {}
 	state.setArmor = state.setArmor or T.BestArmor()
 	panel = CreateFrame("Frame", nil, parent)
 	panel:SetSize(width, height)

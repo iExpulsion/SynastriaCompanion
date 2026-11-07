@@ -299,21 +299,42 @@ end
 
 -- Item sets -------------------------------------------------------------------------------------------------
 -- From Data/ItemSets.lua: { name, mask (0 = any class), armor (1 cloth .. 4 plate, 0 none), level,
--- pieces = { { id, slot } } }. A slot can have several items when versions of a set share a name.
+-- pieces = { { id, slot } }, versions = { the set, then its recolors, each a set of its own } }. A slot can have
+-- several items when copies of a piece share its look.
 
 Transmog.ARMOR_TYPES = { [1] = "Cloth", [2] = "Leather", [3] = "Mail", [4] = "Plate" }
+
+local function pieceList(flat)
+	local pieces = {}
+	for i = 1, #flat, 2 do pieces[#pieces + 1] = { id = flat[i], slot = flat[i + 1] } end
+	return pieces
+end
 
 local sets
 function Transmog.Sets()
 	if not sets then
 		sets = {}
 		for _, row in ipairs(NS.ItemSetData or {}) do
-			local pieces = {}
-			for i = 1, #row[5], 2 do pieces[#pieces + 1] = { id = row[5][i], slot = row[5][i + 1] } end
-			sets[#sets + 1] = { name = row[1], mask = row[2], armor = row[3], level = row[4], pieces = pieces }
+			local set = { name = row[1], mask = row[2], armor = row[3], level = row[4], pieces = pieceList(row[5]) }
+			set.versions = { set }
+			for _, v in ipairs(row[6] or {}) do
+				set.versions[#set.versions + 1] = { name = v[1], mask = set.mask, armor = set.armor, level = v[2],
+					pieces = pieceList(v[3]), base = set }
+			end
+			sets[#sets + 1] = set
 		end
 	end
 	return sets
+end
+
+-- The version of a set with the most usable pieces; the set itself on a tie.
+function Transmog.BestVersion(set)
+	local best, bestCount = set, -1
+	for _, version in ipairs(set.versions) do
+		local usable = Transmog.SetCount(version)
+		if usable > bestCount then best, bestCount = version, usable end
+	end
+	return best
 end
 
 local CLASS_BITS = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, DEATHKNIGHT = 6, SHAMAN = 7, MAGE = 8,
