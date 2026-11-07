@@ -141,14 +141,19 @@ function TransmogUI.BackgroundLayout(w, h)
 	return out, model
 end
 
+-- The pieces sit on a frame of their own above the pane: the 3.3.5 client has no texture sublevels, so textures on
+-- the pane's own layer could draw under its fill.
 function TransmogUI.Background(parent, inset, w, h)
 	local path = DressUpTexturePath and DressUpTexturePath() or nil
 	local layout = TransmogUI.BackgroundLayout(w, h)
+	local holder = CreateFrame("Frame", nil, parent)
+	holder:SetAllPoints(parent)
+	holder:SetFrameLevel(parent:GetFrameLevel() + 1)
 	local list = {}
 	for i = 1, #BG_PIECES do
 		local cut = layout[i]
 		if cut and path then
-			local tex = parent:CreateTexture(nil, "BACKGROUND", nil, 1)
+			local tex = holder:CreateTexture(nil, "BACKGROUND")
 			tex:SetTexture(path .. i)
 			tex:SetTexCoord(cut.left, cut.right, cut.top, cut.bottom)
 			tex:SetSize(cut.w, cut.h)
@@ -172,6 +177,7 @@ local function createPreview(width, height)
 	local model = CreateFrame("DressUpModel", "SynastriaCompanionTransmogModel", p)
 	model:SetPoint("TOPLEFT", wi + spot.x, -wi - spot.y)
 	model:SetSize(spot.w, spot.h)
+	model:SetFrameLevel(p:GetFrameLevel() + 2)
 	model:SetUnit("player")
 	model.facing = 0
 	model:EnableMouse(true)
@@ -198,7 +204,10 @@ local function createPreview(width, height)
 	end)
 	p.model = model
 
-	p.hint = S.Text(p, "small", C.muted)
+	local over = CreateFrame("Frame", nil, p)
+	over:SetAllPoints(p)
+	over:SetFrameLevel(p:GetFrameLevel() + 3)
+	p.hint = S.Text(over, "small", C.muted)
 	p.hint:SetPoint("BOTTOM", 0, wi + 6)
 	p.hint:SetText("Drag to Rotate")
 	return p
