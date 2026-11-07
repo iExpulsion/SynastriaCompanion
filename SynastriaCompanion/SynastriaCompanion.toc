@@ -15,6 +15,7 @@ Attuned.lua
 Leaderboards.lua
 LootFilter.lua
 Perks.lua
+Data\ItemSets.lua
 Transmog.lua
 UI\Style.lua
 UI\Skins\Cognac\Atlas.lua

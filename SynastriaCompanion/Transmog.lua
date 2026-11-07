@@ -297,6 +297,97 @@ function Transmog.EnchantChoices(look, hand)
 	return list
 end
 
+-- Item sets -------------------------------------------------------------------------------------------------
+-- From Data/ItemSets.lua: { name, mask (0 = any class), armor (1 cloth .. 4 plate, 0 none), level,
+-- pieces = { { id, slot } } }. A slot can have several items when versions of a set share a name.
+
+Transmog.ARMOR_TYPES = { [1] = "Cloth", [2] = "Leather", [3] = "Mail", [4] = "Plate" }
+
+local sets
+function Transmog.Sets()
+	if not sets then
+		sets = {}
+		for _, row in ipairs(NS.ItemSetData or {}) do
+			local pieces = {}
+			for i = 1, #row[5], 2 do pieces[#pieces + 1] = { id = row[5][i], slot = row[5][i + 1] } end
+			sets[#sets + 1] = { name = row[1], mask = row[2], armor = row[3], level = row[4], pieces = pieces }
+		end
+	end
+	return sets
+end
+
+local CLASS_BITS = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, DEATHKNIGHT = 6, SHAMAN = 7, MAGE = 8,
+	WARLOCK = 9, DRUID = 11 }
+local BEST_ARMOR = { WARRIOR = 4, PALADIN = 4, DEATHKNIGHT = 4, HUNTER = 3, SHAMAN = 3, ROGUE = 2, DRUID = 2 }
+
+-- The character's classes as a mask; Synastria's dual-class characters have two.
+function Transmog.ClassMask()
+	local mask = CustomGetClassMask and CustomGetClassMask() or 0
+	if mask == 0 then
+		local _, token = UnitClass("player")
+		mask = CLASS_BITS[token] and bit.lshift(1, CLASS_BITS[token] - 1) or 0
+	end
+	return mask
+end
+
+-- The heaviest armor any of the character's classes wears.
+function Transmog.BestArmor()
+	local best = 1
+	for token, id in pairs(CLASS_BITS) do
+		if bit.band(Transmog.ClassMask(), bit.lshift(1, id - 1)) ~= 0 then best = math.max(best, BEST_ARMOR[token] or 1) end
+	end
+	return best
+end
+
+function Transmog.SetForClass(set)
+	return set.mask == 0 or bit.band(set.mask, Transmog.ClassMask()) ~= 0
+end
+
+-- The set's look, one piece per slot: the first the account can use, or the first there is. { slot, id, usable }
+-- in slot order.
+function Transmog.SetPieces(set)
+	local bySlot, order = {}, {}
+	for _, piece in ipairs(set.pieces) do
+		local current = bySlot[piece.slot]
+		local usable = Transmog.Usable(piece.id)
+		if not current then
+			order[#order + 1] = piece.slot
+			bySlot[piece.slot] = { slot = piece.slot, id = piece.id, usable = usable }
+		elseif usable and not current.usable then
+			bySlot[piece.slot] = { slot = piece.slot, id = piece.id, usable = true }
+		end
+	end
+	table.sort(order)
+	local list = {}
+	for _, slot in ipairs(order) do list[#list + 1] = bySlot[slot] end
+	return list
+end
+
+-- How many of the set's slots the account can use, out of how many it covers.
+function Transmog.SetCount(set)
+	local usable, total = 0, 0
+	for _, piece in ipairs(Transmog.SetPieces(set)) do
+		total = total + 1
+		if piece.usable then usable = usable + 1 end
+	end
+	return usable, total
+end
+
+-- Puts the set's usable pieces into the look; slots the set doesn't cover, or only has unusable pieces for, keep
+-- what they had. Returns how many pieces went in and how many were skipped.
+function Transmog.ApplySet(look, set)
+	local applied, skipped = 0, 0
+	for _, piece in ipairs(Transmog.SetPieces(set)) do
+		if piece.usable then
+			Transmog.SetSlot(look, piece.slot, piece.id)
+			applied = applied + 1
+		else
+			skipped = skipped + 1
+		end
+	end
+	return applied, skipped
+end
+
 function Transmog.Changed()
 	changed()
 end

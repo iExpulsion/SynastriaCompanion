@@ -22,7 +22,7 @@ local ENCHANT_ICON = 20711
 local ROTATE_SPEED = 0.012
 
 local panel, state
-local picking
+local picking, browsing
 
 local function itemName(id)
 	local name, _, quality = GetItemInfoCustom(id)
@@ -73,24 +73,27 @@ local function dress(model, outfit)
 	end
 end
 
--- What the look wears, with `override` = { slot, value } or { hand, value } for the appearance being tried, and
--- only that piece when Naked is on.
+-- What the look wears, with `override` = { slot, value }, { hand, value } or { set = { [slot] = item } } for what's
+-- being tried, and only that when Naked is on.
 local function outfitFor(look, override)
 	local outfit = {}
 	local naked = override ~= nil and T.HasOption(T.NAKED)
 	for slot, def in ipairs(T.SLOTS) do
 		local id, enchant = T.Appearance(look, slot)
-		local tried = override and override.slot == slot
-		local triedHand = override and override.hand and def.enchant == override.hand
+		local value
+		if override and override.set then value = override.set[slot]
+		elseif override and override.slot == slot then value = override.value
+		end
+		local tried = value ~= nil
+		local triedHand = override ~= nil and override.hand ~= nil and def.enchant == override.hand
 		if tried then
-			local value = override.value
 			if value == T.EQUIPPED then id = T.Equipped(slot) elseif value == T.HIDDEN then id = nil else id = value end
 			if id == 0 then id = nil end
 		elseif triedHand then
 			id = id or DUMMY_WEAPON
-			local value = override.value
-			if value == T.EQUIPPED then enchant = select(2, T.Equipped(slot)) elseif value == T.HIDDEN then enchant = nil
-			else enchant = value end
+			local chosen = override.value
+			if chosen == T.EQUIPPED then enchant = select(2, T.Equipped(slot)) elseif chosen == T.HIDDEN then enchant = nil
+			else enchant = chosen end
 			if enchant == 0 then enchant = nil end
 		end
 		if id and (not naked or tried or triedHand) then
@@ -362,20 +365,103 @@ local function renderEditor()
 	local active = T.Active() == look
 	panel.activate:SetLabel(active and "Deactivate" or "Activate")
 	local bad = #T.Unusable(look)
-	panel.status:SetText(bad > 0 and S.Hex(C.bad, S.Count(bad, "Slot") .. " Won't Apply: Not Attuned or Acquired")
+	local message = panel.message and GetTime() < panel.message.untilTime and panel.message.text
+	panel.status:SetText(message or bad > 0 and S.Hex(C.bad, S.Count(bad, "Slot") .. " Won't Apply: Not Attuned or Acquired")
 		or active and S.Hex(C.good, "Active Look") or S.Hex(C.muted, T.Active() == 0 and "No Look Active" or "Not Active"))
 	panel.hint:SetText("")
 end
 
+-- Shows a status line for a few seconds, over the usual one.
+local function flash(text)
+	panel.message = { text = text, untilTime = GetTime() + 4 }
+	panel.pending = GetTime() + 4.1
+end
+
+-- Sets -------------------------------------------------------------------------------------------------------
+
+local function setMatches(set, q)
+	return (state.setClass == "all" or T.SetForClass(set))
+		and ((state.setArmor or 0) == 0 or set.armor == state.setArmor or set.armor == 0)
+		and (q == "" or set.name:lower():find(q, 1, true) ~= nil)
+end
+
+local SET_SORT = {
+	name = function(row) return row.set.name:upper() end,
+	level = function(row) return row.set.level end,
+	pieces = function(row) return row.usable * 100 + row.total end,
+}
+
+local function renderSets()
+	local sv = panel.sets
+	sv.class:SetText(state.setClass == "all" and "All Classes" or "Your Class")
+	sv.armor:SetText(state.setArmor == 0 and "Any Armor" or T.ARMOR_TYPES[state.setArmor])
+	local q = (state.setSearch or ""):lower()
+	local rows = {}
+	for _, set in ipairs(T.Sets()) do
+		if setMatches(set, q) then
+			local usable, total = T.SetCount(set)
+			rows[#rows + 1] = { set = set, usable = usable, total = total }
+		end
+	end
+	local get = SET_SORT[state.setSort] or SET_SORT.name
+	table.sort(rows, function(a, b)
+		local va, vb = get(a), get(b)
+		if va == vb then return a.set.name:upper() < b.set.name:upper() end
+		if state.setDesc then return va > vb end
+		return va < vb
+	end)
+	sv.table:SetItems(rows, "No Sets Match", sv.keepScroll)
+	sv.keepScroll = nil
+	panel.status:SetText(S.Count(#rows, "Set"))
+	panel.hint:SetText("Hover: Preview  |  Click: Put On")
+end
+
+local function setPreview(row)
+	local pieces = {}
+	for _, piece in ipairs(T.SetPieces(row.set)) do pieces[piece.slot] = piece.id end
+	return { set = pieces }
+end
+
+local function setTooltip(tt, row)
+	besideWindow(tt)
+	tt:AddLine(row.set.name, 1, 1, 1)
+	for _, piece in ipairs(T.SetPieces(row.set)) do
+		local name = itemName(piece.id)
+		if piece.usable then
+			tt:AddDoubleLine(T.SLOTS[piece.slot].label, name, 0.6, 0.6, 0.66, 1, 1, 1)
+		else
+			tt:AddDoubleLine(T.SLOTS[piece.slot].label, name, 0.6, 0.6, 0.66, 1, 0.3, 0.3)
+		end
+	end
+	if row.usable < row.total then
+		tt:AddLine("Red pieces aren't attuned or acquired on your account, so they're left out.", 1, 0.3, 0.3, true)
+	end
+	tt:AddLine("Showing on the preview. Click to put it on this look.", 0.6, 0.6, 0.66, true)
+	TransmogUI.Preview(setPreview(row))
+end
+
+local function putOn(row)
+	local applied, skipped = T.ApplySet(state.look, row.set)
+	PlaySound("igMainMenuOptionCheckBoxOn")
+	browsing = false
+	local text = ("Put On %d of %d Pieces"):format(applied, applied + skipped)
+	if skipped > 0 then text = text .. ": " .. S.Count(skipped, "Piece") .. " Not Attuned or Acquired" end
+	flash(applied > 0 and S.Hex(C.good, text) or S.Hex(C.bad, text))
+	TransmogUI.Refresh()
+end
+
 function TransmogUI.Refresh()
 	panel.pending = nil
-	local editing = picking == nil
+	local editing = picking == nil and not browsing
 	for _, f in ipairs(panel.editorParts) do if editing then f:Show() else f:Hide() end end
-	if editing then panel.picker:Hide() else panel.picker:Show() end
+	if picking then panel.picker:Show() else panel.picker:Hide() end
+	if browsing then panel.sets:Show() else panel.sets:Hide() end
 	if T.HasData() then
 		if editing then
 			renderLooks()
 			renderEditor()
+		elseif browsing then
+			renderSets()
 		else
 			renderPicker()
 		end
@@ -474,6 +560,81 @@ local function createPicker(width, height)
 	return pk
 end
 
+local function createSets(width, height)
+	local sv = CreateFrame("Frame", nil, panel)
+	sv:SetSize(width, height)
+	sv.back = S.Button(sv, "Back", "secondary", 70, function()
+		browsing = false
+		TransmogUI.Refresh()
+	end, "Back to the look.")
+	sv.back:SetPoint("TOPLEFT", 0, 0)
+	sv.title = S.Text(sv, "large")
+	sv.title:SetPoint("LEFT", sv.back, "RIGHT", PAD, 0)
+	sv.title:SetText("Item Sets")
+
+	sv.class = S.Dropdown(sv, 120, function(value)
+		state.setClass = value
+		TransmogUI.Refresh()
+	end)
+	sv.class:SetOptions({ { value = "mine", text = "Your Class" }, { value = "all", text = "All Classes" } })
+	sv.class:SetPoint("TOPLEFT", 0, -(CONTROL_H + GAP))
+	sv.armor = S.Dropdown(sv, 110, function(value)
+		state.setArmor = value
+		TransmogUI.Refresh()
+	end)
+	local armors = { { value = 0, text = "Any Armor" } }
+	for id = 1, 4 do armors[#armors + 1] = { value = id, text = T.ARMOR_TYPES[id] } end
+	sv.armor:SetOptions(armors)
+	sv.armor:SetPoint("LEFT", sv.class, "RIGHT", GAP, 0)
+	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", width - 230 - 2 * GAP, "Search Sets", 40)
+	sv.search:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
+	sv.search:HookScript("OnTextChanged", function(self, user)
+		if user then
+			state.setSearch = self:GetText()
+			panel.pending = GetTime() + SEARCH_DELAY
+		end
+	end)
+	sv.search:SetScript("OnEnterPressed", sv.search.ClearFocus)
+
+	local checksY = -2 * (CONTROL_H + GAP)
+	sv.naked = labeledCheck(sv, "Naked", "Show only the set's pieces, with nothing else on.", option(T.NAKED))
+	sv.naked:SetPoint("TOPLEFT", 0, checksY)
+	sv.background = labeledCheck(sv, "Show Background", "Show your race's background behind the preview.", option(T.BACKGROUND))
+	sv.background:SetPoint("LEFT", sv.naked, "RIGHT", PAD, 0)
+
+	local top = 3 * (CONTROL_H + GAP)
+	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSets", width, height - top, {
+		columns = {
+			{ key = "name", label = "Set", width = 200, stretch = true },
+			{ key = "level", label = "Level", width = 56, defaultDesc = true,
+				tooltip = "The highest item level among the set's pieces." },
+			{ key = "pieces", label = "Pieces", width = 70, defaultDesc = true,
+				tooltip = "Pieces you can use, out of the slots the set covers." },
+		},
+		rowH = ROW_H,
+		cell = function(row, key)
+			if key == "name" then return row.set.name, row.usable > 0 and C.text or C.muted end
+			if key == "level" then return tostring(row.set.level), C.muted end
+			return ("%d / %d"):format(row.usable, row.total),
+				row.usable == row.total and C.good or row.usable > 0 and C.text or C.muted
+		end,
+		tooltip = setTooltip,
+		onClick = function(row) putOn(row) end,
+		onSort = function(key, desc)
+			state.setSort, state.setDesc = key, desc
+			sv.keepScroll = true
+			TransmogUI.Refresh()
+		end,
+	})
+	sv.table.frame:SetPoint("TOPLEFT", 0, -top)
+	sv.table:SetSort(state.setSort or "name", state.setDesc)
+	for _, row in ipairs(sv.table.rows) do
+		row:HookScript("OnLeave", function() if browsing then TransmogUI.Preview() end end)
+	end
+	sv:Hide()
+	return sv
+end
+
 StaticPopupDialogs.SYNASTRIA_COMPANION_TRANSMOG_RESET = {
 	text = "Reset %s? Every slot goes back to your equipped look.",
 	button1 = "Reset",
@@ -491,6 +652,8 @@ local function create(parent, width, height)
 	SC.db.transmog = SC.db.transmog or {}
 	state = SC.db.transmog
 	state.look = state.look or (T.HasData() and T.Active() > 0 and T.Active()) or 1
+	state.setClass = state.setClass or "mine"
+	state.setArmor = state.setArmor or T.BestArmor()
 	panel = CreateFrame("Frame", nil, parent)
 	panel:SetSize(width, height)
 	panel.editorParts = {}
@@ -537,6 +700,12 @@ local function create(parent, width, height)
 		row:SetPoint("TOPLEFT", editX + LABEL_W + (spec - 1) * 38, specY)
 		panel.specs[spec] = row.check
 	end
+	panel.setsButton = part(S.Button(panel, "Sets", "secondary", 70, function()
+		browsing = true
+		panel.sets.search:SetText(state.setSearch or "")
+		TransmogUI.Refresh()
+	end, "Browse item sets and put one on this look."))
+	panel.setsButton:SetPoint("TOPRIGHT", panel, "TOPLEFT", editX + editW, specY)
 
 	local slotsY = specY - CONTROL_H - GAP
 	panel.slots = SC.Table.New(panel, "SynastriaCompanionTransmogSlots", editW, bodyH + slotsY + PAD, {
@@ -563,6 +732,8 @@ local function create(parent, width, height)
 	part(panel.slots.frame)
 
 	panel.picker = createPicker(width - 2 * PAD - PREVIEW_W - GAP, bodyH)
+	panel.sets = createSets(width - 2 * PAD - PREVIEW_W - GAP, bodyH)
+	panel.sets:SetPoint("TOPLEFT", PAD, -PAD)
 	panel.picker:SetPoint("TOPLEFT", PAD, -PAD)
 
 	panel.preview = createPreview(PREVIEW_W, bodyH)
@@ -590,9 +761,9 @@ local function create(parent, width, height)
 		local look = state.look
 		SC.TextDialog.AskImport("Import Look", "Replaces " .. T.Name(look) .. " with the pasted look.", function(text)
 			if T.Import(look, text) then
-				panel.status:SetText(S.Hex(C.good, "Imported"))
+				flash(S.Hex(C.good, "Imported"))
 			else
-				panel.status:SetText(S.Hex(C.bad, "The Game Couldn't Read That"))
+				flash(S.Hex(C.bad, "The Game Couldn't Read That"))
 			end
 			TransmogUI.Refresh()
 		end)
@@ -612,7 +783,10 @@ local function create(parent, width, height)
 			TransmogUI.Refresh()
 		end
 	end)
-	panel:SetScript("OnHide", function() picking = nil end)
+	panel:SetScript("OnHide", function()
+		picking = nil
+		browsing = false
+	end)
 	T.onChange = function() TransmogUI.Changed() end
 	return panel
 end

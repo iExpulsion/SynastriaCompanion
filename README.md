@@ -13,8 +13,8 @@ one of its windows, Companion opens instead.
   minimap button opens any of them.
 - **Perks in One Place:** every perk by category with its limit, the effect at your rank and the next, set bonuses,
   options, and what the next rank takes and how far along you are.
-- **Transmog You Can Search:** every look's slots in one list, a searchable list of appearances for each slot, and
-  a preview of your character that tries each one on as you hover it.
+- **Transmog You Can Search:** every look's slots in one list, a searchable list of appearances for each slot, item
+  sets you can put on in one click, and a preview of your character that tries each one on as you hover it.
 - **No View Spells Needed:** screens that need the game's View spell cast it on the same click that opens them,
   so those spells can come off your action bars.
 - **Live Filters:** searches and filters apply as you type, with no Search button, and no cap on results.
@@ -84,6 +84,11 @@ Click a slot to pick its appearance. The list has a type filter (armor type or w
 hovering an appearance tries it on the preview. Click one to choose it. **Naked** previews it with nothing else on,
 **Show Background** puts your race's background behind the preview, and **Show Duplicates** also lists items that
 look the same as one already listed. Right-click a slot to go back to your equipped look.
+
+**Sets** lists the game's item sets, from dungeon and tier sets to PvP gear, filtered to your class and armor type
+or every set, with a search. **Pieces** shows how many of a set's pieces you can use, and hovering a set tries it
+all on the preview. Click a set to put it on the look: its pieces you've attuned or acquired go in, the slots it
+doesn't cover keep what they had, and the footer says how many pieces were left out.
 
 **Activate** wears the look, or turns transmog off when it's already the active one. **Use Equipped** fills every
 slot from what you're wearing, **Import** and **Export** share a look as text, and **Reset** clears it. Every
