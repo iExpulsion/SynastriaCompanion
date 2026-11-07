@@ -2,7 +2,7 @@ local _, NS = ...
 local SC = NS.SC
 
 -- Other names a screen answers to in /scomp.
-local ALIASES = { autoloot = "lootfilter", itemdb = "lootdb", stats = "attuned" }
+local ALIASES = { autoloot = "lootfilter", itemdb = "lootdb", stats = "attuned", tmog = "transmog" }
 
 local function findScreen(key)
 	key = ALIASES[key] or key

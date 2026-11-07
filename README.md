@@ -1,7 +1,7 @@
 # Synastria Companion
 
 Cleaner replacements for Synastria's own windows (WoW 3.3.5a), all in one window that matches
-[Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite): your perks, your attuned stats, the
+[Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite): your perks, transmog, your attuned stats, the
 attunable item search, the auto loot filter, the resource bank, the item database and the leaderboards. When the game would open
 one of its windows, Companion opens instead.
 
@@ -13,6 +13,8 @@ one of its windows, Companion opens instead.
   minimap button opens any of them.
 - **Perks in One Place:** every perk by category with its limit, the effect at your rank and the next, set bonuses,
   options, and what the next rank takes and how far along you are.
+- **Transmog You Can Search:** every look's slots in one list, a searchable list of appearances for each slot, and
+  a preview of your character that tries each one on as you hover it.
 - **No View Spells Needed:** screens that need the game's View spell cast it on the same click that opens them,
   so those spells can come off your action bars.
 - **Live Filters:** searches and filters apply as you type, with no Search button, and no cap on results.
@@ -69,6 +71,23 @@ Perks are activated and deactivated at an innkeeper, as in the game: talk to one
 the **Activate** button (or a right-click on the perk) works until you close the window. The View Perks spell opens the
 screen to look only. Opening [Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite) from the
 innkeeper keeps Companion out of its way, and builds still apply.
+
+### Transmog
+
+Your ten transmog looks are on the left, with **Active** beside the one you're wearing. Pick a look to edit it in
+the middle: its name, the specs that switch it on automatically, and the appearance for each slot and each
+weapon's enchant visual. A slot can keep your **Equipped Look**, be **Hidden**, or show any item you've attuned or
+acquired. Items you haven't show in red and won't apply. The preview on the right shows your character in the look;
+drag it to turn it around.
+
+Click a slot to pick its appearance. The list has a type filter (armor type or weapon type) and a search, and
+hovering an appearance tries it on the preview. Click one to choose it. **Naked** previews it with nothing else on,
+**Show Background** puts your race's background behind the preview, and **Show Duplicates** also lists items that
+look the same as one already listed. Right-click a slot to go back to your equipped look.
+
+**Activate** wears the look, or turns transmog off when it's already the active one. **Use Equipped** fills every
+slot from what you're wearing, **Import** and **Export** share a look as text, and **Reset** clears it. Every
+change saves at once.
 
 ### Attuned Stats
 
@@ -179,6 +198,7 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 |---|---|
 | `/scomp` | Opens or closes the window |
 | `/scomp perks` | Opens Perks |
+| `/scomp transmog` | Opens Transmog (also `tmog`) |
 | `/scomp attuned` | Opens Attuned Stats (also `stats`) |
 | `/scomp attunable` | Opens Attunable Items |
 | `/scomp lootfilter` | Opens Auto Loot (also `autoloot`) |
