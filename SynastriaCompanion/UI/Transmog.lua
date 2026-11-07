@@ -1,7 +1,7 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Transmog: the ten looks on the left, the selected look's name, specs and slots in the middle, and a preview of
+-- Transmog: a picker for the ten looks, the selected look's name, specs and slots on the left, and a preview of
 -- your character wearing it on the right. Clicking a slot swaps the left side for a searchable list of the
 -- appearances you can pick; hovering one tries it on the preview. Replaces the game's Transmog window.
 local TransmogUI = {}
@@ -12,7 +12,7 @@ local C = S.colors
 local T = SC.Transmog
 local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 
-local RAIL_W, PREVIEW_W = 170, 230
+local PREVIEW_W, LABEL_W, LOOKS_W = 320, 46, 170
 local ROW_H = 22
 local SEARCH_DELAY = 0.2
 local REFRESH_DELAY = 0.2
@@ -319,10 +319,17 @@ end
 
 -- Refresh ----------------------------------------------------------------------------------------------------
 
+-- The look picker lists all ten, with the active one marked.
+local function lookText(look)
+	return T.Name(look) .. (T.Active() == look and "  " .. S.Hex(C.good, "Active") or "")
+end
+
 local function renderLooks()
-	local rows = {}
-	for look = 1, T.MAX do rows[look] = { look = look } end
-	panel.looks:SetItems(rows, nil, true)
+	local options = {}
+	for look = 1, T.MAX do options[look] = { value = look, text = lookText(look) } end
+	panel.looks:SetOptions(options)
+	panel.looks:SetText(lookText(state.look))
+	panel.lookOptions = options
 end
 
 local function renderEditor()
@@ -429,7 +436,7 @@ local function createPicker(width, height)
 	local top = 3 * (CONTROL_H + GAP)
 	pk.table = SC.Table.New(pk, "SynastriaCompanionTransmogChoices", width, height - top, {
 		columns = {
-			{ key = "name", label = "Appearance", width = 260, stretch = true, sortable = false },
+			{ key = "name", label = "Appearance", width = 200, stretch = true, sortable = false },
 			{ key = "type", label = "Type", width = 130, sortable = false },
 		},
 		rowH = ROW_H, icons = true, cell = choiceCell, icon = choiceIcon, tooltip = choiceTooltip,
@@ -473,33 +480,20 @@ local function create(parent, width, height)
 	local footerH = PAD + CONTROL_H + PAD
 	local bodyH = height - PAD - footerH
 
-	panel.looks = SC.Table.New(panel, "SynastriaCompanionTransmogLooks", RAIL_W, bodyH, {
-		columns = {
-			{ key = "name", label = "Look", width = 96, stretch = true, sortable = false },
-			{ key = "active", label = "", width = 64, sortable = false },
-		},
-		rowH = ROW_H,
-		cell = function(row, key)
-			if key == "name" then return T.Name(row.look), row.look == state.look and C.heading or C.text end
-			return T.Active() == row.look and "Active" or "", C.good
-		end,
-		isSelected = function(row) return row.look == state.look end,
-		onClick = function(row)
-			state.look = row.look
-			TransmogUI.Refresh()
-		end,
-	})
-	panel.looks.frame:SetPoint("TOPLEFT", PAD, -PAD)
-	part(panel.looks.frame)
+	local editX = PAD
+	local editW = width - 2 * PAD - PREVIEW_W - GAP
 
-	local editX = PAD + RAIL_W + GAP
-	local editW = width - 2 * PAD - RAIL_W - PREVIEW_W - 2 * GAP
-
-	local nameLabel = part(S.Text(panel, "small", C.muted))
-	nameLabel:SetPoint("TOPLEFT", editX, -PAD - 5)
-	nameLabel:SetText("Name")
-	panel.name = part(S.Input(panel, "SynastriaCompanionTransmogName", editW - 50, "Look Name", T.NAME_MAX))
-	panel.name:SetPoint("TOPLEFT", editX + 50, -PAD)
+	local lookLabel = part(S.Text(panel, "small", C.muted))
+	lookLabel:SetPoint("TOPLEFT", editX, -PAD - 5)
+	lookLabel:SetText("Look")
+	panel.looks = part(S.Dropdown(panel, LOOKS_W, function(look)
+		state.look = look
+		TransmogUI.Refresh()
+	end))
+	panel.looks:SetPoint("TOPLEFT", editX + LABEL_W, -PAD)
+	panel.name = part(S.Input(panel, "SynastriaCompanionTransmogName", editW - LABEL_W - LOOKS_W - GAP, "Look Name",
+		T.NAME_MAX))
+	panel.name:SetPoint("LEFT", panel.looks, "RIGHT", GAP, 0)
 	local function rename(self)
 		if state then self:SetText(T.Rename(state.look, self:GetText())) end
 		renderLooks()
@@ -518,7 +512,7 @@ local function create(parent, width, height)
 				T.SetSpec(state.look, spec, on)
 				TransmogUI.Refresh()
 			end))
-		row:SetPoint("TOPLEFT", editX + 50 + (spec - 1) * 38, specY)
+		row:SetPoint("TOPLEFT", editX + LABEL_W + (spec - 1) * 38, specY)
 		panel.specs[spec] = row.check
 	end
 

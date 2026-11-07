@@ -74,9 +74,9 @@ innkeeper keeps Companion out of its way, and builds still apply.
 
 ### Transmog
 
-Your ten transmog looks are on the left, with **Active** beside the one you're wearing. Pick a look to edit it in
-the middle: its name, the specs that switch it on automatically, and the appearance for each slot and each
-weapon's enchant visual. A slot can keep your **Equipped Look**, be **Hidden**, or show any item you've attuned or
+Pick one of your ten transmog looks from **Look** at the top; **Active** marks the one you're wearing. Beside it
+you can rename the look, and below are the specs that switch it on automatically and the appearance for each slot
+and each weapon's enchant visual. A slot can keep your **Equipped Look**, be **Hidden**, or show any item you've attuned or
 acquired. Items you haven't show in red and won't apply. The preview on the right shows your character in the look;
 drag it to turn it around.
 
