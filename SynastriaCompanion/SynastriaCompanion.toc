@@ -2,7 +2,7 @@
 ## Title: Synastria Companion
 ## Notes: Cleaner replacements for Synastria's own windows: perks, attunes, auto loot, the resource bank, the item database and leaderboards. /scomp
 ## Author: Expulsion
-## Version: 1.2.0
+## Version: 1.3.0
 ## SavedVariables: SynastriaCompanionDB
 
 Core.lua
