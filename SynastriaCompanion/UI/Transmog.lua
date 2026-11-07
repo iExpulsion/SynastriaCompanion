@@ -147,7 +147,8 @@ local BG_W, BG_FLOOR = 320, 330
 local BG_PIECES = { { 0, 0, 256, 256 }, { 256, 0, 64, 256 }, { 0, 256, 256, 128 }, { 256, 256, 64, 128 } }
 -- The dressing room's model is 231x320 on the picture; the character's feet sit about 80% down the model's frame.
 -- The feet go on the near floor, FEET rows down the picture.
-local MODEL_W, MODEL_H, FEET_AT, FEET = 231, 320, 0.8, 318
+local MODEL_W, MODEL_H, FEET_AT, FEET = 231, 320, 0.8, 302
+TransmogUI.FEET, TransmogUI.FLOOR = FEET, BG_FLOOR
 
 -- Where each piece goes inside a w x h pane: { x, y, w, h, left, right, top, bottom } with texture coordinates, or
 -- nil for a piece that falls outside it; and the model's { x, y, w, h }, which may run past the pane's bottom: the
@@ -222,12 +223,6 @@ local function createCharacter(parent, x, y, w, h, fullW)
 	drag:SetScript("OnMouseDown", function() model.dragX = GetCursorPosition() end)
 	drag:SetScript("OnMouseUp", function() model.dragX = nil end)
 	drag:SetScript("OnHide", function() model.dragX = nil end)
-	drag:SetScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("Drag to rotate.")
-		GameTooltip:Show()
-	end)
-	drag:SetScript("OnLeave", function() GameTooltip:Hide() end)
 	model:SetScript("OnUpdate", function(self)
 		if self.dragX then
 			local cx = GetCursorPosition()
