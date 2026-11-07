@@ -22,7 +22,7 @@ local function usage()
 	for _, s in ipairs(SC.Window.Ordered()) do keys[#keys + 1] = s.key end
 	SC:Print("/scomp opens the window. /scomp <screen> opens a screen: %s.", table.concat(keys, ", "))
 	SC:Print("/scomp minimap shows or hides the minimap button, and /scomp minimap reset puts it back on the minimap.")
-	SC:Print("/scomp reset moves the window back to the center.")
+	SC:Print("/scomp reset moves the window back to the top middle of the screen.")
 	SC:Print("/scomp theme <name> switches the look after a reload: %s.", themeNames())
 	SC:Print("/scomp pixel: whether windows snap to whole screen pixels, for crisp borders.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
@@ -43,7 +43,7 @@ SlashCmdList.SYNASTRIACOMPANION = function(msg)
 		SC.MinimapButton.Toggle()
 	elseif cmd == "reset" then
 		SC.Window.ResetPosition()
-		SC:Print("Window moved back to the center of the screen.")
+		SC:Print("Window moved back to the top middle of the screen.")
 	elseif cmd == "theme" and arg ~= "" and not SC.SetSkin(arg) then
 		SC:Print("No theme called %s. Themes: %s.", arg, themeNames())
 	elseif cmd == "theme" and arg ~= "" and arg == SC.db.skin then

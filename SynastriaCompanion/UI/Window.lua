@@ -83,6 +83,15 @@ local function find(key)
 	end
 end
 
+-- The default spot: centered across the screen, its top TOP_OFFSET of UIParent's units below the screen's top, as
+-- Build Suite's and Rotation Assist's windows are, so their tops line up whatever their heights. The offset is
+-- converted from UIParent's units, since the window is pixel-scaled.
+local TOP_OFFSET = 60
+local function placeDefault(f)
+	f:ClearAllPoints()
+	f:SetPoint("TOP", UIParent, "TOP", 0, -TOP_OFFSET * UIParent:GetEffectiveScale() / f:GetEffectiveScale())
+end
+
 local function savePosition(f)
 	SC.SnapPosition(f)
 	local point, _, relPoint, x, y = f:GetPoint()
@@ -199,7 +208,7 @@ local function create()
 	f:SetClampedToScreen(true)
 	SC.PixelScale(f)
 	local pos = SC.db.window
-	if pos and pos.point then f:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y) else f:SetPoint("CENTER") end
+	if pos and pos.point then f:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y) else placeDefault(f) end
 	SC.SnapPosition(f)
 	S.Frame(f, "window")
 	tinsert(UISpecialFrames, "SynastriaCompanionFrame")
@@ -251,12 +260,11 @@ function Window.Close(key)
 	if frame and (key == nil or key == current) then frame:Hide() end
 end
 
--- Forgets the saved position and puts the window back in the middle of the screen.
+-- Forgets the saved position and puts the window back at its default spot.
 function Window.ResetPosition()
 	SC.db.window = {}
 	if frame then
-		frame:ClearAllPoints()
-		frame:SetPoint("CENTER")
+		placeDefault(frame)
 		SC.SnapPosition(frame)
 	end
 end
