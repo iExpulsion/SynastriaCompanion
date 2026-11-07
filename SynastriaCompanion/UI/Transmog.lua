@@ -107,27 +107,27 @@ function TransmogUI.Preview(override)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
 end
 
--- The race background is the dressing room's 320x384 picture in four files. The dressing room puts its model over
--- the picture's top-left 231x320, which stands the character on the painted floor, so the model keeps that height
--- here: the picture is scaled to cover the pane without stretching, kept to its bottom edge, and slid sideways
--- toward the model's spot. Textures can't be clipped to a frame, so each piece is cut to the part that shows.
-local BG_W, BG_H = 320, 384
+-- The race background is the dressing room's 320x384 picture in four files. Its last rows fade to black (the
+-- dressing room's frame covers them), so only the picture down to BG_FLOOR is used: scaled to cover the pane
+-- without stretching, kept to that bottom edge, and slid sideways toward the dressing room's model spot (its
+-- top-left 231 columns). Textures can't be clipped to a frame, so each piece is cut to the part that shows.
+local BG_W, BG_FLOOR = 320, 330
 local BG_PIECES = { { 0, 0, 256, 256 }, { 256, 0, 64, 256 }, { 0, 256, 256, 128 }, { 256, 256, 64, 128 } }
-local MODEL_W, MODEL_H = 231, 320
+-- The dressing room's model is 231x320 on the picture; the character's feet sit about 80% down the model's frame.
+-- The feet go on the near floor, FEET rows down the picture.
+local MODEL_W, MODEL_H, FEET_AT, FEET = 231, 320, 0.8, 318
 
 -- Where each piece goes inside a w x h pane: { x, y, w, h, left, right, top, bottom } with texture coordinates, or
--- nil for a piece that falls outside it; and the model's { x, y, w, h }.
+-- nil for a piece that falls outside it; and the model's { x, y, w, h }, which may run past the pane's bottom: the
+-- space under the feet is empty.
 function TransmogUI.BackgroundLayout(w, h)
-	local scale = math.max(w / BG_W, h / BG_H)
+	local scale = math.max(w / BG_W, h / BG_FLOOR)
 	local viewW, viewH = w / scale, h / scale
 	local vx = math.max(0, math.min(BG_W - viewW, MODEL_W / 2 - viewW / 2))
-	local vy = BG_H - viewH
-	-- the floor runs the picture's whole width, so the model is centered across the pane; only its height follows
-	-- the picture, which puts its feet on the floor
-	local my = -vy * scale
-	local model = { w = math.min(w, MODEL_W * scale), y = math.max(0, my) }
+	local vy = BG_FLOOR - viewH
+	local model = { w = math.min(w, MODEL_W * scale), h = MODEL_H * scale }
 	model.x = (w - model.w) / 2
-	model.h = math.min(h, my + MODEL_H * scale) - model.y
+	model.y = (FEET - vy) * scale - FEET_AT * model.h
 	local out = {}
 	for i, piece in ipairs(BG_PIECES) do
 		local px, py, pw, ph = piece[1], piece[2], piece[3], piece[4]
@@ -172,20 +172,23 @@ local function createPreview(width, height)
 	local wi = 1 + S.metrics.wellInset
 	p.bg = TransmogUI.Background(p, wi, width - 2 * wi, height - 2 * wi)
 
-	-- the model stands where the dressing room puts it on the background, with or without the background shown
+	-- the model stands on the background's floor, with or without the background shown; its frame can run past the
+	-- pane's bottom, so it takes no clicks and a frame over the pane does the dragging
 	local _, spot = TransmogUI.BackgroundLayout(width - 2 * wi, height - 2 * wi)
 	local model = CreateFrame("DressUpModel", "SynastriaCompanionTransmogModel", p)
 	model:SetPoint("TOPLEFT", wi + spot.x, -wi - spot.y)
 	model:SetSize(spot.w, spot.h)
 	model:SetFrameLevel(p:GetFrameLevel() + 2)
+	model:EnableMouse(false)
 	model:SetUnit("player")
 	model.facing = 0
-	model:EnableMouse(true)
-	model:SetScript("OnMouseDown", function(self)
-		self.dragX = GetCursorPosition()
-	end)
-	model:SetScript("OnMouseUp", function(self) self.dragX = nil end)
-	model:SetScript("OnHide", function(self) self.dragX = nil end)
+	local drag = CreateFrame("Frame", nil, p)
+	drag:SetAllPoints(p)
+	drag:SetFrameLevel(p:GetFrameLevel() + 3)
+	drag:EnableMouse(true)
+	drag:SetScript("OnMouseDown", function() model.dragX = GetCursorPosition() end)
+	drag:SetScript("OnMouseUp", function() model.dragX = nil end)
+	drag:SetScript("OnHide", function() model.dragX = nil end)
 	model:SetScript("OnUpdate", function(self)
 		if self.dragX then
 			local x = GetCursorPosition()
@@ -204,10 +207,7 @@ local function createPreview(width, height)
 	end)
 	p.model = model
 
-	local over = CreateFrame("Frame", nil, p)
-	over:SetAllPoints(p)
-	over:SetFrameLevel(p:GetFrameLevel() + 3)
-	p.hint = S.Text(over, "small", C.muted)
+	p.hint = S.Text(drag, "small", C.muted)
 	p.hint:SetPoint("BOTTOM", 0, wi + 6)
 	p.hint:SetText("Drag to Rotate")
 	return p
