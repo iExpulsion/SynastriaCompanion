@@ -84,7 +84,7 @@ Click a slot to pick its appearance. The list has a type filter (armor type or w
 hovering an appearance tries it on the preview. Click one to choose it. **Show Duplicates** also lists items that
 look the same as one already listed. Right-click a slot to go back to your equipped look.
 
-Along the bottom of the preview, **Naked** shows only what you're trying, with nothing else on, and **Show
+Along the top of the preview, **Naked** shows only what you're trying, with nothing else on, and **Show
 Background** puts your race's background behind your character.
 
 **Sets** lists the game's item sets, from dungeon and tier sets to PvP gear, filtered to your class and armor type

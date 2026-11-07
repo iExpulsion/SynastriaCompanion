@@ -215,9 +215,6 @@ local function createPreview(width, height)
 	p.model = model
 
 	p.drag, p.inset = drag, wi
-	p.hint = S.Text(drag, "small", C.muted)
-	p.hint:SetPoint("TOP", 0, -wi - 6)
-	p.hint:SetText("Drag to Rotate")
 	return p
 end
 
@@ -815,18 +812,21 @@ local function create(parent, width, height)
 	panel.picker:SetPoint("TOPLEFT", PAD, -PAD)
 
 	panel.preview = createPreview(PREVIEW_W, bodyH)
-	-- the preview's own options, on a strip along its bottom so they read over the background
+	-- the preview's own options and the rotate hint, on a strip along its top, clear of the character's feet and
+	-- readable over the background
 	local p = panel.preview
 	local strip = CreateFrame("Frame", nil, p.drag)
-	strip:SetPoint("BOTTOMLEFT", p.inset, p.inset)
-	strip:SetPoint("BOTTOMRIGHT", -p.inset, p.inset)
+	strip:SetPoint("TOPLEFT", p.inset, -p.inset)
+	strip:SetPoint("TOPRIGHT", -p.inset, -p.inset)
 	strip:SetHeight(CONTROL_H + GAP)
 	S.Solid(strip, "BACKGROUND", { 0, 0, 0, 0.55 }):SetAllPoints()
 	p.naked = labeledCheck(strip, "Naked", "Show only what you're trying, with nothing else on.", option(T.NAKED))
 	p.background = labeledCheck(strip, "Show Background", "Show your race's background behind the preview.", option(T.BACKGROUND))
-	local both = p.naked.w + PAD + p.background.w
-	p.naked:SetPoint("LEFT", strip, "CENTER", -both / 2, 0)
+	p.naked:SetPoint("LEFT", strip, "LEFT", GAP, 0)
 	p.background:SetPoint("LEFT", p.naked, "RIGHT", PAD, 0)
+	p.hint = S.Text(strip, "small", C.muted)
+	p.hint:SetPoint("RIGHT", strip, "RIGHT", -GAP, 0)
+	p.hint:SetText("Drag to Rotate")
 	panel.preview:SetPoint("TOPRIGHT", -PAD, -PAD)
 
 	local footerY = PAD + CONTROL_H / 2
