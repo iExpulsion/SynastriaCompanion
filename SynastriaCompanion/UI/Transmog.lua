@@ -28,6 +28,8 @@ local DUMMY_WEAPON = 4925
 local ENCHANT_ICON = 20711
 local ROTATE_SPEED = 0.012
 local QUARTER = 1.57079632
+-- seconds after a cell first dresses when it's framed again
+local SETTLE = { 0.2, 0.6 }
 
 -- Slot buttons: the left column, the right column, and the weapons under the character.
 local LEFT_SLOTS = { 1, 2, 3, 4, 5, 6, 7 }
@@ -434,11 +436,22 @@ local function newCell(parent, w, h)
 	model:SetFrameLevel(cell:GetFrameLevel() + 2)
 	model:EnableMouse(false)
 	model:SetUnit("player")
+	-- A model reports its file before it has finished loading, and finishing resets its camera and position, so a
+	-- cell is framed again twice after it first dresses.
 	model:SetScript("OnUpdate", function(self)
+		local now = GetTime()
 		if cell.want and modelReady(self) then
 			cell.want = nil
 			applyCell(cell)
+			cell.settle = { now + SETTLE[1], now + SETTLE[2] }
+		elseif cell.settle and now >= cell.settle[1] then
+			table.remove(cell.settle, 1)
+			if #cell.settle == 0 then cell.settle = nil end
+			applyCell(cell)
 		end
+	end)
+	model:SetScript("OnShow", function()
+		if cell.value then cell.want = true end
 	end)
 	cell.model = model
 	local hover = S.Solid(cell, "HIGHLIGHT", { 1, 1, 1, 0.08 })
