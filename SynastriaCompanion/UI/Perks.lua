@@ -12,7 +12,7 @@ local C = S.colors
 local Perks = SC.Perks
 local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 
-local LIST_W, SEGMENT_W = 320, 70
+local LIST_W, SEGMENT_W = 380, 64
 local ICON_ROW, ICON = 36, 28
 local TOGGLE_Y = PAD + ICON_ROW + PAD
 local SECTIONS_Y = TOGGLE_Y + CONTROL_H + PAD
@@ -37,37 +37,91 @@ end
 
 -- List -------------------------------------------------------------------------------------------------------
 
-local function headerLabel(c)
-	local count, limit = Perks.ActiveCount(c.cat), Perks.Limit(c.cat)
-	local counts = limit and ("%d / %d"):format(count, limit) or tostring(count)
-	return c.label .. "   " .. S.Hex(limit and count >= limit and C.warn or C.muted, counts)
+-- Searching shows every group open, so a match is never hidden in a collapsed one.
+local function collapsed(key, searching)
+	return not searching and state.collapsed[key] == true
 end
 
-local function listItems()
+local function headerItem(key, label, counts, searching)
+	local mark = collapsed(key, searching) and "+  " or "-  "
+	return { header = S.Hex(C.muted, mark) .. label .. "   " .. counts, key = key }
+end
+
+local function categoryCounts(c)
+	local count, limit = Perks.ActiveCount(c.cat), Perks.Limit(c.cat)
+	local counts = limit and ("%d / %d"):format(count, limit) or tostring(count)
+	return S.Hex(limit and count >= limit and C.warn or C.muted, counts)
+end
+
+local function matches(perk, q)
+	return q == "" or (perk.name or ""):lower():find(q, 1, true) ~= nil
+end
+
+local function categoryItems(q)
 	local items, first = {}, nil
-	local q = (state.search or ""):lower()
+	local searching = q ~= ""
 	for _, c in ipairs(Perks.Categories()) do
 		local rows = {}
 		for _, perk in ipairs(Perks.InCategory(c.cat)) do
-			local matches = q == "" or (perk.name or ""):lower():find(q, 1, true)
 			local shown = state.filter ~= "active" or Perks.Active(perk.id) or perk.id == selected
-			if matches and shown then rows[#rows + 1] = { perk = perk } end
+			if matches(perk, q) and shown then rows[#rows + 1] = { perk = perk } end
 		end
 		if #rows > 0 then
-			items[#items + 1] = { header = headerLabel(c) }
-			for _, row in ipairs(rows) do items[#items + 1] = row end
+			local key = "cat" .. c.cat
+			items[#items + 1] = headerItem(key, c.label, categoryCounts(c), searching)
+			if not collapsed(key, searching) then
+				for _, row in ipairs(rows) do items[#items + 1] = row end
+			end
 			first = first or rows[1].perk.id
 		end
 	end
 	return items, first
 end
 
+local function taskItems(q)
+	local items, first = {}, nil
+	local searching = q ~= ""
+	for _, g in ipairs(Perks.TaskList()) do
+		local rows = {}
+		for _, t in ipairs(g.perks) do
+			local perk = PerkMgrPerks[t.id]
+			if matches(perk, q) then rows[#rows + 1] = { perk = perk, task = t } end
+		end
+		if #rows > 0 or (not searching and g.party > 0) then
+			local key = "task" .. g.header
+			local counts = S.Hex(C.muted, tostring(#g.perks))
+			if g.party > 0 then counts = counts .. S.Hex(C.accent, ("  +%d From Party"):format(g.party)) end
+			items[#items + 1] = headerItem(key, g.name, counts, searching)
+			if not collapsed(key, searching) then
+				for _, row in ipairs(rows) do items[#items + 1] = row end
+			end
+			first = first or rows[1] and rows[1].perk.id
+		end
+	end
+	return items, first
+end
+
+local function listItems()
+	local q = (state.search or ""):lower()
+	if state.filter == "tasks" then return taskItems(q) end
+	return categoryItems(q)
+end
+
+-- Progress counts can be fractional; whole numbers show without decimals.
+local function amount(n)
+	n = n or 0
+	return n == math.floor(n) and tostring(n) or ("%.1f"):format(n)
+end
+
 local function cell(item, key)
-	local perk = item.perk
+	local perk, task = item.perk, item.task
 	local rank = Perks.Rank(perk.id)
 	local text, color
 	if key == "name" then
 		text, color = perk.name, rank and C.text or C.muted
+		if task and task.short and task.short ~= "" then text = text .. "  " .. S.Hex(C.muted, task.short) end
+	elseif key == "rank" and task then
+		text, color = task.progress and amount(task.progress) .. " / " .. amount(task.max) or "", C.muted
 	elseif key == "rank" then
 		text, color = (rank or 0) .. "/" .. Perks.MaxRank(perk), rank and C.muted or C.warn
 	elseif key == "on" then
@@ -77,14 +131,24 @@ local function cell(item, key)
 end
 
 local function rowTooltip(tt, item)
-	local perk = item.perk
-	if perk then
+	local perk, task = item.perk, item.task
+	if perk and task then
+		tt:AddLine(perk.name, 1, 1, 1)
+		tt:AddLine(task.text, 1, 1, 1, true)
+		if task.progress then tt:AddLine(("Progress: %s / %s"):format(amount(task.progress), amount(task.max)), 1, 0.82, 0) end
+		tt:AddLine("Click for details.", 0.6, 0.6, 0.66, true)
+	elseif perk then
 		tt:AddLine(perk.name, 1, 1, 1)
 		local desc = Perks.Description(perk.id, Perks.Rank(perk.id) or 1)
 		if desc then tt:AddLine(desc, 1, 1, 1, true) end
 		local _, why = Perks.CanToggle(perk)
 		tt:AddLine(why and "Click for details." or "Click for details. Right-click to turn it " ..
 			(Perks.Active(perk.id) and "off." or "on."), 0.6, 0.6, 0.66, true)
+	elseif item.key then
+		tt:AddLine(collapsed(item.key, (state.search or "") ~= "") and "Click to expand." or "Click to collapse.", 0.8, 0.8, 0.8)
+		if item.key:find("^task") then
+			tt:AddLine("Perks working toward the same kind of task. Party members on it help it progress.", 0.6, 0.6, 0.66, true)
+		end
 	end
 end
 
@@ -282,12 +346,17 @@ end
 
 function PerksUI.Refresh(keepScroll)
 	panel.pending = nil
-	panel.showAll:SetKind(state.filter ~= "active" and "selected" or "secondary")
+	local tasks = state.filter == "tasks"
+	panel.showAll:SetKind((state.filter ~= "active" and not tasks) and "selected" or "secondary")
 	panel.showActive:SetKind(state.filter == "active" and "selected" or "secondary")
+	panel.showTasks:SetKind(tasks and "selected" or "secondary")
+	panel.table:SetColumnLabel("rank", tasks and "Progress" or "Rank")
 	if Perks.HasData() then
 		local items, first = listItems()
 		if not (selected and PerkMgrPerks[selected] and not Perks.IsHidden(PerkMgrPerks[selected])) then selected = first end
-		panel.table:SetItems(items, state.search ~= "" and "No Perks Match" or "No Perks Are On", keepScroll)
+		local empty = (state.search or "") ~= "" and "No Perks Match"
+			or tasks and "No Tasks: Turn a Perk On to Work Toward Its Next Rank" or "No Perks Are On"
+		panel.table:SetItems(items, empty, keepScroll)
 		footer()
 	else
 		selected = nil
@@ -386,6 +455,7 @@ end
 local function create(parent, width, height)
 	SC.db.perks = SC.db.perks or {}
 	state = SC.db.perks
+	state.collapsed = state.collapsed or {}
 	panel = CreateFrame("Frame", nil, parent)
 	panel:SetSize(width, height)
 
@@ -399,9 +469,14 @@ local function create(parent, width, height)
 		PerksUI.Refresh()
 	end, "Show only the perks that are on.")
 	panel.showActive:SetPoint("LEFT", panel.showAll, "RIGHT", -1, 0)
-	local searchW = LIST_W - 2 * SEGMENT_W + 1 - GAP
+	panel.showTasks = S.Button(panel, "Tasks", "secondary", SEGMENT_W, function()
+		state.filter = "tasks"
+		PerksUI.Refresh()
+	end, "Show what the perks that are on are working toward, and your progress on each.")
+	panel.showTasks:SetPoint("LEFT", panel.showActive, "RIGHT", -1, 0)
+	local searchW = LIST_W - 3 * SEGMENT_W + 2 - GAP
 	panel.search = S.Input(panel, "SynastriaCompanionPerkSearch", searchW, "Search Perks", 40)
-	panel.search:SetPoint("LEFT", panel.showActive, "RIGHT", GAP, 0)
+	panel.search:SetPoint("LEFT", panel.showTasks, "RIGHT", GAP, 0)
 	panel.search:HookScript("OnTextChanged", function(self, user)
 		if user then
 			state.search = self:GetText()
@@ -418,7 +493,7 @@ local function create(parent, width, height)
 	panel.table = SC.Table.New(panel, "SynastriaCompanionPerkTable", LIST_W, listH, {
 		columns = {
 			{ key = "name", label = "Perk", width = 190, stretch = true, sortable = false },
-			{ key = "rank", label = "Rank", width = 52, sortable = false },
+			{ key = "rank", label = "Rank", width = 84, sortable = false },
 			{ key = "on", label = "On", width = 40, sortable = false },
 		},
 		rowH = 20, icons = true, cell = cell,
@@ -427,7 +502,10 @@ local function create(parent, width, height)
 		isSelected = function(item) return item.perk ~= nil and item.perk.id == selected end,
 		tooltip = rowTooltip,
 		onClick = function(item, button)
-			if item.perk then
+			if item.key and (state.search or "") == "" then
+				state.collapsed[item.key] = not state.collapsed[item.key] or nil
+				PerksUI.Refresh(true)
+			elseif item.perk then
 				selected = item.perk.id
 				if button == "RightButton" then toggle(selected) else PerksUI.Refresh(true) end
 			end

@@ -55,8 +55,11 @@ asks for them. Clicks can only ask out of combat.
 ### Perks
 
 Your perks by category, as the game lists them, with how many each category allows next to its name. Each perk
-shows its rank, and **On** marks the ones that are on. **All** and **On** switch between every perk and only the
-ones that are on, and the search narrows by name.
+shows its rank, and **On** marks the ones that are on. Click a category to collapse it, and again to open it.
+**All** and **On** switch between every perk and only the ones that are on, and the search narrows by name.
+
+**Tasks** lists what your perks that are on are working toward, grouped by kind of task, with your progress on
+each. The group heading shows how many party members are on the same kind of task, since they help it along.
 
 Click a perk for its details: the effect at your rank and the next one, how it works with other perks, its set and
 which set bonuses are active, the ability it grants, its options, and **How to Unlock** or **How to Upgrade** with

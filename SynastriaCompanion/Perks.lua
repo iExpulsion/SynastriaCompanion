@@ -499,6 +499,54 @@ function Perks.Task(id)
 	return out
 end
 
+-- The task list the Perk Manager's Task List button shows: the tasks of perks that are on, grouped by task header,
+-- each { header, name, party = party members on the same kind of task, perks = { { id, text, short, progress,
+-- max } } }, the biggest groups first and Other last. Party-only groups are listed too.
+function Perks.TaskList()
+	local byHeader, groups = {}, {}
+	local function group(header)
+		local g = byHeader[header]
+		if not g then
+			local info = PerkMgrTaskHeader and PerkMgrTaskHeader[header]
+			g = { header = header, name = header == 0 and "Other" or info and info.text or "Unknown",
+				party = header ~= 0 and GetCustomGameData(9, header) or 0, perks = {},
+				short = info and bit.band(info.flags or 0, 4) ~= 0 }
+			byHeader[header] = g
+			groups[#groups + 1] = g
+		end
+		return g
+	end
+	for i = 1, GetCustomGameDataCount(6) or 0 do
+		local id = GetCustomGameDataIndex(6, i)
+		local guid = id and GetCustomGameData(6, id)
+		local taskId = guid and GetCustomGameData(7, guid)
+		local task = taskId and PerkMgrTaskAll and PerkMgrTaskAll[taskId]
+		local perk = PerkMgrPerks and PerkMgrPerks[id]
+		if perk and task and task.header and task.header ~= 0 and Perks.Active(id) then
+			local g = group(task.header)
+			local entry = { id = id, text = taskText(task, guid) }
+			if bit.band(task.flags or 0, 0x1000) == 0 then
+				entry.progress, entry.max = GetCustomGameData(4, guid) or 0, progressMax(task)
+			end
+			if g.short then entry.short = (task.text or ""):match("%$c(.-)%$C") end
+			g.perks[#g.perks + 1] = entry
+		end
+	end
+	for i = 1, GetCustomGameDataCount(9) or 0 do
+		local header = GetCustomGameDataIndex(9, i)
+		if header and header > 0 and (GetCustomGameData(9, header) or 0) > 0 then group(header) end
+	end
+	for _, g in ipairs(groups) do
+		table.sort(g.perks, function(a, b) return (PerkMgrPerks[a.id].name or ""):upper() < (PerkMgrPerks[b.id].name or ""):upper() end)
+	end
+	table.sort(groups, function(a, b)
+		local sa, sb = #a.perks + a.party - (a.header == 0 and 999 or 0), #b.perks + b.party - (b.header == 0 and 999 or 0)
+		if sa ~= sb then return sa > sb end
+		return a.name < b.name
+	end)
+	return groups
+end
+
 -- The share of the current task done, 0 to 1, for the list's rank bar; 1 at the top rank, nil when not learned.
 function Perks.Progress(id)
 	local share
