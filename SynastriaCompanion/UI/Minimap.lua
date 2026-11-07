@@ -72,7 +72,9 @@ local function createMenu()
 	S.Frame(menu, "menu")
 	menu:Hide()
 	tinsert(UISpecialFrames, "SynastriaCompanionMinimapMenu")
-	local y, section = 4, nil
+	-- rows sit inside the menu's border, however thick the theme draws it
+	local m = S.metrics.menuInset
+	local y, section = 3 + m, nil
 	for _, screen in ipairs(SC.Window.Ordered()) do
 		if screen.section ~= section then
 			section = screen.section
@@ -81,9 +83,9 @@ local function createMenu()
 		end
 		local item = CreateFrame("Button", nil, menu)
 		item:SetHeight(ROW_H)
-		item:SetPoint("TOPLEFT", 1, -y)
-		item:SetPoint("TOPRIGHT", -1, -y)
-		item:SetWidth(MENU_W - 2)
+		item:SetPoint("TOPLEFT", m, -y)
+		item:SetPoint("TOPRIGHT", -m, -y)
+		item:SetWidth(MENU_W - 2 * m)
 		S.Highlight(item)
 		local text = S.Text(item, "small")
 		text:SetPoint("LEFT", S.PAD + 6, 0)
@@ -96,7 +98,7 @@ local function createMenu()
 		SC.SecureCast.Overlay(item, { spell = function() return SC.SecureCast.ScreenSpell(screen) end, onClick = pick })
 		y = y + ROW_H
 	end
-	menu:SetHeight(y + 4)
+	menu:SetHeight(y + 3 + m)
 	S.TrackPopup(menu)
 end
 
