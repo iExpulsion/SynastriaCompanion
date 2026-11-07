@@ -100,8 +100,17 @@ local function dress(model, outfit)
 	end
 end
 
+-- Weapons that can only go in the off hand. A preview model puts any other weapon in the main hand, whatever slot
+-- it's tried in, and a two-hander replaces both, so the weapon tried last is the one that shows.
+local OFF_HAND_ONLY = { INVTYPE_SHIELD = true, INVTYPE_HOLDABLE = true, INVTYPE_WEAPONOFFHAND = true }
+
+local function offHandOnly(id)
+	return id ~= nil and OFF_HAND_ONLY[select(9, GetItemInfoCustom(id))] == true
+end
+
 -- What the look wears, with `override` = { slot, value }, { hand, value } or { set = { [slot] = item } } for what's
--- being tried, and only that when Naked is on (both weapons, for an enchant visual).
+-- being tried, and only that when Naked is on (both weapons, for an enchant visual). The weapon in focus goes on
+-- last so it's the one that shows: the off hand while it's being tried, else the main hand.
 local function outfitFor(look, override)
 	local outfit = {}
 	local naked = override ~= nil and T.HasOption(T.NAKED)
@@ -128,12 +137,33 @@ local function outfitFor(look, override)
 			outfit[#outfit + 1] = { slot = slot, id = id, enchant = enchant }
 		end
 	end
+	local offFocus = override ~= nil and (override.slot == T.OFF_HAND or override.hand == 2)
+	local focus = offFocus and T.OFF_HAND or T.MAIN_HAND
+	for i, piece in ipairs(outfit) do
+		if piece.slot == focus then
+			table.remove(outfit, i)
+			outfit[#outfit + 1] = piece
+			break
+		end
+	end
 	return outfit
 end
 
+-- The look you're wearing shows on your real character, as the server draws you: it has both weapons, which a
+-- dressed preview can't (see OFF_HAND_ONLY). Any other look, or anything being tried, is dressed piece by piece.
 function TransmogUI.Preview(override)
 	local p = panel.preview
-	p.want = outfitFor(state.look, override)
+	if override == nil and state.look == T.Active() then
+		p.want = nil
+		if p.mode ~= "real" then
+			p.mode = "real"
+			p.model:SetUnit("player")
+			p.model:SetFacing(p.model.facing)
+		end
+	else
+		p.mode = "dressed"
+		p.want = outfitFor(state.look, override)
+	end
 	local bg = T.HasOption(T.BACKGROUND)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
 	p.naked.check:SetChecked(T.HasOption(T.NAKED))
@@ -370,7 +400,9 @@ end
 local function frameCell(model, shown)
 	local slot, hand = selection()
 	if hand or slot >= T.MAIN_HAND then
-		model:SetFacing(slot == T.OFF_HAND and not hand and -QUARTER or QUARTER)
+		-- the side the weapon is on faces the camera: the left only for off-hand-only items, since anything else
+		-- lands in the main hand (see OFF_HAND_ONLY)
+		model:SetFacing(offHandOnly(shown) and -QUARTER or QUARTER)
 	elseif GetTransmogOffsets then
 		local cam = GetTransmogOffsets(slot, shown or 0)
 		if cam.scale then model:SetModelScale(cam.scale) end
@@ -747,7 +779,10 @@ function TransmogUI.Refresh()
 	end
 end
 
+-- Something changed that the real character may show (a look, your gear, the server redrawing you), so it's
+-- loaded again on the next refresh.
 function TransmogUI.Changed(delay)
+	if panel then panel.preview.mode = nil end
 	if panel and panel:IsVisible() then
 		panel.pending = math.max(panel.pending or 0, GetTime() + (delay or REFRESH_DELAY))
 	end
@@ -1084,6 +1119,8 @@ local function show()
 end
 
 SC:On("PLAYER_EQUIPMENT_CHANGED", function() TransmogUI.Changed() end)
+SC:On("UNIT_MODEL_CHANGED", function(unit) if unit == "player" then TransmogUI.Changed() end end)
+SC:On("UNIT_INVENTORY_CHANGED", function(unit) if unit == "player" then TransmogUI.Changed() end end)
 SC:On("ACTIVE_TALENT_GROUP_CHANGED", function() TransmogUI.Changed(1) end)
 
 SC.Window.AddScreen({
