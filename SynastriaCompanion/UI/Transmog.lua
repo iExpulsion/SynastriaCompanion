@@ -101,7 +101,7 @@ local function dress(model, outfit)
 end
 
 -- What the look wears, with `override` = { slot, value }, { hand, value } or { set = { [slot] = item } } for what's
--- being tried, and only that when Naked is on.
+-- being tried, and only that when Naked is on (both weapons, for an enchant visual).
 local function outfitFor(look, override)
 	local outfit = {}
 	local naked = override ~= nil and T.HasOption(T.NAKED)
@@ -123,7 +123,8 @@ local function outfitFor(look, override)
 			else enchant = chosen end
 			if enchant == 0 then enchant = nil end
 		end
-		if id and (not naked or tried or triedHand) then
+		local pairedWeapon = override ~= nil and override.hand ~= nil and def.enchant ~= nil
+		if id and (not naked or tried or triedHand or pairedWeapon) then
 			outfit[#outfit + 1] = { slot = slot, id = id, enchant = enchant }
 		end
 	end
@@ -333,22 +334,25 @@ local function weaponSelection()
 	return hand ~= nil or slot >= T.MAIN_HAND
 end
 
--- What a cell wears: the look without the selected slot (and without weapons when picking the ranged slot or an
--- enchant visual, as the game's window does it), then the appearance it shows.
+-- What a cell wears: the look without the selected slot (and without weapons when picking the ranged slot, as the
+-- game's window does it), then the appearance it shows. An enchant visual is shown on the pair of weapons, the
+-- other hand keeping its own, even with Naked on.
 local function cellOutfit(value)
 	local slot, hand = selection()
 	local naked = T.HasOption(T.NAKED)
 	local outfit = {}
+	local weaponSlot = hand and (hand == 1 and T.MAIN_HAND or T.OFF_HAND)
 	for i in ipairs(T.SLOTS) do
-		local skip = i == slot or i == 14 or ((i == T.MAIN_HAND or i == T.OFF_HAND) and (slot == 14 or hand ~= nil))
-		if not naked and not skip then
+		local isWeapon = i == T.MAIN_HAND or i == T.OFF_HAND
+		local skip = i == slot or i == 14 or i == weaponSlot or (isWeapon and slot == 14 and not hand)
+		local otherHand = hand ~= nil and isWeapon and i ~= weaponSlot
+		if (not naked or otherHand) and not skip then
 			local id, enchant = T.Appearance(state.look, i)
 			if id then outfit[#outfit + 1] = { slot = i, id = id, enchant = enchant } end
 		end
 	end
 	local shown
 	if hand then
-		local weaponSlot = hand == 1 and T.MAIN_HAND or T.OFF_HAND
 		local weapon = T.Appearance(state.look, weaponSlot) or DUMMY_WEAPON
 		local enchant = value
 		if value == T.EQUIPPED then enchant = select(2, T.Equipped(weaponSlot)) elseif value == T.HIDDEN then enchant = nil end
