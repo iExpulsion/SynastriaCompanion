@@ -20,6 +20,8 @@ local STRIP_H = CONTROL_H + GAP
 -- full size), stretched to fill, and never fewer than 3x2 when a small screen shrinks the window.
 local WINDOW_W, WINDOW_H = 1230, 816
 local CELL_W, CELL_H = 160, 192
+-- the game's window's model frame in each box: 160 wide, the box's 192 less its 26 for the item button
+local STOCK_MODEL_W, STOCK_MODEL_H = 160, 166
 local MIN_COLS, MIN_ROWS = 3, 2
 local NAME_H = 16
 local LOOK_LABEL_W, TAB_W, PAGE_TEXT_W = 36, 80, 84
@@ -466,9 +468,14 @@ local function newCell(parent, w, h)
 	cell:SetSize(w, h)
 	S.Panel(cell, C.well, C.border)
 	cell.bg = TransmogUI.Background(cell, 1, w - 2, h - 2 - NAME_H)
+	-- the model's frame has the shape of the game's window's (its offsets were tuned for it), as wide as the cell
+	-- and centered above the name, so each item lands centered as the game frames it
+	local areaH = h - 2 - NAME_H
+	local modelW = w - 2
+	local modelH = math.min(areaH, modelW * STOCK_MODEL_H / STOCK_MODEL_W)
 	local model = CreateFrame("DressUpModel", nil, cell)
-	model:SetPoint("TOPLEFT", 1, -1)
-	model:SetPoint("BOTTOMRIGHT", -1, 1 + NAME_H)
+	model:SetSize(modelW, modelH)
+	model:SetPoint("TOP", 0, -1 - (areaH - modelH) / 2)
 	model:SetFrameLevel(cell:GetFrameLevel() + 2)
 	model:EnableMouse(false)
 	model:SetUnit("player")
