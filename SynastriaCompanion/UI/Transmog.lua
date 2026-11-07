@@ -395,6 +395,8 @@ local function renderSets()
 	local sv = panel.sets
 	sv.class:SetText(state.setClass == "all" and "All Classes" or "Your Class")
 	sv.armor:SetText(state.setArmor == 0 and "Any Armor" or T.ARMOR_TYPES[state.setArmor])
+	sv.naked.check:SetChecked(T.HasOption(T.NAKED))
+	sv.background.check:SetChecked(T.HasOption(T.BACKGROUND))
 	local q = (state.setSearch or ""):lower()
 	local rows = {}
 	for _, set in ipairs(T.Sets()) do
@@ -502,6 +504,7 @@ local function option(flag)
 	return function(on)
 		T.SetOption(flag, on)
 		if panel.picker:IsShown() then panel.picker.keepScroll = true end
+		if panel.sets:IsShown() then panel.sets.keepScroll = true end
 		TransmogUI.Refresh()
 	end
 end
