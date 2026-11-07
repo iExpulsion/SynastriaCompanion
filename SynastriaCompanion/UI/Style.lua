@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.1.0. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.1.0-1-g2bf8be2. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -830,10 +830,101 @@ local Table = {}
 S.Table = Table
 
 local HEADER_H, WHEEL_ROWS, BAR_SPACE = 22, 3, 10
+local DRAG_SCROLL_EVERY, DRAG_EDGE, DRAGGED_ALPHA = 0.08, 0.35, 0.4
+
+-- Where a dragged row would land, as the number of items above the gap nearest the cursor (0 to #items), and the
+-- cursor's place in rows from the top of the body.
+local function dropSlot(self)
+	local _, y = GetCursorPosition()
+	local pos = ((self.content:GetTop() or 0) - y / self.content:GetEffectiveScale() - self.bodyTop) / self.rowH
+	local shownRows = math.min(self.visible, #self.items - self.offset)
+	return self.offset + math.max(0, math.min(shownRows, math.floor(pos + 0.5))), pos
+end
+
+local function stopDrag(self, drop)
+	local drag = self.drag
+	self.drag = nil
+	self.dragLayer:Hide()
+	self.ghost:Hide()
+	if drag then
+		self.dragEndedAt = GetTime()
+		self:Redraw()
+		local to = drag.slot < drag.from and drag.slot + 1 or drag.slot
+		if drop and to ~= drag.from and drag.from <= #self.items then self.onMove(drag.from, to) end
+	end
+end
+
+local function startDrag(self, row)
+	local item = row.item
+	if item and not (self.header and self.header(item)) then
+		GameTooltip:Hide()
+		self.drag = { from = self.offset + row.index, slot = self.offset + row.index, scrollAt = 0 }
+		self.ghost.text:SetText(self.cell(item, self.columns[1].key) or "")
+		self.ghost:SetSize(math.ceil(self.ghost.text:GetStringWidth()) + 16, self.rowH)
+		self.dragLayer:Show()
+		self.ghost:Show()
+		self:Redraw()
+	end
+end
+
+-- Each frame of a drag: scrolls when the cursor is at the top or bottom edge, shows the line where the row would
+-- land (hidden when it would stay put) and keeps the row's name beside the cursor. Letting go anywhere drops it.
+local function updateDrag(self)
+	local drag = self.drag
+	if drag and IsMouseButtonDown("LeftButton") then
+		local slot, pos = dropSlot(self)
+		local step = (pos < DRAG_EDGE and -1) or (pos > self.visible - DRAG_EDGE and 1) or 0
+		local now = GetTime()
+		if step ~= 0 and now >= drag.scrollAt then
+			drag.scrollAt = now + DRAG_SCROLL_EVERY
+			self:ScrollTo(self.offset + step)
+			slot = dropSlot(self)
+		end
+		drag.slot = slot
+		local mark = self.dropLine
+		if slot == drag.from or slot == drag.from - 1 then
+			mark:Hide()
+		else
+			local y = -self.bodyTop - (slot - self.offset) * self.rowH + 1
+			mark:SetPoint("TOPLEFT", 0, y)
+			mark:SetPoint("TOPRIGHT", 0, y)
+			mark:Show()
+		end
+		local x, y = GetCursorPosition()
+		local scale = UIParent:GetEffectiveScale()
+		self.ghost:ClearAllPoints()
+		self.ghost:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x / scale + 14, y / scale - self.rowH / 2)
+	else
+		stopDrag(self, true)
+	end
+end
+
+local function newDragParts(self)
+	local C = S.colors
+	local layer = CreateFrame("Frame", nil, self.content)
+	layer:SetAllPoints(self.content)
+	layer:SetFrameLevel(self.content:GetFrameLevel() + 4)
+	layer:Hide()
+	layer:SetScript("OnUpdate", function() updateDrag(self) end)
+	layer:SetScript("OnHide", function() stopDrag(self, false) end)
+	self.dragLayer = layer
+	self.dropLine = S.Solid(layer, "OVERLAY", C.accent)
+	self.dropLine:SetHeight(2)
+	self.dropLine:Hide()
+	local ghost = CreateFrame("Frame", nil, UIParent)
+	ghost:SetFrameStrata("TOOLTIP")
+	S.Solid(ghost, "BACKGROUND", C.panel):SetAllPoints()
+	S.Solid(ghost, "BORDER", C.rowSelected):SetAllPoints()
+	ghost.text = S.Text(ghost, "small")
+	ghost.text:SetPoint("LEFT", 8, 0)
+	ghost:Hide()
+	self.ghost = ghost
+end
 
 local function newRow(self, i)
 	local C = S.colors
 	local row = CreateFrame("Button", nil, self.content)
+	row.index = i
 	row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	row:SetHeight(self.rowH)
 	row:SetPoint("TOPLEFT", 0, -self.bodyTop - (i - 1) * self.rowH)
@@ -883,8 +974,14 @@ local function newRow(self, i)
 		GameTooltip:Hide()
 	end)
 	row:SetScript("OnClick", function(r, button)
-		if r.item and self.onClick then self.onClick(r.item, button) end
+		-- the release that ends a drag isn't a click
+		if r.item and self.onClick and not self.drag and self.dragEndedAt ~= GetTime() then self.onClick(r.item, button) end
 	end)
+	if self.onMove then
+		row:RegisterForDrag("LeftButton")
+		row:SetScript("OnDragStart", function(r) startDrag(self, r) end)
+		row:SetScript("OnDragStop", function() stopDrag(self, true) end)
+	end
 	return row
 end
 
@@ -963,15 +1060,18 @@ end
 -- opts: columns = { { key, label, width, justify, sortable, defaultDesc, tooltip, stretch } }, rowH, icons (the
 -- first column has an icon), cell(item, key) -> text, color, icon(item) -> texture, tooltip(tt, item),
 -- onClick(item, button), onSort(key, desc), header(item) -> label when the item is a group header row,
--- isSelected(item), plain (a bare list for inside a menu or popup: no well frame and no column headers). The
--- table's frame is .frame; its contents sit inside the well's border.
+-- isSelected(item), plain (a bare list for inside a menu or popup: no well frame and no column headers),
+-- onMove(from, to) (rows can be dragged to reorder; from and to are item indexes, to as it is after the move, and
+-- the table leaves moving the item to the caller). The table's frame is .frame; its contents sit inside the well's
+-- border.
 function Table.New(parent, name, width, height, opts)
 	local C = S.colors
 	-- the well's border, then its own 1px
 	local inset = opts.plain and 0 or 1 + S.metrics.wellInset
 	local self = setmetatable({ columns = opts.columns, rowH = opts.rowH or 20, icons = opts.icons, cell = opts.cell,
 		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, header = opts.header,
-		isSelected = opts.isSelected, plain = opts.plain, items = {}, width = width, innerW = width - 2 * inset,
+		isSelected = opts.isSelected, plain = opts.plain, onMove = opts.onMove, items = {}, width = width,
+		innerW = width - 2 * inset,
 		offset = 0, rows = {}, headers = {} }, { __index = Table })
 	local columns = {}
 	for i, def in ipairs(opts.columns) do
@@ -1040,6 +1140,7 @@ function Table.New(parent, name, width, height, opts)
 	end
 
 	self.visible = math.floor((height - 2 * inset - self.bodyTop) / self.rowH)
+	if self.onMove then newDragParts(self) end
 	for i = 1, self.visible do self.rows[i] = newRow(self, i) end
 	layout(self)
 
@@ -1154,6 +1255,7 @@ function Table:Redraw()
 		end
 		if item then
 			if self.isSelected and self.isSelected(item) then row.selectedTex:Show() else row.selectedTex:Hide() end
+			row:SetAlpha(self.drag and self.offset + i == self.drag.from and DRAGGED_ALPHA or 1)
 			row:Show()
 		else
 			row:Hide()

@@ -152,7 +152,8 @@ Click an item to open it in the Item Database, or Shift-click it to link it.
 ### Auto Loot
 
 The game's loot filter. The rules are on the left, in the order they're checked: the first rule that matches an
-item decides what happens to it. Select a rule to edit it on the right: its name, whether it's on, what has to match
+item decides what happens to it. Drag a rule up or down the list to change when it's checked. Select a rule to edit
+it on the right: its name, whether it's on, what has to match
 (all conditions, any of them, or the first and any other), what to do with the item, and its conditions. Counters
 show how close you are to the limits of 32 rules and 8 conditions per rule.
 

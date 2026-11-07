@@ -78,13 +78,13 @@ local function selectRule(rule)
 	render()
 end
 
-local function moveRule(delta)
-	local to = sel and sel + delta
-	if to and to >= 1 and to <= #draft.rules then
-		draft.rules[sel], draft.rules[to] = draft.rules[to], draft.rules[sel]
-		sel = to
-		changed()
-	end
+-- A rule dragged to a new place in the list; it becomes the selected one.
+local function moveRule(from, to)
+	S.Dismiss()
+	table.insert(draft.rules, to, table.remove(draft.rules, from))
+	sel = to
+	panel.showOptions = false
+	changed()
 end
 
 -- Conditions -------------------------------------------------------------------------------------------------
@@ -281,8 +281,6 @@ function render()
 	panel.newRule:SetEnabled(available and #draft.rules < LF.MAX_RULES)
 	panel.importRule:SetEnabled(available and #draft.rules < LF.MAX_RULES)
 	panel.delete:SetEnabled(rule ~= nil)
-	panel.up:SetEnabled(rule ~= nil and sel > 1)
-	panel.down:SetEnabled(rule ~= nil and sel < #draft.rules)
 
 	setShown(panel.options, panel.showOptions and available)
 	setShown(panel.editor, not panel.showOptions and rule ~= nil)
@@ -397,7 +395,7 @@ local function create(parent, width, height)
 	panel.rules = SC.Table.New(panel, "SynastriaCompanionLFRules", LIST_W, listH, {
 		columns = { { key = "name", label = "Rule", width = 138, sortable = false },
 			{ key = "action", label = "Action", width = 70, sortable = false } },
-		rowH = 20, cell = ruleCell, onClick = selectRule,
+		rowH = 20, cell = ruleCell, onClick = selectRule, onMove = moveRule,
 		tooltip = function(tt, rule)
 			tt:AddLine(rule.name ~= "" and rule.name or "Unnamed Rule", 1, 1, 1)
 			tt:AddLine(textOf(LF.MATCH, rule.type) .. ", then " .. textOf(LF.ACTIONS, rule.outcome), unpack(C.muted))
@@ -407,32 +405,30 @@ local function create(parent, width, height)
 				tt:AddLine((def and def.name or "?") .. op .. (LF.Value(c.type).kind ~= K.NONE and (" " .. LF.ValueText(c)) or ""),
 					1, 1, 1, true)
 			end
+			tt:AddLine("Drag to change the order.", unpack(C.muted))
 		end,
 	})
 	panel.rules.isSelected = function(rule) return draft and not panel.showOptions and rule == draft.rules[sel] end
 	panel.rules.frame:SetPoint("TOPLEFT", PAD, -PAD)
 
-	panel.newRule = S.Button(panel, "New", "secondary", 38, function()
+	local footW = (LIST_W - 2 * 2) / 3
+	panel.newRule = S.Button(panel, "New", "secondary", footW, function()
 		draft.rules[#draft.rules + 1] = LF.NewRule()
 		sel = #draft.rules
 		panel.showOptions = false
 		changed()
 	end, "Add a rule at the bottom.")
 	panel.newRule:SetPoint("TOPLEFT", panel.rules.frame, "BOTTOMLEFT", 0, -GAP)
-	panel.importRule = S.Button(panel, "Import", "secondary", 48, function() importChoice("rule") end,
+	panel.importRule = S.Button(panel, "Import", "secondary", footW, function() importChoice("rule") end,
 		"Paste a shared rule. It's added at the bottom.")
 	panel.importRule:SetPoint("LEFT", panel.newRule, "RIGHT", 2, 0)
-	panel.delete = S.Button(panel, "Delete", "danger", 48, function()
+	panel.delete = S.Button(panel, "Delete", "danger", footW, function()
 		table.remove(draft.rules, sel)
 		if sel > #draft.rules then sel = #draft.rules > 0 and #draft.rules or nil end
 		changed()
 	end, "Remove the selected rule. Nothing is saved until Apply.")
 	panel.delete:SetPoint("LEFT", panel.importRule, "RIGHT", 2, 0)
-	panel.up = S.Button(panel, "Up", "secondary", 34, function() moveRule(-1) end, "Check this rule earlier.")
-	panel.up:SetPoint("LEFT", panel.delete, "RIGHT", 2, 0)
-	panel.down = S.Button(panel, "Down", "secondary", 34, function() moveRule(1) end, "Check this rule later.")
-	panel.down:SetPoint("LEFT", panel.up, "RIGHT", 2, 0)
-	for _, b in ipairs({ panel.newRule, panel.importRule, panel.delete, panel.up, panel.down, }) do
+	for _, b in ipairs({ panel.newRule, panel.importRule, panel.delete }) do
 		function b:SetEnabled(on) if on then self:Enable() else self:Disable() end end
 	end
 
