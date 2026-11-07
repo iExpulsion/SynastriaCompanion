@@ -65,16 +65,6 @@ local function valueText(value, enchant)
 	return text, color
 end
 
--- The table rows put tooltips on their right, over the character; these go left of the window instead.
-local function besideWindow(tt)
-	local row, window = tt:GetOwner(), SC.Window.Frame()
-	if row and window and row:GetLeft() and window:GetLeft() then
-		tt:SetOwner(row, "ANCHOR_NONE")
-		tt:ClearAllPoints()
-		tt:SetPoint("TOPRIGHT", row, "TOPLEFT", window:GetLeft() - row:GetLeft() - 4, 0)
-	end
-end
-
 -- What's selected for editing: a slot, or a weapon hand's enchant visual.
 local function selection()
 	return state.slot or 1, state.hand
@@ -704,7 +694,6 @@ local function pieceLines(tt, version)
 end
 
 local function setTooltip(tt, row)
-	besideWindow(tt)
 	tt:AddLine(row.set.name, 1, 1, 1)
 	if row.recolored and not row.child then
 		for _, version in ipairs(row.set.versions) do
