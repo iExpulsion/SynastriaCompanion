@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-26-g8a0c0f6. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-28-ged1c622. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -723,6 +723,341 @@ function S.NavEntry(b, text)
 	b:SetSelected(false)
 	return b
 end
+
+-- Tables: a virtual table, a fixed pool of rows drawn over any number of items, with sortable column headers, a
+-- thin scroll bar and mouse wheel scrolling, in an S.Well. The first column can carry an icon.
+local Table = {}
+S.Table = Table
+
+local HEADER_H, WHEEL_ROWS, BAR_SPACE = 22, 3, 10
+-- rows start below the header and its 1px rule, so a highlighted first row doesn't cover the rule
+local BODY_TOP = HEADER_H + 1
+
+local function newRow(self, i)
+	local C = S.colors
+	local row = CreateFrame("Button", nil, self.content)
+	row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	row:SetHeight(self.rowH)
+	row:SetPoint("TOPLEFT", 0, -BODY_TOP - (i - 1) * self.rowH)
+	row:SetPoint("TOPRIGHT", 0, -BODY_TOP - (i - 1) * self.rowH)
+	if i % 2 == 0 then
+		local stripe = S.Solid(row, "BACKGROUND", { C.text[1], C.text[2], C.text[3], 0.025 })
+		stripe:SetAllPoints()
+	end
+	row.hoverTex = S.Solid(row, "BORDER", C.rowHover)
+	row.hoverTex:SetAllPoints()
+	row.hoverTex:Hide()
+	row.selectedTex = S.Solid(row, "BORDER", C.rowSelected)
+	row.selectedTex:SetAllPoints()
+	row.selectedTex:Hide()
+	row.icon = row:CreateTexture(nil, "ARTWORK")
+	row.icon:SetSize(self.rowH - 4, self.rowH - 4)
+	-- crops the dark frame Blizzard's icon art has around its edge, which is uneven and makes icons look off-center
+	row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	row.cells = {}
+	for c, col in ipairs(self.columns) do
+		local fs = S.Text(row, "small")
+		fs:SetJustifyH(col.justify or "LEFT")
+		fs:SetHeight(self.rowH)
+		row.cells[c] = fs
+	end
+	if self.icons then row.icon:SetPoint("LEFT", row, "LEFT", self.columns[1].x + 6, 0) end
+	-- a group header row: one label across the row on the header color
+	row.headerTex = S.Solid(row, "BACKGROUND", C.panel)
+	row.headerTex:SetDrawLayer("BACKGROUND", 1)
+	row.headerTex:SetAllPoints()
+	row.headerTex:Hide()
+	row.headerText = S.Text(row, "small", C.heading)
+	row.headerText:SetPoint("LEFT", 6, 0)
+	row.headerText:SetPoint("RIGHT", -6 - BAR_SPACE, 0)
+	row.headerText:Hide()
+
+	row:SetScript("OnEnter", function(r)
+		r.hoverTex:Show()
+		if r.item and self.tooltip then
+			GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
+			self.tooltip(GameTooltip, r.item)
+			GameTooltip:Show()
+		end
+	end)
+	row:SetScript("OnLeave", function(r)
+		r.hoverTex:Hide()
+		GameTooltip:Hide()
+	end)
+	row:SetScript("OnClick", function(r, button)
+		if r.item and self.onClick then self.onClick(r.item, button) end
+	end)
+	return row
+end
+
+local function paintHeader(self)
+	for _, h in ipairs(self.headers) do
+		local on = self.sortKey == h.col.key
+		h.label:SetTextColor(unpack(on and S.colors.heading or S.colors.muted))
+		if on then
+			h.arrow:SetTexCoord(0, 0.5625, self.sortDesc and 0 or 1, self.sortDesc and 1 or 0)
+			h.arrow:Show()
+		else
+			h.arrow:Hide()
+		end
+	end
+end
+
+-- The narrowest a column can be and still show its whole header: the label, its padding and the sort arrow's
+-- space, plus the scroll bar's for the last column.
+local function headerWidth(self, c, col)
+	local need = 0
+	if col.label and col.label ~= "" then
+		need = math.ceil(self.headers[c].label:GetStringWidth()) + 6 + 16 + 2 + (col.barInset or 0)
+	end
+	return need
+end
+
+-- Places the shown columns left to right. Each is at least as wide as its header needs; the shown column marked
+-- stretch (else the last shown) takes the spare width, such as a hidden column's, or gives up what the others
+-- needed. The last shown keeps its text clear of the scroll bar, since the rows run under the bar to the table's
+-- edge.
+local function layout(self)
+	local last, stretch = nil, nil
+	for _, col in ipairs(self.columns) do
+		col.width, col.barInset = col.baseWidth, nil
+		if not col.hidden then
+			last = col
+			if col.stretch and not stretch then stretch = col end
+		end
+	end
+	stretch = stretch or last
+	if last then
+		last.barInset = BAR_SPACE
+		local used = 0
+		for c, col in ipairs(self.columns) do
+			if not col.hidden then
+				col.width = math.max(col.width, headerWidth(self, c, col))
+				used = used + col.width
+			end
+		end
+		stretch.width = stretch.width + self.innerW - used
+	end
+	local x = 0
+	for _, col in ipairs(self.columns) do
+		col.x = x
+		if not col.hidden then x = x + col.width end
+	end
+	for c, col in ipairs(self.columns) do
+		local h = self.headers[c]
+		h:SetSize(col.width, HEADER_H)
+		h:SetPoint("TOPLEFT", col.x, 0)
+		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), 0)
+		h.arrow:SetPoint("RIGHT", -4 - (col.barInset or 0), 0)
+		if col.hidden then h:Hide() else h:Show() end
+		local inset = (c == 1 and self.icons) and self.rowH or 0
+		for _, row in ipairs(self.rows) do
+			local fs = row.cells[c]
+			fs:ClearAllPoints()
+			fs:SetPoint("LEFT", row, "LEFT", col.x + 6 + inset, 0)
+			fs:SetWidth(col.width - 12 - (col.barInset or 0) - inset)
+			if col.hidden then fs:Hide() else fs:Show() end
+		end
+	end
+end
+
+-- opts: columns = { { key, label, width, justify, sortable, defaultDesc, tooltip, stretch } }, rowH, icons (the
+-- first column has an icon), cell(item, key) -> text, color, icon(item) -> texture, tooltip(tt, item),
+-- onClick(item, button), onSort(key, desc), header(item) -> label when the item is a group header row,
+-- isSelected(item). The table's frame is .frame; its contents sit inside the well's border.
+function Table.New(parent, name, width, height, opts)
+	local C = S.colors
+	-- the well's border, then its own 1px
+	local inset = 1 + S.metrics.wellInset
+	local self = setmetatable({ columns = opts.columns, rowH = opts.rowH or 20, icons = opts.icons, cell = opts.cell,
+		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, header = opts.header,
+		isSelected = opts.isSelected, items = {}, width = width, innerW = width - 2 * inset,
+		offset = 0, rows = {}, headers = {} }, { __index = Table })
+	local columns = {}
+	for i, def in ipairs(opts.columns) do
+		local col = {}
+		for k, v in pairs(def) do col[k] = v end
+		col.x, col.baseWidth = 0, col.width
+		columns[i] = col
+	end
+	self.columns = columns
+
+	self.frame = CreateFrame("Frame", name, parent)
+	self.frame:SetSize(width, height)
+	S.Well(self.frame)
+	self.content = CreateFrame("Frame", nil, self.frame)
+	self.content:SetPoint("TOPLEFT", inset, -inset)
+	self.content:SetPoint("BOTTOMRIGHT", -inset, inset)
+
+	local header = S.Solid(self.content, "BACKGROUND", C.panel)
+	header:SetPoint("TOPLEFT")
+	header:SetPoint("TOPRIGHT")
+	header:SetHeight(HEADER_H)
+	local rule = S.Solid(self.content, "BORDER", C.border)
+	rule:SetHeight(1)
+	rule:SetPoint("TOPLEFT", 0, -HEADER_H)
+	rule:SetPoint("TOPRIGHT", 0, -HEADER_H)
+	for _, col in ipairs(self.columns) do
+		local h = CreateFrame("Button", nil, self.content)
+		h.col = col
+		h.label = S.Text(h, "small", C.muted)
+		h.label:SetPoint("LEFT", 6, 0)
+		h.label:SetJustifyH(col.justify or "LEFT")
+		h.label:SetText(col.label or "")
+		h.arrow = h:CreateTexture(nil, "OVERLAY")
+		h.arrow:SetTexture("Interface\\Buttons\\UI-SortArrow")
+		h.arrow:SetSize(9, 8)
+		h.arrow:SetDesaturated(true)
+		h.arrow:SetVertexColor(unpack(C.heading))
+		h.arrow:Hide()
+		if col.sortable ~= false then
+			S.Highlight(h)
+			h:SetScript("OnClick", function()
+				if self.sortKey == col.key then
+					self.sortDesc = not self.sortDesc
+				else
+					self.sortKey, self.sortDesc = col.key, col.defaultDesc or false
+				end
+				paintHeader(self)
+				if self.onSort then self.onSort(self.sortKey, self.sortDesc) end
+			end)
+		end
+		if col.tooltip then
+			h:SetScript("OnEnter", function()
+				GameTooltip:SetOwner(h, "ANCHOR_TOP")
+				GameTooltip:SetText(col.tooltip, nil, nil, nil, nil, true)
+				GameTooltip:Show()
+			end)
+			h:SetScript("OnLeave", function() GameTooltip:Hide() end)
+		end
+		self.headers[#self.headers + 1] = h
+	end
+
+	self.visible = math.floor((height - 2 * inset - BODY_TOP) / self.rowH)
+	for i = 1, self.visible do self.rows[i] = newRow(self, i) end
+	layout(self)
+
+	local bar = CreateFrame("Slider", nil, self.frame)
+	bar:SetFrameLevel(self.content:GetFrameLevel() + 5)
+	bar:SetOrientation("VERTICAL")
+	bar:SetWidth(6)
+	-- the same 2px gap below the header's rule as above the bottom border
+	bar:SetPoint("TOPRIGHT", -inset - 2, -inset - HEADER_H - 1 - 2)
+	bar:SetPoint("BOTTOMRIGHT", -inset - 2, inset + 2)
+	local track = S.Solid(bar, "BACKGROUND", { C.text[1], C.text[2], C.text[3], 0.04 })
+	track:SetAllPoints()
+	bar:SetThumbTexture(WHITE)
+	local thumb = bar:GetThumbTexture()
+	thumb:SetSize(6, 40)
+	thumb:SetVertexColor(unpack(C.scrollThumb))
+	bar:SetScript("OnEnter", function() thumb:SetVertexColor(unpack(S.colors.scrollThumbHover)) end)
+	bar:SetScript("OnLeave", function() thumb:SetVertexColor(unpack(S.colors.scrollThumb)) end)
+	bar:SetMinMaxValues(0, 0)
+	bar:SetValueStep(1)
+	bar:SetValue(0)
+	bar:SetScript("OnValueChanged", function(_, value)
+		local offset = math.floor(value + 0.5)
+		if offset ~= self.offset then
+			self.offset = offset
+			self:Redraw()
+		end
+	end)
+	self.bar = bar
+
+	self.frame:EnableMouseWheel(true)
+	self.frame:SetScript("OnMouseWheel", function(_, delta)
+		self:ScrollTo(self.offset - delta * (IsShiftKeyDown() and self.visible or WHEEL_ROWS))
+	end)
+
+	self.empty = S.Text(self.content, "normal", C.muted)
+	self.empty:SetPoint("TOP", 0, -BODY_TOP - 40)
+	self.empty:SetJustifyH("CENTER")
+	return self
+end
+
+function Table:SetColumnLabel(key, text)
+	for _, h in ipairs(self.headers) do
+		if h.col.key == key then h.label:SetText(text) end
+	end
+end
+
+function Table:SetColumnShown(key, shown)
+	local changed = false
+	for _, col in ipairs(self.columns) do
+		if col.key == key and not col.hidden ~= shown then
+			col.hidden = not shown
+			changed = true
+		end
+	end
+	if changed then layout(self) end
+end
+
+function Table:SetSort(key, desc)
+	self.sortKey, self.sortDesc = key, desc
+	paintHeader(self)
+end
+
+function Table:ScrollTo(offset)
+	local max = math.max(0, #self.items - self.visible)
+	offset = math.max(0, math.min(max, offset))
+	self.bar:SetValue(offset)
+	if offset ~= self.offset then
+		self.offset = offset
+		self:Redraw()
+	end
+end
+
+-- Shows new items; keepScroll leaves the scroll position where it is (clamped) instead of going to the top.
+function Table:SetItems(items, emptyText, keepScroll)
+	self.items = items
+	local max = math.max(0, #items - self.visible)
+	self.bar:SetMinMaxValues(0, max)
+	if max > 0 then self.bar:Show() else self.bar:Hide() end
+	self.offset = keepScroll and math.min(self.offset, max) or 0
+	self.bar:SetValue(self.offset)
+	self.empty:SetText(#items == 0 and (emptyText or "") or "")
+	self:Redraw()
+end
+
+function Table:Redraw()
+	for i, row in ipairs(self.rows) do
+		local item = self.items[self.offset + i]
+		row.item = item
+		local header = item and self.header and self.header(item)
+		if header then
+			for _, fs in ipairs(row.cells) do fs:SetText("") end
+			row.icon:Hide()
+			row.headerText:SetText(header)
+			row.headerText:Show()
+			row.headerTex:Show()
+		else
+			row.headerText:Hide()
+			row.headerTex:Hide()
+		end
+		if item and not header then
+			for c, col in ipairs(self.columns) do
+				local text, color = self.cell(item, col.key)
+				row.cells[c]:SetText(text or "")
+				row.cells[c]:SetTextColor(unpack(color or S.colors.text))
+			end
+			if self.icons then
+				local tex = self.iconOf and self.iconOf(item)
+				row.icon:SetTexture(tex)
+				if tex then row.icon:Show() else row.icon:Hide() end
+			end
+		end
+		if item then
+			if self.isSelected and self.isSelected(item) then row.selectedTex:Show() else row.selectedTex:Hide() end
+			row:Show()
+		else
+			row:Hide()
+		end
+	end
+	if GameTooltip:IsOwned(self.rows[1]) then GameTooltip:Hide() end
+end
+
+function Table:Show() self.frame:Show() end
+function Table:Hide() self.frame:Hide() end
 
 -- Skins: how the controls above are drawn. A skin can carry a scheme of its own (roles, as S.SetTheme takes them),
 -- set colors apart from the scheme (colors(c, M3), run after the scheme fills S.colors), and change S.metrics.

@@ -19,7 +19,6 @@ UI\Skins\Cognac\Atlas.lua
 UI\Skins\Cognac\Skin.lua
 UI\Skins\Classic\Skin.lua
 UI\StyleSetup.lua
-UI\Table.lua
 UI\SecureCast.lua
 UI\Window.lua
 UI\Picker.lua

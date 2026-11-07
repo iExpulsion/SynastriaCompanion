@@ -5,6 +5,8 @@ local SC = NS.SC
 -- (UI/Skins) register with it.
 local S = NS.Style
 SC.Style = S
+-- the kit's virtual table, which every list and table on Companion's screens is
+SC.Table = S.Table
 
 -- The shared yellow theme of these addons: the Material 3 dark scheme for seed #ffc400, with surfaces from the
 -- Neutral scheme, primary from the Fidelity scheme and error from the baseline. Skins with a scheme of their own,
