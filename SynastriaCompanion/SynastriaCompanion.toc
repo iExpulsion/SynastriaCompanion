@@ -5,6 +5,9 @@
 ## Version: 1.3.0
 ## SavedVariables: SynastriaCompanionDB
 
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Core.lua
 Hooks.lua
 ZoneInfo.lua

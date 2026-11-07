@@ -102,37 +102,41 @@ local function createMenu()
 	S.TrackPopup(menu)
 end
 
-local function toggleMenu()
+local function toggleMenu(owner)
 	if not menu then createMenu() end
-	if menu:IsShown() then
+	if menu:IsShown() and menu.owner == owner then
 		menu:Hide()
 	else
 		S.CloseMenus()
-		menu.owner = button
+		menu.owner = owner
 		menu:ClearAllPoints()
-		-- open toward the middle of the screen from wherever the minimap sits
-		local x, y = button:GetCenter()
+		-- open toward the middle of the screen from wherever the clicked button sits
+		local x, y = owner:GetCenter()
 		local right = x and x > UIParent:GetWidth() / 2
 		local top = y and y > UIParent:GetHeight() / 2
-		menu:SetPoint((top and "TOP" or "BOTTOM") .. (right and "RIGHT" or "LEFT"), button,
+		menu:SetPoint((top and "TOP" or "BOTTOM") .. (right and "RIGHT" or "LEFT"), owner,
 			(top and "BOTTOM" or "TOP") .. (right and "LEFT" or "RIGHT"), 0, 0)
 		menu:Show()
 	end
 end
 
-local function onClick(_, mouse)
+local function onClick(owner, mouse)
 	if mouse == "RightButton" then
-		toggleMenu()
+		toggleMenu(owner or button)
 	else
 		if menu then menu:Hide() end
 		SC.Window.Toggle()
 	end
 end
 
-local function fillTooltip(tt)
+local function fillBrokerTooltip(tt)
 	tt:AddLine("Synastria Companion", 1, 0.77, 0)
 	tt:AddLine("Left-click to open or close the window.", 0.8, 0.8, 0.8)
 	tt:AddLine("Right-click to pick a screen.", 0.8, 0.8, 0.8)
+end
+
+local function fillTooltip(tt)
+	fillBrokerTooltip(tt)
 	tt:AddLine("Drag to move it around the minimap, Shift-drag to place it anywhere.", 0.6, 0.6, 0.66)
 	tt:AddLine("/scomp minimap hides it; /scomp minimap reset puts it back.", 0.6, 0.6, 0.66)
 end
@@ -204,18 +208,16 @@ local function create()
 	})
 end
 
-local function registerBroker()
-	local ldb = LibStub and LibStub("LibDataBroker-1.1", true)
-	if ldb then
-		ldb:NewDataObject("SynastriaCompanion", {
-			type = "launcher",
-			icon = ICON,
-			label = "Synastria Companion",
-			OnClick = onClick,
-			OnTooltipShow = fillTooltip,
-		})
-	end
-end
+-- Registered while the addon loads, not at login: displays like ElvUI fill their panels on PLAYER_LOGIN before
+-- our handler runs, and a launcher created after that never lands in the panel set to it.
+LibStub("LibDataBroker-1.1"):NewDataObject("SynastriaCompanion", {
+	type = "launcher",
+	icon = ICON,
+	label = "Synastria Companion",
+	text = "Companion",
+	OnClick = onClick,
+	OnTooltipShow = fillBrokerTooltip,
+})
 
 function MinimapButton.Refresh()
 	if SC.db.minimap.hide then button:Hide() else button:Show() end
@@ -240,6 +242,5 @@ end
 SC:On("PLAYER_LOGIN", function()
 	SC.db.minimap = SC.db.minimap or {}
 	create()
-	registerBroker()
 	MinimapButton.Refresh()
 end)

@@ -42,6 +42,8 @@ one of its windows, Companion opens instead.
 Open Synastria Companion with `/scomp`, the minimap button, or anything that would open one of the game's windows,
 such as its View spells. Left-click the minimap button to open or close the window, or right-click it to pick a
 screen. Drag it to move it around the minimap, or Shift-drag it to place it anywhere on screen. Drag the title bar to move the window, and `/scomp reset` puts it back at the top middle of the screen.
+Companion is also a LibDataBroker launcher, so data bars like ElvUI's data texts can show it with the same
+left and right clicks.
 
 The server only sends your attuned stats when asked, so the first time you open **Attuned Stats** the same click
 asks for them. Clicks can only ask out of combat.
@@ -239,4 +241,5 @@ Thanks to **Lulleh** for finding the cause of the window's drag lag.
 
 Synastria Companion's code is released under the [MIT License](LICENSE). The Cognac art in
 `SynastriaCompanion/UI/Skins/Cognac` is from [AttuneNext](https://github.com/speedyrulz/AttuneNext) and isn't
-covered by it.
+covered by it. `SynastriaCompanion/Libs` holds LibStub and LibDataBroker-1.1 (public domain) and
+CallbackHandler-1.0 (from Ace3, under its own BSD-style license).
