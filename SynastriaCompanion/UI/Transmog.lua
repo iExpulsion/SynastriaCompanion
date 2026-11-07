@@ -929,6 +929,18 @@ local function createTop(width)
 		TransmogUI.Refresh()
 	end, "Wear this look, or turn transmog off while it's the active one.")
 	panel.activate:SetPoint("TOPRIGHT", -PAD, -PAD)
+	panel.export = S.Button(panel, "Export", "secondary", 70, function()
+		SC.TextDialog.ShowExport("Export Look", "This look's appearances. Copy it with Ctrl+C.", T.Export(state.look) or "")
+	end, "Copy this look as text to share it or keep it.")
+	panel.export:SetPoint("RIGHT", panel.activate, "LEFT", -GAP, 0)
+	panel.import = S.Button(panel, "Import", "secondary", 70, function()
+		local look = state.look
+		SC.TextDialog.AskImport("Import Look", "Replaces " .. T.Name(look) .. " with the pasted look.", function(text)
+			if T.Import(look, text) then flash(S.Hex(C.good, "Imported")) else flash(S.Hex(C.bad, "The Game Couldn't Read That")) end
+			TransmogUI.Refresh()
+		end)
+	end, "Paste a shared look into this one.")
+	panel.import:SetPoint("RIGHT", panel.export, "LEFT", -GAP, 0)
 end
 
 local function createDoll(top, height)
@@ -1234,23 +1246,11 @@ local function createFooter()
 		if popup then popup.data = state.look end
 	end, "Put every slot back to your equipped look.")
 	panel.reset:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-	panel.export = S.Button(panel, "Export", "secondary", 70, function()
-		SC.TextDialog.ShowExport("Export Look", "This look's appearances. Copy it with Ctrl+C.", T.Export(state.look) or "")
-	end, "Copy this look as text to share it or keep it.")
-	panel.export:SetPoint("RIGHT", panel.reset, "LEFT", -GAP, 0)
-	panel.import = S.Button(panel, "Import", "secondary", 70, function()
-		local look = state.look
-		SC.TextDialog.AskImport("Import Look", "Replaces " .. T.Name(look) .. " with the pasted look.", function(text)
-			if T.Import(look, text) then flash(S.Hex(C.good, "Imported")) else flash(S.Hex(C.bad, "The Game Couldn't Read That")) end
-			TransmogUI.Refresh()
-		end)
-	end, "Paste a shared look into this one.")
-	panel.import:SetPoint("RIGHT", panel.export, "LEFT", -GAP, 0)
 	panel.useEquipped = S.Button(panel, "Use Equipped", "secondary", 100, function()
 		T.UseEquipped(state.look)
 		TransmogUI.Refresh()
 	end, "Set every slot to the item you have equipped there.")
-	panel.useEquipped:SetPoint("RIGHT", panel.import, "LEFT", -GAP, 0)
+	panel.useEquipped:SetPoint("RIGHT", panel.reset, "LEFT", -GAP, 0)
 end
 
 local function create(parent, width, height)
@@ -1288,7 +1288,7 @@ local function create(parent, width, height)
 	-- what the selected slot is set to now, which may not be on the page shown
 	panel.pick = S.Text(panel, "small")
 	panel.pick:SetPoint("LEFT", panel.title, "RIGHT", GAP, 0)
-	panel.pick:SetPoint("RIGHT", panel.activate, "LEFT", -PAD, 0)
+	panel.pick:SetPoint("RIGHT", panel.import, "LEFT", -PAD, 0)
 	panel.pick:SetJustifyH("LEFT")
 	panel.pick:SetWordWrap(false)
 

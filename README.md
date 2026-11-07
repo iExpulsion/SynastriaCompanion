@@ -103,9 +103,9 @@ attuned or acquired checked, and your character wears the checked ones. Uncheck 
 Selected** puts them on the look; the slots it doesn't cover keep what they had, and the footer says how many
 pieces were left out.
 
-**Activate** wears the look, or turns transmog off when it's already the active one. Along the bottom, **Use
-Equipped** fills every slot from what you're wearing, **Import** and **Export** share a look as text, and **Reset** clears it. Every
-change saves at once.
+**Activate** wears the look, or turns transmog off when it's already the active one, and **Import** and **Export**
+beside it share a look as text. Along the bottom, **Use Equipped** fills every slot from what you're wearing and
+**Reset** clears it. Every change saves at once.
 
 ### Attuned Stats
 
@@ -161,8 +161,9 @@ or no, a number, one or several choices, an item search, or a zone. Items show t
 copies a condition.
 
 Changes wait for **Apply**, and **Discard** throws them away. Turning a rule on or off saves at once when nothing
-else is waiting. **Export** and **Import** use the game's own share strings, for the whole filter or one rule, so
-filters other players post still work. **Reset to Default** asks for a second click.
+else is waiting. Sharing uses the game's own share strings, so filters other players post still work: **Import**
+under the list adds a shared rule, **Export** above a rule copies it, and **Import Filter** and **Export Filter** at
+the bottom cover the whole filter. **Reset to Default** asks for a second click.
 
 ![Auto Loot: the rule list with each rule's action, and the selected rule's match setting and item conditions](docs/images/auto-loot.png)
 

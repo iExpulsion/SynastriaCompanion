@@ -279,6 +279,7 @@ function render()
 	panel.rules:SetColumnLabel("name", available and ("Rules  " .. S.Hex(ruleCount >= LF.MAX_RULES and C.warn or C.muted,
 		("%d/%d"):format(ruleCount, LF.MAX_RULES))) or "Rules")
 	panel.newRule:SetEnabled(available and #draft.rules < LF.MAX_RULES)
+	panel.importRule:SetEnabled(available and #draft.rules < LF.MAX_RULES)
 	panel.delete:SetEnabled(rule ~= nil)
 	panel.up:SetEnabled(rule ~= nil and sel > 1)
 	panel.down:SetEnabled(rule ~= nil and sel < #draft.rules)
@@ -411,24 +412,27 @@ local function create(parent, width, height)
 	panel.rules.isSelected = function(rule) return draft and not panel.showOptions and rule == draft.rules[sel] end
 	panel.rules.frame:SetPoint("TOPLEFT", PAD, -PAD)
 
-	panel.newRule = S.Button(panel, "New", "secondary", 51, function()
+	panel.newRule = S.Button(panel, "New", "secondary", 38, function()
 		draft.rules[#draft.rules + 1] = LF.NewRule()
 		sel = #draft.rules
 		panel.showOptions = false
 		changed()
 	end, "Add a rule at the bottom.")
 	panel.newRule:SetPoint("TOPLEFT", panel.rules.frame, "BOTTOMLEFT", 0, -GAP)
-	panel.delete = S.Button(panel, "Delete", "danger", 51, function()
+	panel.importRule = S.Button(panel, "Import", "secondary", 48, function() importChoice("rule") end,
+		"Paste a shared rule. It's added at the bottom.")
+	panel.importRule:SetPoint("LEFT", panel.newRule, "RIGHT", 2, 0)
+	panel.delete = S.Button(panel, "Delete", "danger", 48, function()
 		table.remove(draft.rules, sel)
 		if sel > #draft.rules then sel = #draft.rules > 0 and #draft.rules or nil end
 		changed()
 	end, "Remove the selected rule. Nothing is saved until Apply.")
-	panel.delete:SetPoint("LEFT", panel.newRule, "RIGHT", 2, 0)
-	panel.up = S.Button(panel, "Up", "secondary", 51, function() moveRule(-1) end, "Check this rule earlier.")
+	panel.delete:SetPoint("LEFT", panel.importRule, "RIGHT", 2, 0)
+	panel.up = S.Button(panel, "Up", "secondary", 34, function() moveRule(-1) end, "Check this rule earlier.")
 	panel.up:SetPoint("LEFT", panel.delete, "RIGHT", 2, 0)
-	panel.down = S.Button(panel, "Down", "secondary", 51, function() moveRule(1) end, "Check this rule later.")
+	panel.down = S.Button(panel, "Down", "secondary", 34, function() moveRule(1) end, "Check this rule later.")
 	panel.down:SetPoint("LEFT", panel.up, "RIGHT", 2, 0)
-	for _, b in ipairs({ panel.newRule, panel.delete, panel.up, panel.down, }) do
+	for _, b in ipairs({ panel.newRule, panel.importRule, panel.delete, panel.up, panel.down, }) do
 		function b:SetEnabled(on) if on then self:Enable() else self:Disable() end end
 	end
 
@@ -466,6 +470,9 @@ local function create(parent, width, height)
 	local onLabel = S.Text(editor, "small")
 	onLabel:SetPoint("LEFT", panel.enabled, "RIGHT", 6, 0)
 	onLabel:SetText("Rule On")
+	panel.exportRule = S.Button(editor, "Export", "secondary", 70, function() exportChoice("rule") end,
+		"Copy this rule as text to share it.")
+	panel.exportRule:SetPoint("TOPRIGHT")
 
 	local matchLabel = label(editor, "Match")
 	matchLabel:SetPoint("TOPLEFT", panel.name, "BOTTOMLEFT", 0, -GAP - 6)
@@ -569,17 +576,13 @@ local function create(parent, width, height)
 	end, "Turn auto looting and its parts on or off.")
 	optionsButton:SetPoint("BOTTOMLEFT", PAD, footerY)
 	panel.optionsButton = optionsButton
-	local export = S.Dropdown(panel, 84, exportChoice)
-	export:SetOptions({ { value = "filter", text = "Whole Filter" }, { value = "rule", text = "This Rule" } })
-	export:SetText("Export")
-	export:SetPoint("LEFT", optionsButton, "RIGHT", 4, 0)
-	export.menu:SetWidth(120)
-	local import = S.Dropdown(panel, 84, importChoice)
-	import:SetOptions({ { value = "filter", text = "Whole Filter", tooltip = "Replace your loot filter with a shared one." },
-		{ value = "rule", text = "One Rule", tooltip = "Add a shared rule at the bottom." } })
-	import:SetText("Import")
-	import:SetPoint("LEFT", export, "RIGHT", 4, 0)
-	import.menu:SetWidth(120)
+	local import = S.Button(panel, "Import Filter", "secondary", 90, function() importChoice("filter") end,
+		"Replace your whole loot filter, options too, with a shared one.")
+	import:SetPoint("LEFT", optionsButton, "RIGHT", 4, 0)
+	panel.importFilter = import
+	local export = S.Button(panel, "Export Filter", "secondary", 90, function() exportChoice("filter") end,
+		"Copy every rule and option as text to share it.")
+	export:SetPoint("LEFT", import, "RIGHT", 4, 0)
 	panel.reset = S.Button(panel, "Reset to Default", "danger", 120, function(self)
 		armButton(self, "Reset to Default", "Click to Confirm", function()
 			LF.ResetToDefault()
@@ -588,7 +591,7 @@ local function create(parent, width, height)
 		end)
 		render()
 	end, "Replace every rule and option with the server's default filter. Asks you to click again.")
-	panel.reset:SetPoint("LEFT", import, "RIGHT", 4, 0)
+	panel.reset:SetPoint("LEFT", export, "RIGHT", 4, 0)
 
 	panel.apply = S.Button(panel, "Apply", "primary", 80, apply, "Save your changes to the loot filter.")
 	panel.apply:SetPoint("BOTTOMRIGHT", -PAD, footerY)
