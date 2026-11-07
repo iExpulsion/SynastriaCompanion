@@ -93,8 +93,9 @@ wearing one appearance, framed on that slot. What the slot is set to now shows b
 and **Show Duplicates** also lists items that look the same as one already listed. Hovering an appearance tries it
 on your character; click one to choose it. Right-click a slot to go back to your equipped look.
 
-The **Sets** tab lists the game's item sets, from dungeon and tier sets to PvP gear, filtered to your class and armor type
-or every set, with a search. **Pieces** shows how many of a set's pieces you can use, counting any item you have
+The **Sets** tab lists the game's item sets, from dungeon and tier sets to PvP gear, and **Matching Gear**: armor
+made to be worn together that the game lists in no set, like the Thistlefur and Abjurer's outfits. Filter them to
+your class, armor type and kind, or show everything, with a search. **Pieces** shows how many of a set's pieces you can use, counting any item you have
 with the same look as a piece (the set's tooltip names it), and hovering a set tries it
 all on the preview. A set's recolors, like the Sanctified tier pieces, the 10- and 25-player versions and each
 arena season's version, are grouped under it: its row shows the version you have the most of, and clicking it

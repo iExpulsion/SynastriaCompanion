@@ -394,8 +394,10 @@ end
 
 -- Item sets -------------------------------------------------------------------------------------------------
 -- From Data/ItemSets.lua: { name, mask (0 = any class), armor (1 cloth .. 4 plate, 0 none), level,
--- pieces = { { id, slot } }, versions = { the set, then its recolors, each a set of its own } }. A slot can have
--- several items when copies of a piece share its look.
+-- pieces = { { id, slot } }, versions = { the set, then its recolors, each a set of its own }, kind }. A slot can
+-- have several items when copies of a piece share its look. Kind is "set" for the game's item sets and "gear" for
+-- matching gear no set lists (Thistlefur Cap, Mantle, Jerkin...). A set that lists several colors (Winter Garb) is
+-- only its color versions, so it isn't one of its own versions.
 
 Transmog.ARMOR_TYPES = { [1] = "Cloth", [2] = "Leather", [3] = "Mail", [4] = "Plate" }
 
@@ -410,8 +412,9 @@ function Transmog.Sets()
 	if not sets then
 		sets = {}
 		for _, row in ipairs(NS.ItemSetData or {}) do
-			local set = { name = row[1], mask = row[2], armor = row[3], level = row[4], pieces = pieceList(row[5]) }
-			set.versions = { set }
+			local set = { name = row[1], mask = row[2], armor = row[3], level = row[4], pieces = pieceList(row[5]),
+				kind = row[7] == 1 and "gear" or "set" }
+			set.versions = row[8] == 1 and {} or { set }
 			for _, v in ipairs(row[6] or {}) do
 				set.versions[#set.versions + 1] = { name = v[1], mask = set.mask, armor = set.armor, level = v[2],
 					pieces = pieceList(v[3]), base = set }

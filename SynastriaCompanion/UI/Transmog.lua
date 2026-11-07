@@ -597,7 +597,22 @@ local function setMatches(set, q)
 	end
 	return (state.setClass == "all" or T.SetForClass(set))
 		and ((state.setArmor or 0) == 0 or set.armor == state.setArmor or set.armor == 0)
+		and ((state.setKind or "all") == "all" or set.kind == state.setKind)
 		and named
+end
+
+-- Item sets are the game's own; matching gear is armor named alike (Thistlefur Cap, Mantle...) that no set lists.
+local SET_KINDS = {
+	{ value = "all", text = "All Kinds" },
+	{ value = "set", text = "Item Sets", tooltip = "The game's item sets: dungeon, tier, PvP and crafted sets." },
+	{ value = "gear", text = "Matching Gear", tooltip = "Armor named and drawn to be worn together, like Thistlefur, that the game lists in no set." },
+}
+
+local function kindText(kind)
+	for _, o in ipairs(SET_KINDS) do
+		if o.value == kind then return o.text end
+	end
+	return SET_KINDS[1].text
 end
 
 local function levelRange(set)
@@ -623,6 +638,7 @@ local function renderSets()
 	local sv = panel.sets
 	sv.class:SetText(state.setClass == "all" and "All Classes" or "Your Class")
 	sv.armor:SetText(state.setArmor == 0 and "Any Armor" or T.ARMOR_TYPES[state.setArmor])
+	sv.kind:SetText(kindText(state.setKind or "all"))
 	local q = (state.setSearch or ""):lower()
 	local groups = {}
 	T.Batch(function()
@@ -1322,8 +1338,14 @@ local function createSets(width, height)
 	for id = 1, 4 do armors[#armors + 1] = { value = id, text = T.ARMOR_TYPES[id] } end
 	sv.armor:SetOptions(armors)
 	sv.armor:SetPoint("LEFT", sv.class, "RIGHT", GAP, 0)
-	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", listW - 210 - 2 * GAP, "Search Sets", 40)
-	sv.search:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
+	sv.kind = S.Dropdown(sv, 120, function(value)
+		state.setKind = value
+		TransmogUI.Refresh()
+	end)
+	sv.kind:SetOptions(SET_KINDS)
+	sv.kind:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
+	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", listW - 330 - 3 * GAP, "Search Sets", 40)
+	sv.search:SetPoint("LEFT", sv.kind, "RIGHT", GAP, 0)
 	sv.search:SetPoint("RIGHT", sv, "TOPLEFT", listW, -CONTROL_H / 2)
 	sv.search:HookScript("OnTextChanged", function(self, user)
 		if user then
