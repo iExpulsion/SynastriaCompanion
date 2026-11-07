@@ -92,12 +92,14 @@ end
 
 -- Preview ----------------------------------------------------------------------------------------------------
 
--- Still Pose holds a model on one moment of its standing animation, every frame, since it keeps playing. The model
--- still plays on by the frame's time before it's drawn, so the moment held should be one where the body is at rest
--- (STILL_AT ms in, or SynastriaCompanionDB.transmog.stillTime while finding the best one).
-local STAND, STILL_AT = 0, 0
-local function holdStill(model)
-	if state and state.still and model.SetSequenceTime then model:SetSequenceTime(STAND, state.stillTime or STILL_AT) end
+-- Still Pose holds a model on the start of its standing animation, every frame, since it keeps playing. The model
+-- plays on by the frame's time before it's drawn, so it's set that far before the start (found in game: about
+-- -10 ms at 100 fps held steady), which lands every frame on the same moment at any frame rate.
+local STAND = 0
+local function holdStill(model, elapsed)
+	if state and state.still and model.SetSequenceTime then
+		model:SetSequenceTime(STAND, -math.floor((elapsed or 0) * 1000 + 0.5))
+	end
 end
 
 -- A model can't wear anything until it has loaded the character, so what it should wear waits until then.
@@ -259,8 +261,8 @@ local function createCharacter(parent, x, y, w, h, fullW)
 	drag:SetScript("OnMouseDown", function() model.dragX = GetCursorPosition() end)
 	drag:SetScript("OnMouseUp", function() model.dragX = nil end)
 	drag:SetScript("OnHide", function() model.dragX = nil end)
-	model:SetScript("OnUpdate", function(self)
-		holdStill(self)
+	model:SetScript("OnUpdate", function(self, elapsed)
+		holdStill(self, elapsed)
 		if self.dragX then
 			local cx = GetCursorPosition()
 			self.facing = self.facing + (cx - self.dragX) * ROTATE_SPEED
@@ -491,8 +493,8 @@ local function newCell(parent, w, h)
 	model:SetUnit("player")
 	-- A model reports its file before it has finished loading, and finishing resets its camera and position, so a
 	-- cell is framed again twice after it first dresses.
-	model:SetScript("OnUpdate", function(self)
-		holdStill(self)
+	model:SetScript("OnUpdate", function(self, elapsed)
+		holdStill(self, elapsed)
 		local now = GetTime()
 		if cell.want and modelReady(self) then
 			cell.want = nil
