@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-36-gebb4607. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-38-g8d476b2. Change it there, then run tools/sync_style.py.
 -- Cognac: gold-framed painted controls on dark glass. Load it after Style.lua and Atlas.lua;
 -- S.UseSkin("cognac") switches to it.
 local _, NS = ...
@@ -26,6 +26,8 @@ local SPEAR = { { 16, 60, false }, { 60, 100, true }, { 100, 156, false }, { 156
 -- The menu frame, the 141x103 box of the tooltip art: its corners (MENU_CUT art pixels each way, drawn at
 -- MENU_SCALE), and the columns its edges and middle are sampled from, left of the pointer on its bottom edge.
 local MENU_W, MENU_H, MENU_CUT, MENU_SCALE, MENU_MID = 141, 104, 14, 0.35, { 14, 53 }
+-- the checkbox: its frame's corners (CHECK_CUT art pixels, drawn at CHECK_SCALE) and the diamond's share of the box
+local CHECK_CUT, CHECK_SCALE, CHECK_DIAMOND = 40, 0.15, 0.7
 -- the gold divider's straight run (columns along it, rows across), drawn DIVIDER_H pixels thick
 local DIVIDER_COLS, DIVIDER_ROWS, DIVIDER_H = { 60, 100 }, { 116, 140 }, 3
 -- art pixels of corner kept unstretched on button plates and chips, on the card, and the search field's left cap
@@ -261,14 +263,17 @@ S.RegisterSkin("cognac", {
 		if kind == "rule" then t:Hide() end
 		return t, DIVIDER_H
 	end,
-	-- the gold bezel, turning to the teal one while checked
+	-- the gold square frame, nine-sliced so its rim stays visible at a checkbox's size, with the gem diamond in the
+	-- middle while checked
 	check = function(b)
-		b.box = b:CreateTexture(nil, "BACKGROUND")
-		b.box:SetAllPoints()
+		b.box = S.NineSlice(b, "BACKGROUND", ATLAS, "bezel", CHECK_CUT, CHECK_SCALE)
 		b.tick = b:CreateTexture(nil, "ARTWORK")
-		b.tick:SetAllPoints()
-		S.Art(b.box, ATLAS, "bezel")
-		S.Art(b.tick, ATLAS, "bezel_selected")
+		S.Art(b.tick, ATLAS, "check_diamond")
+		follow(b, function(w, h)
+			b.box:Layout(w, h)
+			local d = math.min(w, h) * CHECK_DIAMOND
+			S.PlaceArt(b.tick, b, ATLAS, "check_diamond", (w - d) / 2, (h - d) / 2, d, d)
+		end)
 	end,
 	paintCheck = function(b)
 		if b.on then b.tick:Show() else b.tick:Hide() end
