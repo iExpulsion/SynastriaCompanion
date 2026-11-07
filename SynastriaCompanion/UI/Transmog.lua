@@ -198,16 +198,19 @@ function TransmogUI.Background(parent, inset, w, h)
 end
 
 -- The character: the background and model in an area of their own, and a frame over the area for the rotate drag.
--- The model can run past the area's bottom (the space under the feet is empty), so it takes no clicks.
-local function createCharacter(parent, x, y, w, h)
+-- The model's frame spans `fullW` (the whole panel), centered on the area, so wide weapons and their glow aren't
+-- cut off at the area's sides; a model's size follows its frame's height, so the character doesn't change. It can
+-- also run past the area's bottom (the space under the feet is empty), so it takes no clicks.
+local function createCharacter(parent, x, y, w, h, fullW)
 	local p = CreateFrame("Frame", nil, parent)
 	p:SetPoint("TOPLEFT", x, -y)
 	p:SetSize(w, h)
 	p.bg = TransmogUI.Background(p, 0, w, h)
 	local _, spot = TransmogUI.BackgroundLayout(w, h)
+	local modelW = math.max(spot.w, fullW or spot.w)
 	local model = CreateFrame("DressUpModel", "SynastriaCompanionTransmogModel", p)
-	model:SetPoint("TOPLEFT", spot.x, -spot.y)
-	model:SetSize(spot.w, spot.h)
+	model:SetPoint("TOPLEFT", spot.x + (spot.w - modelW) / 2, -spot.y)
+	model:SetSize(modelW, spot.h)
 	model:SetFrameLevel(p:GetFrameLevel() + 2)
 	model:EnableMouse(false)
 	model:SetUnit("player")
@@ -828,7 +831,7 @@ local function createDoll(top, height)
 	local edge = wi + 6
 	local weaponY = height - wi - STRIP_H - GAP - ENCHANT_SIZE - SLOT_GAP - SLOT_SIZE
 	local areaX = edge + SLOT_SIZE + GAP
-	local area = createCharacter(doll, areaX, wi, DOLL_W - 2 * areaX, weaponY - GAP - wi)
+	local area = createCharacter(doll, areaX, wi, DOLL_W - 2 * areaX, weaponY - GAP - wi, DOLL_W - 2 * wi)
 	panel.preview = area
 	panel.slotButtons = {}
 	local function add(b) panel.slotButtons[#panel.slotButtons + 1] = b return b end
