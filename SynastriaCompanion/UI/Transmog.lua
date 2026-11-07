@@ -22,7 +22,7 @@ local WINDOW_W, WINDOW_H = 1230, 816
 local CELL_W, CELL_H = 160, 192
 local MIN_COLS, MIN_ROWS = 3, 2
 local NAME_H = 16
-local LOOKS_W, NAME_W, TAB_W = 150, 120, 80
+local LOOK_LABEL_W, TAB_W, PAGE_TEXT_W = 36, 80, 84
 local ROW_H = 22
 local SEARCH_DELAY = 0.2
 local REFRESH_DELAY = 0.2
@@ -828,12 +828,15 @@ local function createTop(width)
 	local label = S.Text(panel, "small", C.muted)
 	label:SetPoint("TOPLEFT", PAD, -PAD - 5)
 	label:SetText("Look")
-	panel.looks = S.Dropdown(panel, LOOKS_W, function(look)
+	-- the look picker and its name fill the width of the character panel under them
+	local room = DOLL_W - LOOK_LABEL_W - GAP
+	local looksW = math.floor(room * 0.55)
+	panel.looks = S.Dropdown(panel, looksW, function(look)
 		state.look = look
 		TransmogUI.Refresh()
 	end)
-	panel.looks:SetPoint("TOPLEFT", PAD + 36, -PAD)
-	panel.name = S.Input(panel, "SynastriaCompanionTransmogName", NAME_W, "Look Name", T.NAME_MAX)
+	panel.looks:SetPoint("TOPLEFT", PAD + LOOK_LABEL_W, -PAD)
+	panel.name = S.Input(panel, "SynastriaCompanionTransmogName", room - looksW, "Look Name", T.NAME_MAX)
 	panel.name:SetPoint("LEFT", panel.looks, "RIGHT", GAP, 0)
 	panel.name:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 	panel.name:HookScript("OnEditFocusLost", function(self)
@@ -931,8 +934,28 @@ local function createItems(width, height)
 		TransmogUI.Refresh()
 	end)
 	iv.filter:SetPoint("TOPLEFT", 0, 0)
-	iv.search = S.Input(iv, "SynastriaCompanionTransmogSearch", width - 130 - GAP, "Search Appearances", 63)
-	iv.search:SetPoint("TOPRIGHT", 0, 0)
+
+	-- one row: the type filter, the search filling what's left, Show Duplicates, and the page arrows
+	iv.next = S.Button(iv, ">", "secondary", 28, function()
+		iv.page = (iv.page or 1) + 1
+		TransmogUI.Refresh()
+	end, "Next page.")
+	iv.next:SetPoint("TOPRIGHT", 0, 0)
+	iv.pageText = S.Text(iv, "small", C.muted)
+	iv.pageText:SetWidth(PAGE_TEXT_W)
+	iv.pageText:SetJustifyH("CENTER")
+	iv.pageText:SetPoint("RIGHT", iv.next, "LEFT", -GAP, 0)
+	iv.prev = S.Button(iv, "<", "secondary", 28, function()
+		iv.page = (iv.page or 1) - 1
+		TransmogUI.Refresh()
+	end, "Previous page.")
+	iv.prev:SetPoint("RIGHT", iv.pageText, "LEFT", -GAP, 0)
+	iv.dupes = labeledCheck(iv, "Show Duplicates", "Also list items that look the same as one already listed. A search always shows them.",
+		option(T.DUPLICATES))
+	iv.dupes:SetPoint("RIGHT", iv.prev, "LEFT", -PAD, 0)
+	iv.search = S.Input(iv, "SynastriaCompanionTransmogSearch", 200, "Search Appearances", 63)
+	iv.search:SetPoint("LEFT", iv.filter, "RIGHT", GAP, 0)
+	iv.search:SetPoint("RIGHT", iv.dupes, "LEFT", -PAD, 0)
 	iv.search:HookScript("OnTextChanged", function(self, user)
 		if user then
 			iv.searchText = self:GetText()
@@ -941,24 +964,7 @@ local function createItems(width, height)
 	end)
 	iv.search:SetScript("OnEnterPressed", iv.search.ClearFocus)
 
-	local rowY = -(CONTROL_H + GAP)
-	iv.dupes = labeledCheck(iv, "Show Duplicates", "Also list items that look the same as one already listed. A search always shows them.",
-		option(T.DUPLICATES))
-	iv.dupes:SetPoint("TOPLEFT", 0, rowY)
-	iv.next = S.Button(iv, ">", "secondary", 28, function()
-		iv.page = (iv.page or 1) + 1
-		TransmogUI.Refresh()
-	end, "Next page.")
-	iv.next:SetPoint("TOPRIGHT", 0, rowY)
-	iv.pageText = S.Text(iv, "small", C.muted)
-	iv.pageText:SetPoint("RIGHT", iv.next, "LEFT", -GAP, 0)
-	iv.prev = S.Button(iv, "<", "secondary", 28, function()
-		iv.page = (iv.page or 1) - 1
-		TransmogUI.Refresh()
-	end, "Previous page.")
-	iv.prev:SetPoint("RIGHT", iv.pageText, "LEFT", -GAP, 0)
-
-	local gridTop = 2 * (CONTROL_H + GAP)
+	local gridTop = CONTROL_H + GAP
 	local gridH = height - gridTop
 	local cols = math.max(MIN_COLS, math.floor((width + GAP) / (CELL_W + GAP)))
 	local rows = math.max(MIN_ROWS, math.floor((gridH + GAP) / (CELL_H + GAP)))
@@ -1001,6 +1007,7 @@ local function createSets(width, height)
 	sv.armor:SetPoint("LEFT", sv.class, "RIGHT", GAP, 0)
 	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", width - 210 - 2 * GAP, "Search Sets", 40)
 	sv.search:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
+	sv.search:SetPoint("RIGHT", sv, "TOPRIGHT", 0, -CONTROL_H / 2)
 	sv.search:HookScript("OnTextChanged", function(self, user)
 		if user then
 			state.setSearch = self:GetText()
@@ -1107,7 +1114,8 @@ local function create(parent, width, height)
 		state.tab = "items"
 		TransmogUI.Refresh()
 	end, "Pick an appearance for the selected slot.")
-	panel.itemsTab:SetPoint("TOPLEFT", rightX, -top)
+	-- the tabs, the slot's name and its current pick share the top bar, over the grid
+	panel.itemsTab:SetPoint("TOPLEFT", rightX, -PAD)
 	panel.setsTab = S.Button(panel, "Sets", "secondary", TAB_W, function()
 		state.tab = "sets"
 		panel.sets.search:SetText(state.setSearch or "")
@@ -1119,12 +1127,11 @@ local function create(parent, width, height)
 	-- what the selected slot is set to now, which may not be on the page shown
 	panel.pick = S.Text(panel, "small")
 	panel.pick:SetPoint("LEFT", panel.title, "RIGHT", GAP, 0)
-	panel.pick:SetPoint("RIGHT", panel, "TOPRIGHT", -PAD, -top - CONTROL_H / 2)
+	panel.pick:SetPoint("RIGHT", panel.activate, "LEFT", -PAD, 0)
 	panel.pick:SetJustifyH("LEFT")
 	panel.pick:SetWordWrap(false)
 
-	local viewTop = top + CONTROL_H + GAP
-	local viewH = bodyH - CONTROL_H - GAP
+	local viewTop, viewH = top, bodyH
 	panel.items = createItems(rightW, viewH)
 	panel.items:SetPoint("TOPLEFT", rightX, -viewTop)
 	panel.sets = createSets(rightW, viewH)
