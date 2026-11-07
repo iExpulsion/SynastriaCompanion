@@ -74,20 +74,21 @@ innkeeper keeps Companion out of its way, and builds still apply.
 
 ### Transmog
 
-Pick one of your ten transmog looks from **Look** at the top; **Active** marks the one you're wearing. Beside it
-you can rename the look, and below are the specs that switch it on automatically and the appearance for each slot
-and each weapon's enchant visual. A slot can keep your **Equipped Look**, be **Hidden**, or show any item you've attuned or
-acquired. Items you haven't show in red and won't apply. The preview on the right shows your character in the look;
-drag it to turn it around.
+Laid out like the retail wardrobe. Along the top: pick one of your ten transmog looks from **Look** (**Active**
+marks the one you're wearing), rename it, choose the specs that switch it on automatically, and **Activate** it.
 
-Click a slot to pick its appearance. The list has a type filter (armor type or weapon type) and a search, and
-hovering an appearance tries it on the preview. Click one to choose it. **Show Duplicates** also lists items that
-look the same as one already listed. Right-click a slot to go back to your equipped look.
+Your character stands on the left, wearing the look, with a button for each slot around it and a small enchant
+visual button under each weapon. A slot can keep your **Equipped Look**, be **Hidden**, or show any item you've
+attuned or acquired; a red slot holds an item you haven't, which won't apply. Drag your character to turn it
+around. Under it, **Naked** shows only what you're trying, with nothing else on, and **Show Background** puts your
+race's background behind your character.
 
-Along the top of the preview, **Naked** shows only what you're trying, with nothing else on, and **Show
-Background** puts your race's background behind your character.
+Click a slot to see its appearances under **Items**: a page of models, each wearing one appearance, framed on that
+slot. There's a type filter (armor type or weapon type) and a search, the arrows or the mouse wheel turn the page,
+and **Show Duplicates** also lists items that look the same as one already listed. Hovering an appearance tries it
+on your character; click one to choose it. Right-click a slot to go back to your equipped look.
 
-**Sets** lists the game's item sets, from dungeon and tier sets to PvP gear, filtered to your class and armor type
+The **Sets** tab lists the game's item sets, from dungeon and tier sets to PvP gear, filtered to your class and armor type
 or every set, with a search. **Pieces** shows how many of a set's pieces you can use, counting any item you have
 with the same look as a piece (the set's tooltip names it), and hovering a set tries it
 all on the preview. A set's recolors, like the Sanctified tier pieces, the 10- and 25-player versions and each
@@ -95,8 +96,8 @@ arena season's version, are grouped under it: its row shows the version you have
 lists every version. Click a set (or a version) to put it on the look: its pieces you've attuned or acquired go in, the slots it
 doesn't cover keep what they had, and the footer says how many pieces were left out.
 
-**Activate** wears the look, or turns transmog off when it's already the active one. **Use Equipped** fills every
-slot from what you're wearing, **Import** and **Export** share a look as text, and **Reset** clears it. Every
+**Activate** wears the look, or turns transmog off when it's already the active one. Along the bottom, **Use
+Equipped** fills every slot from what you're wearing, **Import** and **Export** share a look as text, and **Reset** clears it. Every
 change saves at once.
 
 ### Attuned Stats

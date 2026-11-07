@@ -1,9 +1,10 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Transmog: a picker for the ten looks, the selected look's name, specs and slots on the left, and a preview of
--- your character wearing it on the right. Clicking a slot swaps the left side for a searchable list of the
--- appearances you can pick; hovering one tries it on the preview. Replaces the game's Transmog window.
+-- Transmog, laid out like the retail wardrobe: the look's name, specs and Activate along the top; your character
+-- on the left with a button for each slot around it; and on the right, Items (a page of models wearing each
+-- appearance you can pick for the selected slot) and Sets. Hovering an appearance or a set tries it on your
+-- character. Replaces the game's Transmog window.
 local TransmogUI = {}
 SC.TransmogUI = TransmogUI
 
@@ -12,7 +13,13 @@ local C = S.colors
 local T = SC.Transmog
 local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 
-local PREVIEW_W, LABEL_W, LOOKS_W = 320, 46, 170
+local DOLL_W = 360
+local SLOT_SIZE, SLOT_GAP, ENCHANT_SIZE = 36, 4, 22
+local STRIP_H = CONTROL_H + GAP
+local GRID_COLS, GRID_ROWS = 3, 2
+local PER_PAGE = GRID_COLS * GRID_ROWS
+local NAME_H = 16
+local LOOKS_W, NAME_W, TAB_W = 150, 120, 80
 local ROW_H = 22
 local SEARCH_DELAY = 0.2
 local REFRESH_DELAY = 0.2
@@ -20,9 +27,14 @@ local REFRESH_DELAY = 0.2
 local DUMMY_WEAPON = 4925
 local ENCHANT_ICON = 20711
 local ROTATE_SPEED = 0.012
+local QUARTER = 1.57079632
+
+-- Slot buttons: the left column, the right column, and the weapons under the character.
+local LEFT_SLOTS = { 1, 2, 3, 4, 5, 6, 7 }
+local RIGHT_SLOTS = { 8, 9, 10, 11 }
+local WEAPON_SLOTS = { 12, 13, 14 }
 
 local panel, state
-local picking, browsing
 
 local function itemName(id)
 	local name, _, quality = GetItemInfoCustom(id)
@@ -45,8 +57,7 @@ local function valueText(value, enchant)
 	return text, color
 end
 
--- The tables put tooltips right of the row, over the preview; these go left of the window instead, level with
--- the row.
+-- The table rows put tooltips on their right, over the character; these go left of the window instead.
 local function besideWindow(tt)
 	local row, window = tt:GetOwner(), SC.Window.Frame()
 	if row and window and row:GetLeft() and window:GetLeft() then
@@ -56,10 +67,24 @@ local function besideWindow(tt)
 	end
 end
 
+-- What's selected for editing: a slot, or a weapon hand's enchant visual.
+local function selection()
+	return state.slot or 1, state.hand
+end
+
+local function selectionLabel()
+	local slot, hand = selection()
+	return hand and (T.SLOTS[hand == 1 and T.MAIN_HAND or T.OFF_HAND].label .. " Enchant") or T.SLOTS[slot].label
+end
+
+local function currentValue()
+	local slot, hand = selection()
+	return hand and T.Enchant(state.look, hand) or T.Slot(state.look, slot)
+end
+
 -- Preview ----------------------------------------------------------------------------------------------------
 
--- The model can't wear anything until it has loaded the character, so what it should wear waits in `want` until
--- then.
+-- A model can't wear anything until it has loaded the character, so what it should wear waits until then.
 local function modelReady(model)
 	local file = model:GetModel()
 	return type(file) == "string" and file ~= ""
@@ -108,10 +133,8 @@ function TransmogUI.Preview(override)
 	p.want = outfitFor(state.look, override)
 	local bg = T.HasOption(T.BACKGROUND)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
-	if p.naked then
-		p.naked.check:SetChecked(T.HasOption(T.NAKED))
-		p.background.check:SetChecked(bg)
-	end
+	p.naked.check:SetChecked(T.HasOption(T.NAKED))
+	p.background.check:SetChecked(bg)
 end
 
 -- The race background is the dressing room's 320x384 picture in four files. Its last rows fade to black (the
@@ -172,18 +195,16 @@ function TransmogUI.Background(parent, inset, w, h)
 	return list
 end
 
-local function createPreview(width, height)
-	local p = CreateFrame("Frame", nil, panel)
-	p:SetSize(width, height)
-	S.Well(p)
-	local wi = 1 + S.metrics.wellInset
-	p.bg = TransmogUI.Background(p, wi, width - 2 * wi, height - 2 * wi)
-
-	-- the model stands on the background's floor, with or without the background shown; its frame can run past the
-	-- pane's bottom, so it takes no clicks and a frame over the pane does the dragging
-	local _, spot = TransmogUI.BackgroundLayout(width - 2 * wi, height - 2 * wi)
+-- The character: the background and model in an area of their own, and a frame over the area for the rotate drag.
+-- The model can run past the area's bottom (the space under the feet is empty), so it takes no clicks.
+local function createCharacter(parent, x, y, w, h)
+	local p = CreateFrame("Frame", nil, parent)
+	p:SetPoint("TOPLEFT", x, -y)
+	p:SetSize(w, h)
+	p.bg = TransmogUI.Background(p, 0, w, h)
+	local _, spot = TransmogUI.BackgroundLayout(w, h)
 	local model = CreateFrame("DressUpModel", "SynastriaCompanionTransmogModel", p)
-	model:SetPoint("TOPLEFT", wi + spot.x, -wi - spot.y)
+	model:SetPoint("TOPLEFT", spot.x, -spot.y)
 	model:SetSize(spot.w, spot.h)
 	model:SetFrameLevel(p:GetFrameLevel() + 2)
 	model:EnableMouse(false)
@@ -196,11 +217,17 @@ local function createPreview(width, height)
 	drag:SetScript("OnMouseDown", function() model.dragX = GetCursorPosition() end)
 	drag:SetScript("OnMouseUp", function() model.dragX = nil end)
 	drag:SetScript("OnHide", function() model.dragX = nil end)
+	drag:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText("Drag to rotate.")
+		GameTooltip:Show()
+	end)
+	drag:SetScript("OnLeave", function() GameTooltip:Hide() end)
 	model:SetScript("OnUpdate", function(self)
 		if self.dragX then
-			local x = GetCursorPosition()
-			self.facing = self.facing + (x - self.dragX) * ROTATE_SPEED
-			self.dragX = x
+			local cx = GetCursorPosition()
+			self.facing = self.facing + (cx - self.dragX) * ROTATE_SPEED
+			self.dragX = cx
 			self:SetFacing(self.facing)
 		end
 		if p.want and modelReady(self) then
@@ -212,169 +239,291 @@ local function createPreview(width, height)
 		self:SetUnit("player")
 		self:SetFacing(self.facing)
 	end)
-	p.model = model
-
-	p.drag, p.inset = drag, wi
+	p.model, p.drag = model, drag
 	return p
 end
 
--- Editor -----------------------------------------------------------------------------------------------------
+-- Slot buttons ------------------------------------------------------------------------------------------------
 
-local function slotRows()
-	local rows = {}
-	for slot, def in ipairs(T.SLOTS) do
-		rows[#rows + 1] = { slot = slot, label = def.label }
-		if def.enchant then rows[#rows + 1] = { hand = def.enchant, label = def.label .. " Enchant" } end
-	end
-	return rows
-end
-local SLOT_ROWS = slotRows()
-
-local function rowValue(row)
-	return row.hand and T.Enchant(state.look, row.hand) or T.Slot(state.look, row.slot)
+local function slotValue(b)
+	return b.hand and T.Enchant(state.look, b.hand) or T.Slot(state.look, b.slot)
 end
 
-local function slotIcon(row)
-	local value = rowValue(row)
-	local icon
-	if row.hand then
+local function slotLabel(b)
+	return b.hand and (T.SLOTS[b.slot].label .. " Enchant") or T.SLOTS[b.slot].label
+end
+
+local function paintSlot(b)
+	local value = slotValue(b)
+	local slotName = T.SLOTS[b.slot].name
+	local icon, alpha, bad = nil, 1, false
+	if b.hand then
 		icon = select(3, GetSpellInfo(ENCHANT_ICON))
+		alpha = value == T.EQUIPPED and 0.5 or value == T.HIDDEN and 0.25 or 1
 	elseif value > T.HIDDEN then
 		icon = select(10, GetItemInfoCustom(value))
-	else
-		icon = select(2, GetInventorySlotInfo(T.SLOTS[row.slot].name))
+		bad = not T.Usable(value)
+	elseif value == T.EQUIPPED then
+		local equipped = T.Equipped(b.slot)
+		icon = equipped > 0 and select(10, GetItemInfoCustom(equipped)) or nil
 	end
-	return icon
+	icon = icon or select(2, GetInventorySlotInfo(slotName))
+	if value == T.HIDDEN and not b.hand then alpha = 0.3 end
+	b.icon:SetTexture(icon)
+	b.icon:SetAlpha(alpha)
+	if bad then b.icon:SetVertexColor(1, 0.3, 0.3) else b.icon:SetVertexColor(1, 1, 1) end
+	local slot, hand = selection()
+	local selected = b.hand == hand and (hand ~= nil or b.slot == slot)
+	b:SetBackdropBorderColor(unpack(selected and C.accent or bad and C.bad or C.border))
 end
 
-local function slotTooltip(tt, row)
-	besideWindow(tt)
-	local value = rowValue(row)
-	if not row.hand and value > T.HIDDEN then
-		tt:SetHyperlink("item:" .. value)
+local function slotTooltip(b)
+	local value = slotValue(b)
+	GameTooltip:SetOwner(b, b.anchor)
+	if not b.hand and value > T.HIDDEN then
+		GameTooltip:SetHyperlink("item:" .. value)
 		if not T.Usable(value) then
-			tt:AddLine("Not attuned or acquired on your account, so it won't apply.", 1, 0.3, 0.3, true)
+			GameTooltip:AddLine("Not attuned or acquired on your account, so it won't apply.", 1, 0.3, 0.3, true)
 		end
 	else
-		tt:AddLine(row.label, 1, 1, 1)
-		tt:AddLine(value == T.EQUIPPED and "Shows the look of what you have equipped."
+		GameTooltip:AddLine(slotLabel(b), 1, 1, 1)
+		GameTooltip:AddLine(value == T.EQUIPPED and "Shows the look of what you have equipped."
 			or value == T.HIDDEN and "Shows nothing in this slot." or valueText(value, true), 0.8, 0.8, 0.8, true)
 	end
-	tt:AddLine("Click to choose. Right-click to go back to your equipped look.", 0.6, 0.6, 0.66, true)
+	GameTooltip:AddLine("Click to pick its appearance. Right-click to go back to your equipped look.", 0.6, 0.6, 0.66, true)
+	GameTooltip:Show()
 end
 
-local function openPicker(row)
-	picking = { slot = row.slot, hand = row.hand, label = row.label, filter = 0, search = "" }
-	panel.picker.search:SetText("")
-	TransmogUI.Refresh()
+local function newSlotButton(parent, slot, hand, size, anchor)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(size, size)
+	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	S.Panel(b, { 0, 0, 0, 1 }, C.border)
+	b.icon = b:CreateTexture(nil, "ARTWORK")
+	b.icon:SetPoint("TOPLEFT", 1, -1)
+	b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+	b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	local hover = S.Solid(b, "HIGHLIGHT", { 1, 1, 1, 0.15 })
+	hover:SetAllPoints(b.icon)
+	b.slot, b.hand, b.anchor = slot, hand, anchor
+	b:SetScript("OnClick", function(self, mouse)
+		if mouse == "RightButton" then
+			if self.hand then T.SetEnchant(state.look, self.hand, T.EQUIPPED) else T.SetSlot(state.look, self.slot, T.EQUIPPED) end
+		else
+			state.slot, state.hand, state.tab = self.slot, self.hand, "items"
+			panel.items.page, panel.items.searchText = nil, nil
+			panel.items.search:SetText("")
+			PlaySound("igMainMenuOptionCheckBoxOn")
+		end
+		TransmogUI.Refresh()
+	end)
+	b:SetScript("OnEnter", slotTooltip)
+	b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	return b
 end
 
--- Picker -----------------------------------------------------------------------------------------------------
+-- Items grid -------------------------------------------------------------------------------------------------
 
-local function choiceValue(row)
-	return row.value
+-- Each cell is a model of your character wearing one appearance, framed the way the game's window frames it:
+-- armor on its zoomed camera (Synastria's GetTransmogOffsets gives the zoom, position and facing for your race),
+-- weapons and enchant visuals on the full camera, turned sideways.
+
+local function weaponSelection()
+	local slot, hand = selection()
+	return hand ~= nil or slot >= T.MAIN_HAND
 end
 
-local function currentPick()
-	return picking.hand and T.Enchant(state.look, picking.hand) or T.Slot(state.look, picking.slot)
-end
-
-local function choiceCell(row, key)
-	local text, color
-	if key == "name" then
-		text, color = valueText(row.value, picking.hand ~= nil)
-		if not row.owned then color = C.bad end
-	elseif key == "type" and not picking.hand and row.value > T.HIDDEN then
-		local _, _, _, _, _, _, subclass = GetItemInfoCustom(row.value)
-		text, color = subclass or "", C.muted
+-- What a cell wears: the look without the selected slot (and without weapons when picking the ranged slot or an
+-- enchant visual, as the game's window does it), then the appearance it shows.
+local function cellOutfit(value)
+	local slot, hand = selection()
+	local naked = T.HasOption(T.NAKED)
+	local outfit = {}
+	for i in ipairs(T.SLOTS) do
+		local skip = i == slot or i == 14 or ((i == T.MAIN_HAND or i == T.OFF_HAND) and (slot == 14 or hand ~= nil))
+		if not naked and not skip then
+			local id, enchant = T.Appearance(state.look, i)
+			if id then outfit[#outfit + 1] = { slot = i, id = id, enchant = enchant } end
+		end
 	end
-	return text, color
-end
-
-local function choiceIcon(row)
-	local icon
-	if row.value > T.HIDDEN and not picking.hand then icon = select(10, GetItemInfoCustom(row.value)) end
-	return icon
-end
-
-local function choiceTooltip(tt, row)
-	besideWindow(tt)
-	local value = row.value
-	if not picking.hand and value > T.HIDDEN then
-		tt:SetHyperlink("item:" .. value)
+	local shown
+	if hand then
+		local weaponSlot = hand == 1 and T.MAIN_HAND or T.OFF_HAND
+		local weapon = T.Appearance(state.look, weaponSlot) or DUMMY_WEAPON
+		local enchant = value
+		if value == T.EQUIPPED then enchant = select(2, T.Equipped(weaponSlot)) elseif value == T.HIDDEN then enchant = nil end
+		outfit[#outfit + 1] = { slot = weaponSlot, id = weapon, enchant = (enchant or 0) > 0 and enchant or nil }
+		shown = weapon
 	else
-		tt:AddLine((valueText(value, picking.hand ~= nil)), 1, 1, 1)
+		local id = value
+		if value == T.EQUIPPED then id = T.Equipped(slot) elseif value == T.HIDDEN then id = nil end
+		if id and id > 0 then outfit[#outfit + 1] = { slot = slot, id = id } end
+		shown = id or 0
 	end
-	if not row.owned then tt:AddLine("Not attuned or acquired on your account, so it won't apply.", 1, 0.3, 0.3, true) end
-	tt:AddLine("Showing on the preview. Click to choose it.", 0.6, 0.6, 0.66, true)
-	TransmogUI.Preview(picking.hand and { hand = picking.hand, value = value } or { slot = picking.slot, value = value })
+	return outfit, shown
 end
 
-local function pick(row)
-	if picking.hand then T.SetEnchant(state.look, picking.hand, row.value) else T.SetSlot(state.look, picking.slot, row.value) end
+local function frameCell(model, shown)
+	local slot, hand = selection()
+	if hand or slot >= T.MAIN_HAND then
+		model:SetFacing(slot == T.OFF_HAND and not hand and -QUARTER or QUARTER)
+	elseif GetTransmogOffsets then
+		local cam = GetTransmogOffsets(slot, shown or 0)
+		if cam.scale then model:SetModelScale(cam.scale) end
+		if cam.x and cam.y and cam.z then model:SetPosition(cam.x, cam.y, cam.z) end
+		if cam.o then model:SetFacing(cam.o) end
+	end
+end
+
+local function applyCell(cell)
+	local model = cell.model
+	if not weaponSelection() then
+		model:SetCamera(2)
+		if Custom_SetDressupFacing then Custom_SetDressupFacing(model, -QUARTER) end
+	end
+	local outfit, shown = cellOutfit(cell.value)
+	dress(model, outfit)
+	frameCell(model, shown)
+end
+
+-- Sets the cell up for a new appearance; the model dresses once it has loaded.
+local function loadCell(cell, entry)
+	local model = cell.model
+	local weapon = weaponSelection()
+	if cell.weapon ~= weapon then
+		cell.weapon = weapon
+		model:SetModelScale(1)
+		model:SetPosition(0, 0, 0)
+		model:SetFacing(0)
+		model:SetCamera(1)
+		model:SetUnit("player")
+	end
+	cell.value, cell.owned, cell.want = entry.value, entry.owned, true
+end
+
+local function cellTooltip(cell)
+	local _, hand = selection()
+	GameTooltip:SetOwner(cell, "ANCHOR_RIGHT")
+	if not hand and cell.value > T.HIDDEN then
+		GameTooltip:SetHyperlink("item:" .. cell.value)
+	else
+		GameTooltip:AddLine((valueText(cell.value, hand ~= nil)), 1, 1, 1)
+	end
+	if not cell.owned then GameTooltip:AddLine("Not attuned or acquired on your account, so it won't apply.", 1, 0.3, 0.3, true) end
+	GameTooltip:AddLine("Showing on your character. Click to choose it.", 0.6, 0.6, 0.66, true)
+	GameTooltip:Show()
+	local slot = selection()
+	TransmogUI.Preview(hand and { hand = hand, value = cell.value } or { slot = slot, value = cell.value })
+end
+
+local function pick(cell)
+	local slot, hand = selection()
+	if hand then T.SetEnchant(state.look, hand, cell.value) else T.SetSlot(state.look, slot, cell.value) end
 	PlaySound("igMainMenuOptionCheckBoxOn")
-	picking = nil
 	TransmogUI.Refresh()
 end
 
-local function renderPicker()
-	local pk = panel.picker
-	pk.title:SetText(picking.label)
-	local def = picking.slot and T.SLOTS[picking.slot]
+local function newCell(parent, w, h)
+	local cell = CreateFrame("Button", nil, parent)
+	cell:SetSize(w, h)
+	S.Panel(cell, C.well, C.border)
+	cell.bg = TransmogUI.Background(cell, 1, w - 2, h - 2 - NAME_H)
+	local model = CreateFrame("DressUpModel", nil, cell)
+	model:SetPoint("TOPLEFT", 1, -1)
+	model:SetPoint("BOTTOMRIGHT", -1, 1 + NAME_H)
+	model:SetFrameLevel(cell:GetFrameLevel() + 2)
+	model:EnableMouse(false)
+	model:SetUnit("player")
+	model:SetScript("OnUpdate", function(self)
+		if cell.want and modelReady(self) then
+			cell.want = nil
+			applyCell(cell)
+		end
+	end)
+	cell.model = model
+	local hover = S.Solid(cell, "HIGHLIGHT", { 1, 1, 1, 0.08 })
+	hover:SetPoint("TOPLEFT", 1, -1)
+	hover:SetPoint("BOTTOMRIGHT", -1, 1)
+	cell.name = S.Text(cell, "small")
+	cell.name:SetPoint("BOTTOMLEFT", 4, 2)
+	cell.name:SetPoint("BOTTOMRIGHT", -4, 2)
+	cell.name:SetHeight(NAME_H - 2)
+	cell.name:SetWordWrap(false)
+	cell:SetScript("OnClick", pick)
+	cell:SetScript("OnEnter", cellTooltip)
+	cell:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+		TransmogUI.Preview()
+	end)
+	return cell
+end
+
+-- What the cells show depends on the look and options too, so they reload when any of it changes.
+local function cellsKey(choicesKey)
+	local parts = { choicesKey, state.look, T.Options() }
+	for i in ipairs(T.SLOTS) do parts[#parts + 1] = T.Slot(state.look, i) end
+	parts[#parts + 1] = T.Enchant(state.look, 1)
+	parts[#parts + 1] = T.Enchant(state.look, 2)
+	return table.concat(parts, ":")
+end
+
+local function renderItems()
+	local iv = panel.items
+	local slot, hand = selection()
+	local def = not hand and T.SLOTS[slot]
 	local filters = def and def.filter and T.FILTERS[def.filter]
+	iv.filterValue = iv.filterKey == (hand and "h" .. hand or slot) and iv.filterValue or 0
+	iv.filterKey = hand and "h" .. hand or slot
 	if filters then
-		pk.filter:SetOptions(filters)
-		for _, o in ipairs(filters) do if o.value == picking.filter then pk.filter:SetText(o.text) end end
-		pk.filter:Show()
+		iv.filter:SetOptions(filters)
+		for _, o in ipairs(filters) do if o.value == iv.filterValue then iv.filter:SetText(o.text) end end
+		iv.filter:Show()
 	else
-		pk.filter:Hide()
+		iv.filter:Hide()
 	end
-	local searchable = T.HasSearch() and not picking.hand
-	if searchable then pk.search:Show() pk.dupes:Show() else pk.search:Hide() pk.dupes:Hide() end
-	pk.dupes.check:SetChecked(T.HasOption(T.DUPLICATES))
+	local searchable = T.HasSearch() and not hand
+	if searchable then iv.search:Show() iv.dupes:Show() else iv.search:Hide() iv.dupes:Hide() end
+	iv.dupes.check:SetChecked(T.HasOption(T.DUPLICATES))
 
-	local rows = picking.hand and T.EnchantChoices(state.look, picking.hand)
-		or T.Choices(state.look, picking.slot, picking.filter, picking.search)
-	pk.table:SetItems(rows, "Nothing to Pick for This Slot", pk.keepScroll)
-	pk.keepScroll = nil
-	local items = math.max(0, #rows - 2)
-	panel.status:SetText(S.Count(items, picking.hand and "Enchant Visual" or "Appearance"))
-	panel.hint:SetText("Hover: Preview  |  Click: Choose")
-end
+	local key = table.concat({ iv.filterKey, iv.filterValue, iv.searchText or "", T.Options(), state.look }, ":")
+	if key ~= iv.choicesKey then
+		iv.choicesKey = key
+		iv.choices = hand and T.EnchantChoices(state.look, hand) or T.Choices(state.look, slot, iv.filterValue, iv.searchText or "")
+		iv.page = nil
+	end
+	local choices, current = iv.choices, currentValue()
+	local pages = math.max(1, math.ceil(#choices / PER_PAGE))
+	if not iv.page then
+		iv.page = 1
+		for i, entry in ipairs(choices) do
+			if entry.value == current then iv.page = math.ceil(i / PER_PAGE) end
+		end
+	end
+	iv.page = math.max(1, math.min(pages, iv.page))
+	iv.pageText:SetText(("Page %d / %d"):format(iv.page, pages))
+	if iv.page > 1 then iv.prev:Enable() else iv.prev:Disable() end
+	if iv.page < pages then iv.next:Enable() else iv.next:Disable() end
 
--- Refresh ----------------------------------------------------------------------------------------------------
-
--- The look picker lists all ten, with the active one marked.
-local function lookText(look)
-	return T.Name(look) .. (T.Active() == look and "  " .. S.Hex(C.good, "Active") or "")
-end
-
-local function renderLooks()
-	local options = {}
-	for look = 1, T.MAX do options[look] = { value = look, text = lookText(look) } end
-	panel.looks:SetOptions(options)
-	panel.looks:SetText(lookText(state.look))
-	panel.lookOptions = options
-end
-
-local function renderEditor()
-	local look = state.look
-	if not panel.name.focused then panel.name:SetText(T.Name(look)) end
-	for spec, box in ipairs(panel.specs) do box:SetChecked(T.HasSpec(look, spec)) end
-	panel.slots:SetItems(SLOT_ROWS, nil, true)
-	local active = T.Active() == look
-	panel.activate:SetLabel(active and "Deactivate" or "Activate")
-	local bad = #T.Unusable(look)
-	local message = panel.message and GetTime() < panel.message.untilTime and panel.message.text
-	panel.status:SetText(message or bad > 0 and S.Hex(C.bad, S.Count(bad, "Slot") .. " Won't Apply: Not Attuned or Acquired")
-		or active and S.Hex(C.good, "Active Look") or S.Hex(C.muted, T.Active() == 0 and "No Look Active" or "Not Active"))
-	panel.hint:SetText("")
-end
-
--- Shows a status line for a few seconds, over the usual one.
-local function flash(text)
-	panel.message = { text = text, untilTime = GetTime() + 4 }
-	panel.pending = GetTime() + 4.1
+	local reload = cellsKey(key .. ":" .. iv.page) ~= iv.cellsKey
+	iv.cellsKey = cellsKey(key .. ":" .. iv.page)
+	if reload and Custom_ClearDressupFacing then Custom_ClearDressupFacing() end
+	for i, cell in ipairs(iv.cells) do
+		local entry = choices[(iv.page - 1) * PER_PAGE + i]
+		if entry then
+			if reload or cell.value ~= entry.value then loadCell(cell, entry) end
+			local text, color = valueText(entry.value, hand ~= nil)
+			cell.name:SetText(text)
+			cell.name:SetTextColor(unpack(entry.owned and color or C.bad))
+			cell:SetBackdropBorderColor(unpack(entry.value == current and C.accent or C.border))
+			for _, tex in ipairs(cell.bg) do if T.HasOption(T.BACKGROUND) then tex:Show() else tex:Hide() end end
+			cell:Show()
+		else
+			cell.value = nil
+			cell:Hide()
+		end
+	end
+	iv.empty:SetText(#choices == 0 and "Nothing to Pick for This Slot" or "")
+	iv.count = math.max(0, #choices - 2)
 end
 
 -- Sets -------------------------------------------------------------------------------------------------------
@@ -451,8 +600,7 @@ local function renderSets()
 	end)
 	sv.table:SetItems(rows, "No Sets Match", sv.keepScroll)
 	sv.keepScroll = nil
-	panel.status:SetText(S.Count(#groups, "Set"))
-	panel.hint:SetText("Hover: Preview  |  Click: Put On or Open")
+	sv.count = #groups
 end
 
 local function setCell(row, key)
@@ -515,36 +663,69 @@ local function setTooltip(tt, row)
 		if row.usable < row.total then
 			tt:AddLine("Red pieces aren't attuned or acquired on your account, so they're left out.", 1, 0.3, 0.3, true)
 		end
-		tt:AddLine("Showing on the preview. Click to put it on this look.", 0.6, 0.6, 0.66, true)
+		tt:AddLine("Showing on your character. Click to put it on this look.", 0.6, 0.6, 0.66, true)
 	end
 	TransmogUI.Preview(setPreview(row.shows))
+end
+
+-- Shows a status line for a few seconds, over the usual one.
+local function flash(text)
+	panel.message = { text = text, untilTime = GetTime() + 4 }
+	panel.pending = GetTime() + 4.1
 end
 
 local function putOn(row)
 	local applied, skipped = T.ApplySet(state.look, row.shows)
 	PlaySound("igMainMenuOptionCheckBoxOn")
-	browsing = false
 	local text = ("Put On %d of %d Pieces"):format(applied, applied + skipped)
 	if skipped > 0 then text = text .. ": " .. S.Count(skipped, "Piece") .. " Not Attuned or Acquired" end
 	flash(applied > 0 and S.Hex(C.good, text) or S.Hex(C.bad, text))
 	TransmogUI.Refresh()
 end
 
+-- Refresh ----------------------------------------------------------------------------------------------------
+
+-- The look picker lists all ten, with the active one marked.
+local function lookText(look)
+	return T.Name(look) .. (T.Active() == look and "  " .. S.Hex(C.good, "Active") or "")
+end
+
+local function renderTop()
+	local look = state.look
+	local options = {}
+	for i = 1, T.MAX do options[i] = { value = i, text = lookText(i) } end
+	panel.looks:SetOptions(options)
+	panel.looks:SetText(lookText(look))
+	panel.lookOptions = options
+	if not panel.name.focused then panel.name:SetText(T.Name(look)) end
+	for spec, box in ipairs(panel.specs) do box:SetChecked(T.HasSpec(look, spec)) end
+	panel.activate:SetLabel(T.Active() == look and "Deactivate" or "Activate")
+end
+
+local function renderStatus(items)
+	local look = state.look
+	local active = T.Active() == look
+	local bad = #T.Unusable(look)
+	local message = panel.message and GetTime() < panel.message.untilTime and panel.message.text
+	local count = items and S.Count(panel.items.count or 0, state.hand and "Enchant Visual" or "Appearance")
+		or S.Count(panel.sets.count or 0, "Set")
+	panel.status:SetText(message or bad > 0 and S.Hex(C.bad, S.Count(bad, "Slot") .. " Won't Apply: Not Attuned or Acquired")
+		or (active and S.Hex(C.good, "Active Look") or S.Hex(C.muted, T.Active() == 0 and "No Look Active" or "Not Active"))
+		.. S.Hex(C.muted, "   |   " .. count))
+end
+
 function TransmogUI.Refresh()
 	panel.pending = nil
-	local editing = picking == nil and not browsing
-	for _, f in ipairs(panel.editorParts) do if editing then f:Show() else f:Hide() end end
-	if picking then panel.picker:Show() else panel.picker:Hide() end
-	if browsing then panel.sets:Show() else panel.sets:Hide() end
+	local items = state.tab ~= "sets"
+	panel.itemsTab:SetKind(items and "selected" or "secondary")
+	panel.setsTab:SetKind(items and "secondary" or "selected")
+	panel.title:SetText(items and selectionLabel() or "Item Sets")
+	if items then panel.items:Show() panel.sets:Hide() else panel.items:Hide() panel.sets:Show() end
 	if T.HasData() then
-		if editing then
-			renderLooks()
-			renderEditor()
-		elseif browsing then
-			renderSets()
-		else
-			renderPicker()
-		end
+		renderTop()
+		for _, b in ipairs(panel.slotButtons) do paintSlot(b) end
+		if items then renderItems() else renderSets() end
+		renderStatus(items)
 		TransmogUI.Preview()
 	else
 		panel.status:SetText(S.Hex(C.muted, "Your Looks Haven't Arrived from the Server Yet"))
@@ -582,80 +763,163 @@ end
 local function option(flag)
 	return function(on)
 		T.SetOption(flag, on)
-		if panel.picker:IsShown() then panel.picker.keepScroll = true end
-		if panel.sets:IsShown() then panel.sets.keepScroll = true end
+		panel.sets.keepScroll = true
 		TransmogUI.Refresh()
 	end
 end
 
-local function createPicker(width, height)
-	local pk = CreateFrame("Frame", nil, panel)
-	pk:SetSize(width, height)
-	pk.back = S.Button(pk, "Back", "secondary", 70, function()
-		picking = nil
-		TransmogUI.Refresh()
-	end, "Back to the look.")
-	pk.back:SetPoint("TOPLEFT", 0, 0)
-	pk.title = S.Text(pk, "large")
-	pk.title:SetPoint("LEFT", pk.back, "RIGHT", PAD, 0)
-
-	pk.filter = S.Dropdown(pk, 150, function(value)
-		picking.filter = value or 0
+local function createTop(width)
+	local label = S.Text(panel, "small", C.muted)
+	label:SetPoint("TOPLEFT", PAD, -PAD - 5)
+	label:SetText("Look")
+	panel.looks = S.Dropdown(panel, LOOKS_W, function(look)
+		state.look = look
 		TransmogUI.Refresh()
 	end)
-	pk.filter:SetPoint("TOPLEFT", 0, -(CONTROL_H + GAP))
-	pk.search = S.Input(pk, "SynastriaCompanionTransmogSearch", width - 150 - GAP, "Search Appearances", 63)
-	pk.search:SetPoint("LEFT", pk.filter, "RIGHT", GAP, 0)
-	pk.search:HookScript("OnTextChanged", function(self, user)
-		if user and picking then
-			picking.search = self:GetText()
+	panel.looks:SetPoint("TOPLEFT", PAD + 36, -PAD)
+	panel.name = S.Input(panel, "SynastriaCompanionTransmogName", NAME_W, "Look Name", T.NAME_MAX)
+	panel.name:SetPoint("LEFT", panel.looks, "RIGHT", GAP, 0)
+	panel.name:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+	panel.name:HookScript("OnEditFocusLost", function(self)
+		if state then self:SetText(T.Rename(state.look, self:GetText())) end
+		TransmogUI.Refresh()
+	end)
+	local specLabel = S.Text(panel, "small", C.muted)
+	specLabel:SetPoint("LEFT", panel.name, "RIGHT", PAD, 0)
+	specLabel:SetText("Specs")
+	panel.specs = {}
+	local prev = specLabel
+	for spec = 1, T.SPECS do
+		local row = labeledCheck(panel, tostring(spec), ("Activate this look when you switch to spec %d."):format(spec),
+			function(on)
+				T.SetSpec(state.look, spec, on)
+				TransmogUI.Refresh()
+			end)
+		row:SetPoint("LEFT", prev, "RIGHT", spec == 1 and GAP or 6, 0)
+		panel.specs[spec] = row.check
+		prev = row
+	end
+	panel.activate = S.Button(panel, "Activate", "primary", 96, function()
+		T.Activate(T.Active() == state.look and 0 or state.look)
+		TransmogUI.Refresh()
+	end, "Wear this look, or turn transmog off while it's the active one.")
+	panel.activate:SetPoint("TOPRIGHT", -PAD, -PAD)
+end
+
+local function createDoll(top, height)
+	local doll = CreateFrame("Frame", nil, panel)
+	doll:SetPoint("TOPLEFT", PAD, -top)
+	doll:SetSize(DOLL_W, height)
+	S.Well(doll)
+	local wi = 1 + S.metrics.wellInset
+	local edge = wi + 6
+	local weaponY = height - wi - STRIP_H - GAP - ENCHANT_SIZE - SLOT_GAP - SLOT_SIZE
+	local areaX = edge + SLOT_SIZE + GAP
+	local area = createCharacter(doll, areaX, wi, DOLL_W - 2 * areaX, weaponY - GAP - wi)
+	panel.preview = area
+	panel.slotButtons = {}
+	local function add(b) panel.slotButtons[#panel.slotButtons + 1] = b return b end
+	for i, slot in ipairs(LEFT_SLOTS) do
+		local b = add(newSlotButton(doll, slot, nil, SLOT_SIZE, "ANCHOR_LEFT"))
+		b:SetPoint("TOPLEFT", edge, -edge - (i - 1) * (SLOT_SIZE + SLOT_GAP))
+	end
+	for i, slot in ipairs(RIGHT_SLOTS) do
+		local b = add(newSlotButton(doll, slot, nil, SLOT_SIZE, "ANCHOR_RIGHT"))
+		b:SetPoint("TOPRIGHT", -edge, -edge - (i - 1) * (SLOT_SIZE + SLOT_GAP))
+	end
+	local rowW = #WEAPON_SLOTS * SLOT_SIZE + (#WEAPON_SLOTS - 1) * (SLOT_GAP * 3)
+	for i, slot in ipairs(WEAPON_SLOTS) do
+		local b = add(newSlotButton(doll, slot, nil, SLOT_SIZE, "ANCHOR_LEFT"))
+		b:SetPoint("TOPLEFT", (DOLL_W - rowW) / 2 + (i - 1) * (SLOT_SIZE + SLOT_GAP * 3), -weaponY)
+		local hand = T.SLOTS[slot].enchant
+		if hand then
+			local e = add(newSlotButton(doll, slot, hand, ENCHANT_SIZE, "ANCHOR_LEFT"))
+			e:SetPoint("TOP", b, "BOTTOM", 0, -SLOT_GAP)
+		end
+	end
+	for _, b in ipairs(panel.slotButtons) do b:SetFrameLevel(doll:GetFrameLevel() + 6) end
+
+	local strip = CreateFrame("Frame", nil, doll)
+	strip:SetPoint("BOTTOMLEFT", wi, wi)
+	strip:SetPoint("BOTTOMRIGHT", -wi, wi)
+	strip:SetHeight(STRIP_H)
+	area.naked = labeledCheck(strip, "Naked", "Show only what you're trying, with nothing else on.", option(T.NAKED))
+	area.background = labeledCheck(strip, "Show Background", "Show your race's background behind your character.",
+		option(T.BACKGROUND))
+	area.naked:SetPoint("LEFT", strip, "LEFT", GAP, 0)
+	area.background:SetPoint("LEFT", area.naked, "RIGHT", PAD, 0)
+	local hint = S.Text(strip, "small", C.muted)
+	hint:SetPoint("RIGHT", strip, "RIGHT", -GAP, 0)
+	hint:SetText("Drag to Rotate")
+	return doll
+end
+
+local function createItems(width, height)
+	local iv = CreateFrame("Frame", nil, panel)
+	iv:SetSize(width, height)
+	iv.filter = S.Dropdown(iv, 130, function(value)
+		iv.filterValue = value or 0
+		TransmogUI.Refresh()
+	end)
+	iv.filter:SetPoint("TOPLEFT", 0, 0)
+	iv.search = S.Input(iv, "SynastriaCompanionTransmogSearch", width - 130 - GAP, "Search Appearances", 63)
+	iv.search:SetPoint("TOPRIGHT", 0, 0)
+	iv.search:HookScript("OnTextChanged", function(self, user)
+		if user then
+			iv.searchText = self:GetText()
 			panel.pending = GetTime() + SEARCH_DELAY
 		end
 	end)
-	pk.search:SetScript("OnEnterPressed", pk.search.ClearFocus)
+	iv.search:SetScript("OnEnterPressed", iv.search.ClearFocus)
 
-	pk.dupes = labeledCheck(pk, "Show Duplicates", "Also list items that look the same as one already listed. A search always shows them.",
+	local rowY = -(CONTROL_H + GAP)
+	iv.dupes = labeledCheck(iv, "Show Duplicates", "Also list items that look the same as one already listed. A search always shows them.",
 		option(T.DUPLICATES))
-	pk.dupes:SetPoint("TOPLEFT", 0, -2 * (CONTROL_H + GAP))
+	iv.dupes:SetPoint("TOPLEFT", 0, rowY)
+	iv.next = S.Button(iv, ">", "secondary", 28, function()
+		iv.page = (iv.page or 1) + 1
+		TransmogUI.Refresh()
+	end, "Next page.")
+	iv.next:SetPoint("TOPRIGHT", 0, rowY)
+	iv.pageText = S.Text(iv, "small", C.muted)
+	iv.pageText:SetPoint("RIGHT", iv.next, "LEFT", -GAP, 0)
+	iv.prev = S.Button(iv, "<", "secondary", 28, function()
+		iv.page = (iv.page or 1) - 1
+		TransmogUI.Refresh()
+	end, "Previous page.")
+	iv.prev:SetPoint("RIGHT", iv.pageText, "LEFT", -GAP, 0)
 
-	local top = 3 * (CONTROL_H + GAP)
-	pk.table = SC.Table.New(pk, "SynastriaCompanionTransmogChoices", width, height - top, {
-		columns = {
-			{ key = "name", label = "Appearance", width = 200, stretch = true, sortable = false },
-			{ key = "type", label = "Type", width = 130, sortable = false },
-		},
-		rowH = ROW_H, icons = true, cell = choiceCell, icon = choiceIcon, tooltip = choiceTooltip,
-		isSelected = function(row) return picking ~= nil and choiceValue(row) == currentPick() end,
-		onClick = function(row) pick(row) end,
-	})
-	pk.table.frame:SetPoint("TOPLEFT", 0, -top)
-	-- leaving a row puts the look back on the preview; entering the next one tries that one on
-	for _, row in ipairs(pk.table.rows) do
-		row:HookScript("OnLeave", function() if picking then TransmogUI.Preview() end end)
+	local gridTop = 2 * (CONTROL_H + GAP)
+	local cellW = (width - (GRID_COLS - 1) * GAP) / GRID_COLS
+	local cellH = (height - gridTop - (GRID_ROWS - 1) * GAP) / GRID_ROWS
+	iv.cells = {}
+	for r = 1, GRID_ROWS do
+		for c = 1, GRID_COLS do
+			local cell = newCell(iv, cellW, cellH)
+			cell:SetPoint("TOPLEFT", (c - 1) * (cellW + GAP), -gridTop - (r - 1) * (cellH + GAP))
+			iv.cells[#iv.cells + 1] = cell
+		end
 	end
-	pk:Hide()
-	return pk
+	iv.empty = S.Text(iv, "normal", C.muted)
+	iv.empty:SetPoint("TOP", 0, -gridTop - 60)
+	iv:EnableMouseWheel(true)
+	iv:SetScript("OnMouseWheel", function(_, delta)
+		iv.page = (iv.page or 1) - delta
+		TransmogUI.Refresh()
+	end)
+	return iv
 end
 
 local function createSets(width, height)
 	local sv = CreateFrame("Frame", nil, panel)
 	sv:SetSize(width, height)
-	sv.back = S.Button(sv, "Back", "secondary", 70, function()
-		browsing = false
-		TransmogUI.Refresh()
-	end, "Back to the look.")
-	sv.back:SetPoint("TOPLEFT", 0, 0)
-	sv.title = S.Text(sv, "large")
-	sv.title:SetPoint("LEFT", sv.back, "RIGHT", PAD, 0)
-	sv.title:SetText("Item Sets")
-
-	sv.class = S.Dropdown(sv, 120, function(value)
+	sv.class = S.Dropdown(sv, 110, function(value)
 		state.setClass = value
 		TransmogUI.Refresh()
 	end)
 	sv.class:SetOptions({ { value = "mine", text = "Your Class" }, { value = "all", text = "All Classes" } })
-	sv.class:SetPoint("TOPLEFT", 0, -(CONTROL_H + GAP))
-	sv.armor = S.Dropdown(sv, 110, function(value)
+	sv.class:SetPoint("TOPLEFT", 0, 0)
+	sv.armor = S.Dropdown(sv, 100, function(value)
 		state.setArmor = value
 		TransmogUI.Refresh()
 	end)
@@ -663,7 +927,7 @@ local function createSets(width, height)
 	for id = 1, 4 do armors[#armors + 1] = { value = id, text = T.ARMOR_TYPES[id] } end
 	sv.armor:SetOptions(armors)
 	sv.armor:SetPoint("LEFT", sv.class, "RIGHT", GAP, 0)
-	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", width - 230 - 2 * GAP, "Search Sets", 40)
+	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", width - 210 - 2 * GAP, "Search Sets", 40)
 	sv.search:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
 	sv.search:HookScript("OnTextChanged", function(self, user)
 		if user then
@@ -673,13 +937,13 @@ local function createSets(width, height)
 	end)
 	sv.search:SetScript("OnEnterPressed", sv.search.ClearFocus)
 
-	local top = 2 * (CONTROL_H + GAP)
+	local top = CONTROL_H + GAP
 	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSets", width, height - top, {
 		columns = {
-			{ key = "name", label = "Set", width = 200, stretch = true },
+			{ key = "name", label = "Set", width = 160, stretch = true },
 			{ key = "level", label = "Level", width = 56, defaultDesc = true,
 				tooltip = "The highest item level among the set's pieces." },
-			{ key = "pieces", label = "Pieces", width = 70, defaultDesc = true,
+			{ key = "pieces", label = "Pieces", width = 62, defaultDesc = true,
 				tooltip = "Pieces you can use, out of the slots the set covers." },
 		},
 		rowH = ROW_H,
@@ -703,7 +967,7 @@ local function createSets(width, height)
 	sv.table.frame:SetPoint("TOPLEFT", 0, -top)
 	sv.table:SetSort(state.setSort or "name", state.setDesc)
 	for _, row in ipairs(sv.table.rows) do
-		row:HookScript("OnLeave", function() if browsing then TransmogUI.Preview() end end)
+		row:HookScript("OnLeave", function() TransmogUI.Preview() end)
 	end
 	sv:Hide()
 	return sv
@@ -722,6 +986,33 @@ StaticPopupDialogs.SYNASTRIA_COMPANION_TRANSMOG_RESET = {
 	hideOnEscape = true,
 }
 
+local function createFooter()
+	panel.status = S.Text(panel, "small")
+	panel.status:SetPoint("LEFT", panel, "BOTTOMLEFT", PAD, PAD + CONTROL_H / 2)
+	panel.reset = S.Button(panel, "Reset", "danger", 70, function()
+		local popup = StaticPopup_Show("SYNASTRIA_COMPANION_TRANSMOG_RESET", T.Name(state.look))
+		if popup then popup.data = state.look end
+	end, "Put every slot back to your equipped look.")
+	panel.reset:SetPoint("BOTTOMRIGHT", -PAD, PAD)
+	panel.export = S.Button(panel, "Export", "secondary", 70, function()
+		SC.TextDialog.ShowExport("Export Look", "This look's appearances. Copy it with Ctrl+C.", T.Export(state.look) or "")
+	end, "Copy this look as text to share it or keep it.")
+	panel.export:SetPoint("RIGHT", panel.reset, "LEFT", -GAP, 0)
+	panel.import = S.Button(panel, "Import", "secondary", 70, function()
+		local look = state.look
+		SC.TextDialog.AskImport("Import Look", "Replaces " .. T.Name(look) .. " with the pasted look.", function(text)
+			if T.Import(look, text) then flash(S.Hex(C.good, "Imported")) else flash(S.Hex(C.bad, "The Game Couldn't Read That")) end
+			TransmogUI.Refresh()
+		end)
+	end, "Paste a shared look into this one.")
+	panel.import:SetPoint("RIGHT", panel.export, "LEFT", -GAP, 0)
+	panel.useEquipped = S.Button(panel, "Use Equipped", "secondary", 100, function()
+		T.UseEquipped(state.look)
+		TransmogUI.Refresh()
+	end, "Set every slot to the item you have equipped there.")
+	panel.useEquipped:SetPoint("RIGHT", panel.import, "LEFT", -GAP, 0)
+end
+
 local function create(parent, width, height)
 	SC.db.transmog = SC.db.transmog or {}
 	state = SC.db.transmog
@@ -729,153 +1020,45 @@ local function create(parent, width, height)
 	state.setClass = state.setClass or "mine"
 	state.setOpen = state.setOpen or {}
 	state.setArmor = state.setArmor or T.BestArmor()
+	state.slot = state.slot or 1
 	panel = CreateFrame("Frame", nil, parent)
 	panel:SetSize(width, height)
-	panel.editorParts = {}
-	local function part(f)
-		panel.editorParts[#panel.editorParts + 1] = f
-		return f
-	end
 
-	local footerH = PAD + CONTROL_H + PAD
-	local bodyH = height - PAD - footerH
+	createTop(width)
+	local top = PAD + CONTROL_H + GAP
+	local bodyH = height - top - (PAD + CONTROL_H + PAD)
+	createDoll(top, bodyH)
 
-	local editX = PAD
-	local editW = width - 2 * PAD - PREVIEW_W - GAP
-
-	local lookLabel = part(S.Text(panel, "small", C.muted))
-	lookLabel:SetPoint("TOPLEFT", editX, -PAD - 5)
-	lookLabel:SetText("Look")
-	panel.looks = part(S.Dropdown(panel, LOOKS_W, function(look)
-		state.look = look
+	local rightX = PAD + DOLL_W + GAP
+	local rightW = width - rightX - PAD
+	panel.itemsTab = S.Button(panel, "Items", "selected", TAB_W, function()
+		state.tab = "items"
 		TransmogUI.Refresh()
-	end))
-	panel.looks:SetPoint("TOPLEFT", editX + LABEL_W, -PAD)
-	panel.name = part(S.Input(panel, "SynastriaCompanionTransmogName", editW - LABEL_W - LOOKS_W - GAP, "Look Name",
-		T.NAME_MAX))
-	panel.name:SetPoint("LEFT", panel.looks, "RIGHT", GAP, 0)
-	local function rename(self)
-		if state then self:SetText(T.Rename(state.look, self:GetText())) end
-		renderLooks()
-	end
-	panel.name:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-	panel.name:HookScript("OnEditFocusLost", rename)
-
-	local specY = -PAD - CONTROL_H - GAP
-	local specLabel = part(S.Text(panel, "small", C.muted))
-	specLabel:SetPoint("TOPLEFT", editX, specY - 5)
-	specLabel:SetText("Specs")
-	panel.specs = {}
-	for spec = 1, T.SPECS do
-		local row = part(labeledCheck(panel, tostring(spec), ("Activate this look when you switch to spec %d."):format(spec),
-			function(on)
-				T.SetSpec(state.look, spec, on)
-				TransmogUI.Refresh()
-			end))
-		row:SetPoint("TOPLEFT", editX + LABEL_W + (spec - 1) * 38, specY)
-		panel.specs[spec] = row.check
-	end
-	panel.setsButton = part(S.Button(panel, "Sets", "secondary", 70, function()
-		browsing = true
+	end, "Pick an appearance for the selected slot.")
+	panel.itemsTab:SetPoint("TOPLEFT", rightX, -top)
+	panel.setsTab = S.Button(panel, "Sets", "secondary", TAB_W, function()
+		state.tab = "sets"
 		panel.sets.search:SetText(state.setSearch or "")
 		TransmogUI.Refresh()
-	end, "Browse item sets and put one on this look."))
-	panel.setsButton:SetPoint("TOPRIGHT", panel, "TOPLEFT", editX + editW, specY)
+	end, "Browse item sets and put one on this look.")
+	panel.setsTab:SetPoint("LEFT", panel.itemsTab, "RIGHT", -1, 0)
+	panel.title = S.Text(panel, "normal", C.heading)
+	panel.title:SetPoint("LEFT", panel.setsTab, "RIGHT", PAD, 0)
 
-	local slotsY = specY - CONTROL_H - GAP
-	panel.slots = SC.Table.New(panel, "SynastriaCompanionTransmogSlots", editW, bodyH + slotsY + PAD, {
-		columns = {
-			{ key = "label", label = "Slot", width = 136, sortable = false },
-			{ key = "value", label = "Appearance", width = 140, stretch = true, sortable = false },
-		},
-		rowH = ROW_H, icons = true,
-		cell = function(row, key)
-			if key == "label" then return row.label, C.muted end
-			return valueText(rowValue(row), row.hand ~= nil)
-		end,
-		icon = slotIcon, tooltip = slotTooltip,
-		onClick = function(row, button)
-			if button == "RightButton" then
-				if row.hand then T.SetEnchant(state.look, row.hand, T.EQUIPPED) else T.SetSlot(state.look, row.slot, T.EQUIPPED) end
-				TransmogUI.Refresh()
-			else
-				openPicker(row)
-			end
-		end,
-	})
-	panel.slots.frame:SetPoint("TOPLEFT", editX, slotsY)
-	part(panel.slots.frame)
-
-	panel.picker = createPicker(width - 2 * PAD - PREVIEW_W - GAP, bodyH)
-	panel.sets = createSets(width - 2 * PAD - PREVIEW_W - GAP, bodyH)
-	panel.sets:SetPoint("TOPLEFT", PAD, -PAD)
-	panel.picker:SetPoint("TOPLEFT", PAD, -PAD)
-
-	panel.preview = createPreview(PREVIEW_W, bodyH)
-	-- the preview's own options and the rotate hint, on a strip along its top, clear of the character's feet and
-	-- readable over the background
-	local p = panel.preview
-	local strip = CreateFrame("Frame", nil, p.drag)
-	strip:SetPoint("TOPLEFT", p.inset, -p.inset)
-	strip:SetPoint("TOPRIGHT", -p.inset, -p.inset)
-	strip:SetHeight(CONTROL_H + GAP)
-	S.Solid(strip, "BACKGROUND", { 0, 0, 0, 0.55 }):SetAllPoints()
-	p.naked = labeledCheck(strip, "Naked", "Show only what you're trying, with nothing else on.", option(T.NAKED))
-	p.background = labeledCheck(strip, "Show Background", "Show your race's background behind the preview.", option(T.BACKGROUND))
-	p.naked:SetPoint("LEFT", strip, "LEFT", GAP, 0)
-	p.background:SetPoint("LEFT", p.naked, "RIGHT", PAD, 0)
-	p.hint = S.Text(strip, "small", C.muted)
-	p.hint:SetPoint("RIGHT", strip, "RIGHT", -GAP, 0)
-	p.hint:SetText("Drag to Rotate")
-	panel.preview:SetPoint("TOPRIGHT", -PAD, -PAD)
-
-	local footerY = PAD + CONTROL_H / 2
-	panel.activate = part(S.Button(panel, "Activate", "primary", 100, function()
-		T.Activate(T.Active() == state.look and 0 or state.look)
-		TransmogUI.Refresh()
-	end, "Wear this look, or turn transmog off while it's the active one."))
-	panel.activate:SetPoint("BOTTOMLEFT", PAD, PAD)
-	panel.status = S.Text(panel, "small")
-	panel.status:SetPoint("LEFT", panel, "BOTTOMLEFT", PAD + 100 + PAD, footerY)
-
-	panel.reset = part(S.Button(panel, "Reset", "danger", 70, function()
-		local popup = StaticPopup_Show("SYNASTRIA_COMPANION_TRANSMOG_RESET", T.Name(state.look))
-		if popup then popup.data = state.look end
-	end, "Put every slot back to your equipped look."))
-	panel.reset:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-	panel.export = part(S.Button(panel, "Export", "secondary", 70, function()
-		SC.TextDialog.ShowExport("Export Look", "This look's appearances. Copy it with Ctrl+C.", T.Export(state.look) or "")
-	end, "Copy this look as text to share it or keep it."))
-	panel.export:SetPoint("RIGHT", panel.reset, "LEFT", -GAP, 0)
-	panel.import = part(S.Button(panel, "Import", "secondary", 70, function()
-		local look = state.look
-		SC.TextDialog.AskImport("Import Look", "Replaces " .. T.Name(look) .. " with the pasted look.", function(text)
-			if T.Import(look, text) then
-				flash(S.Hex(C.good, "Imported"))
-			else
-				flash(S.Hex(C.bad, "The Game Couldn't Read That"))
-			end
-			TransmogUI.Refresh()
-		end)
-	end, "Paste a shared look into this one."))
-	panel.import:SetPoint("RIGHT", panel.export, "LEFT", -GAP, 0)
-	panel.useEquipped = part(S.Button(panel, "Use Equipped", "secondary", 100, function()
-		T.UseEquipped(state.look)
-		TransmogUI.Refresh()
-	end, "Set every slot to the item you have equipped there."))
-	panel.useEquipped:SetPoint("RIGHT", panel.import, "LEFT", -GAP, 0)
-	panel.hint = S.Text(panel, "small", C.muted)
-	panel.hint:SetPoint("RIGHT", panel, "BOTTOMRIGHT", -PAD, footerY)
+	local viewTop = top + CONTROL_H + GAP
+	local viewH = bodyH - CONTROL_H - GAP
+	panel.items = createItems(rightW, viewH)
+	panel.items:SetPoint("TOPLEFT", rightX, -viewTop)
+	panel.sets = createSets(rightW, viewH)
+	panel.sets:SetPoint("TOPLEFT", rightX, -viewTop)
+	createFooter()
 
 	panel:SetScript("OnUpdate", function()
-		if panel.pending and GetTime() >= panel.pending then
-			if picking then panel.picker.keepScroll = true end
-			TransmogUI.Refresh()
-		end
+		if panel.pending and GetTime() >= panel.pending then TransmogUI.Refresh() end
 	end)
 	panel:SetScript("OnHide", function()
-		picking = nil
-		browsing = false
+		if Custom_ClearDressupFacing then Custom_ClearDressupFacing() end
+		panel.items.cellsKey = nil
 	end)
 	T.onChange = function() TransmogUI.Changed() end
 	return panel
