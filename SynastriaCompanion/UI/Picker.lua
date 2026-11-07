@@ -30,16 +30,17 @@ local function refresh()
 	popup.keepScroll = nil
 end
 
--- The list and search keep their size in every skin; the popup grows around them by the skin's padding.
+-- A dropdown, so it's one menu frame around the search and a plain list. The list and search keep their size in
+-- every skin; the menu grows around them by its border.
 local function create()
-	local inset, innerW, innerH = S.metrics.inset, W - 2 * S.PAD, H - 2 * S.PAD
+	local inset, innerW, innerH = S.metrics.menuInset + 4, W - 2 * S.PAD, H - 2 * S.PAD
 	popup = CreateFrame("Frame", "SynastriaCompanionPicker", UIParent)
 	popup:SetSize(innerW + 2 * inset, innerH + 2 * inset)
 	popup:SetFrameStrata("DIALOG")
 	popup:SetToplevel(true)
 	popup:EnableMouse(true)
 	SC.PixelScale(popup)
-	S.Frame(popup, "popup")
+	S.Frame(popup, "menu")
 	tinsert(UISpecialFrames, "SynastriaCompanionPicker")
 
 	popup.search = S.Input(popup, "SynastriaCompanionPickerSearch", innerW, "Search", 60)
@@ -48,8 +49,9 @@ local function create()
 		if user then refresh() end
 	end)
 
-	popup.list = SC.Table.New(popup, nil, innerW, innerH - S.PAD - S.CONTROL_H, {
-		columns = { { key = "text", label = "", width = innerW - 2, sortable = false } },
+	popup.list = SC.Table.New(popup, nil, innerW, innerH - S.GAP - S.CONTROL_H, {
+		plain = true,
+		columns = { { key = "text", label = "", width = innerW, sortable = false } },
 		cell = function(item)
 			local on = spec.isSelected and spec.isSelected(item.value)
 			if spec.multi then return (on and "|cffffc400+|r  " or "    ") .. item.text, on and C.heading or C.text end

@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-34-g3e62103. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-36-gebb4607. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -863,7 +863,7 @@ local function layout(self)
 		h:SetPoint("TOPLEFT", col.x, 0)
 		h.label:SetPoint("RIGHT", -16 - (col.barInset or 0), 0)
 		h.arrow:SetPoint("RIGHT", -4 - (col.barInset or 0), 0)
-		if col.hidden then h:Hide() else h:Show() end
+		if col.hidden or self.plain then h:Hide() else h:Show() end
 		local inset = (c == 1 and self.icons) and self.rowH or 0
 		for _, row in ipairs(self.rows) do
 			local fs = row.cells[c]
@@ -878,14 +878,15 @@ end
 -- opts: columns = { { key, label, width, justify, sortable, defaultDesc, tooltip, stretch } }, rowH, icons (the
 -- first column has an icon), cell(item, key) -> text, color, icon(item) -> texture, tooltip(tt, item),
 -- onClick(item, button), onSort(key, desc), header(item) -> label when the item is a group header row,
--- isSelected(item). The table's frame is .frame; its contents sit inside the well's border.
+-- isSelected(item), plain (a bare list for inside a menu or popup: no well frame and no column headers). The
+-- table's frame is .frame; its contents sit inside the well's border.
 function Table.New(parent, name, width, height, opts)
 	local C = S.colors
 	-- the well's border, then its own 1px
-	local inset = 1 + S.metrics.wellInset
+	local inset = opts.plain and 0 or 1 + S.metrics.wellInset
 	local self = setmetatable({ columns = opts.columns, rowH = opts.rowH or 20, icons = opts.icons, cell = opts.cell,
 		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, header = opts.header,
-		isSelected = opts.isSelected, items = {}, width = width, innerW = width - 2 * inset,
+		isSelected = opts.isSelected, plain = opts.plain, items = {}, width = width, innerW = width - 2 * inset,
 		offset = 0, rows = {}, headers = {} }, { __index = Table })
 	local columns = {}
 	for i, def in ipairs(opts.columns) do
@@ -898,21 +899,25 @@ function Table.New(parent, name, width, height, opts)
 
 	self.frame = CreateFrame("Frame", name, parent)
 	self.frame:SetSize(width, height)
-	S.Well(self.frame)
+	if not opts.plain then S.Well(self.frame) end
 	self.content = CreateFrame("Frame", nil, self.frame)
 	self.content:SetPoint("TOPLEFT", inset, -inset)
 	self.content:SetPoint("BOTTOMRIGHT", -inset, inset)
 
-	local header = S.Solid(self.content, "BACKGROUND", C.panel)
-	header:SetPoint("TOPLEFT")
-	header:SetPoint("TOPRIGHT")
-	header:SetHeight(HEADER_H)
-	local rule, ruleH = line(self.content, "header")
-	rule:SetHeight(ruleH)
-	rule:SetPoint("TOPLEFT", 0, -HEADER_H)
-	rule:SetPoint("TOPRIGHT", 0, -HEADER_H)
-	-- rows start below the header and its rule, so a highlighted first row doesn't cover the rule
-	self.bodyTop = HEADER_H + ruleH
+	-- rows start below the header and its rule, so a highlighted first row doesn't cover the rule; a plain list's
+	-- start at the top
+	self.bodyTop = 0
+	if not opts.plain then
+		local header = S.Solid(self.content, "BACKGROUND", C.panel)
+		header:SetPoint("TOPLEFT")
+		header:SetPoint("TOPRIGHT")
+		header:SetHeight(HEADER_H)
+		local rule, ruleH = line(self.content, "header")
+		rule:SetHeight(ruleH)
+		rule:SetPoint("TOPLEFT", 0, -HEADER_H)
+		rule:SetPoint("TOPRIGHT", 0, -HEADER_H)
+		self.bodyTop = HEADER_H + ruleH
+	end
 	for _, col in ipairs(self.columns) do
 		local h = CreateFrame("Button", nil, self.content)
 		h.col = col
