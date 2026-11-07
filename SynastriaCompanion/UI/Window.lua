@@ -19,6 +19,7 @@ local current
 
 -- The sidebar's sections and the screens in each, in order.
 Window.SECTIONS = {
+	{ label = "Character", screens = { "perks" } },
 	{ label = "Attunes", screens = { "attuned", "attunable" } },
 	{ label = "Loot", screens = { "lootfilter", "bank", "lootdb" } },
 	{ label = "Community", screens = { "leaderboards" } },
@@ -62,7 +63,8 @@ function Window.Default()
 end
 
 -- screen: { key, label, create(parent, width, height) -> panel, show(panel, ...), spell = the game's View spell
--- for it, needsSpell() = true while its data only comes from casting that spell,
+-- for it, needsSpell() = true while its data only comes from casting that spell, gameArgs() = what the Game Window
+-- button passes the game's open function,
 -- hook = { open = global, close = global, frame = global frame name, extra = { [global] = handler } } }
 function Window.AddScreen(screen)
 	Window.screens[#Window.screens + 1] = screen
@@ -152,8 +154,10 @@ local function createTitleBar(f, edge)
 	close:SetPoint("RIGHT", -inset, 0)
 	f.gameWindow = S.Button(bar, "Game Window", "ghost", 96, function()
 		local key = current
+		local screen = find(key)
+		local arg = screen and screen.gameArgs and screen.gameArgs()
 		f:Hide()
-		SC.Hooks.OpenOriginal(key)
+		SC.Hooks.OpenOriginal(key, arg)
 	end, "Open the game's own window for this screen.")
 	f.gameWindow:SetPoint("RIGHT", close, "LEFT", -S.GAP, 0)
 end

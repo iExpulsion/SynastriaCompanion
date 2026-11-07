@@ -1,16 +1,18 @@
 # Synastria Companion
 
 Cleaner replacements for Synastria's own windows (WoW 3.3.5a), all in one window that matches
-[Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite): your attuned stats, the attunable item
-search, the auto loot filter, the resource bank, the item database and the leaderboards. When the game would open
+[Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite): your perks, your attuned stats, the
+attunable item search, the auto loot filter, the resource bank, the item database and the leaderboards. When the game would open
 one of its windows, Companion opens instead.
 
 ![The Synastria Companion window on Attunable Items: the screens in the sidebar, filters across the top, and every attunable item in a sortable table](docs/images/attunable-items.png)
 
 ## Features
 
-- **One Window:** every screen sits in one sidebar, grouped into Attunes, Loot and Community, and a minimap button
-  opens any of them.
+- **One Window:** every screen sits in one sidebar, grouped into Character, Attunes, Loot and Community, and a
+  minimap button opens any of them.
+- **Perks in One Place:** every perk by category with its limit, the effect at your rank and the next, set bonuses,
+  options, and what the next rank takes and how far along you are.
 - **No View Spells Needed:** screens that need the game's View spell cast it on the same click that opens them,
   so those spells can come off your action bars.
 - **Live Filters:** searches and filters apply as you type, with no Search button, and no cap on results.
@@ -44,11 +46,25 @@ asks for them. Clicks can only ask out of combat.
 
 ## The Window
 
-- **Sidebar:** the screens, under Attunes, Loot and Community. Companion remembers the last one you used.
+- **Sidebar:** the screens, under Character, Attunes, Loot and Community. Companion remembers the last one you used.
 - **Title Bar:** **Theme** switches between Material, Classic and Cognac, after a reload; Companion offers to reload for
   you. **Game Window** closes Companion and opens the game's own window for the screen you're on. **Close** closes
   it.
 - **Footer:** counts sit at the bottom left, and the bottom right shows what clicking a row does.
+
+### Perks
+
+Your perks by category, as the game lists them, with how many each category allows next to its name. Each perk
+shows its rank, and **On** marks the ones that are on. **All** and **On** switch between every perk and only the
+ones that are on, and the search narrows by name.
+
+Click a perk for its details: the effect at your rank and the next one, how it works with other perks, its set and
+which set bonuses are active, the ability it grants, its options, and **How to Unlock** or **How to Upgrade** with
+your progress. Options and abilities change anywhere.
+
+Perks are turned on and off at an innkeeper, as in the game: talk to one and pick **Manage Perks**, and the
+**Turn On** button (or a right-click on the perk) works until you close the window. The View Perks spell opens the
+screen to look only.
 
 ### Attuned Stats
 
@@ -158,6 +174,7 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | Command | Does |
 |---|---|
 | `/scomp` | Opens or closes the window |
+| `/scomp perks` | Opens Perks |
 | `/scomp attuned` | Opens Attuned Stats (also `stats`) |
 | `/scomp attunable` | Opens Attunable Items |
 | `/scomp lootfilter` | Opens Auto Loot (also `autoloot`) |
