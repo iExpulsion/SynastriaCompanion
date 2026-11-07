@@ -67,7 +67,8 @@ your progress. Options and abilities change anywhere.
 
 Perks are activated and deactivated at an innkeeper, as in the game: talk to one and pick **Manage Perks**, and
 the **Activate** button (or a right-click on the perk) works until you close the window. The View Perks spell opens the
-screen to look only.
+screen to look only. Opening [Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite) from the
+innkeeper keeps Companion out of its way, and builds still apply.
 
 ### Attuned Stats
 

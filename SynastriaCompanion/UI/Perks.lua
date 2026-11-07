@@ -527,7 +527,7 @@ local function create(parent, width, height)
 	-- a writable session lasts while the window is open, as the game's lasts while its window is
 	panel:SetScript("OnHide", function()
 		local window = SC.Window.Frame()
-		if not (window and window:IsShown()) then Perks.End() end
+		if not (window and window:IsShown()) and not PerksUI.BuildSuiteShown() then Perks.End() end
 	end)
 	Perks.onChange = function() PerksUI.Changed() end
 	return panel
@@ -540,6 +540,36 @@ end
 
 SC:On("ACTIVE_TALENT_GROUP_CHANGED", function() PerksUI.Changed(SPEC_DELAY) end)
 
+-- Synastria Build Suite's innkeeper line opens its own window and then picks Manage Perks, so the server's open
+-- call arrives with Build Suite already showing. Then the session starts without this window covering it, and
+-- lasts until both windows are closed.
+local watchedBuildSuite
+
+function PerksUI.BuildSuiteShown()
+	local f = _G.SynastriaBuildSuiteFrame
+	return f ~= nil and f:IsShown() == true
+end
+
+local function watchBuildSuite()
+	local f = _G.SynastriaBuildSuiteFrame
+	if f and watchedBuildSuite ~= f then
+		watchedBuildSuite = f
+		f:HookScript("OnHide", function()
+			local window = SC.Window.Frame()
+			if not (window and window:IsShown()) then Perks.End() end
+		end)
+	end
+end
+
+local function openPerks(writeable)
+	Perks.Begin(writeable)
+	if writeable and PerksUI.BuildSuiteShown() and SC.Window.Current() ~= "perks" then
+		watchBuildSuite()
+	else
+		SC.Window.Open("perks")
+	end
+end
+
 SC.Window.AddScreen({
 	key = "perks",
 	label = "Perks",
@@ -551,10 +581,7 @@ SC.Window.AddScreen({
 		open = "OpenPerkMgr",
 		close = "ClosePerkMgr",
 		extra = {
-			OpenPerkMgr = function(writeable)
-				Perks.Begin(writeable)
-				SC.Window.Open("perks")
-			end,
+			OpenPerkMgr = openPerks,
 			ClosePerkMgr = function()
 				Perks.End()
 				SC.Window.Close("perks")
