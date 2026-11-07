@@ -156,6 +156,18 @@ function TransmogUI.Preview(override)
 	p.background.check:SetChecked(bg)
 end
 
+-- What's being hovered stays on the preview through redraws (a click on what's hovered redraws the screen) until
+-- the mouse leaves it.
+function TransmogUI.Hover(override)
+	panel.hover = override
+	TransmogUI.Preview(override)
+end
+
+function TransmogUI.Unhover()
+	panel.hover = nil
+	TransmogUI.Preview()
+end
+
 -- The race background is the dressing room's 320x384 picture in four files. Its last rows fade to black (the
 -- dressing room's frame covers them), so only the picture down to BG_FLOOR is used: scaled to cover the pane
 -- without stretching, kept to that bottom edge, and slid sideways toward the dressing room's model spot (its
@@ -443,7 +455,7 @@ local function cellTooltip(cell)
 	GameTooltip:AddLine("Showing on your character. Click to choose it.", 0.6, 0.6, 0.66, true)
 	GameTooltip:Show()
 	local slot = selection()
-	TransmogUI.Preview(hand and { hand = hand, value = cell.value } or { slot = slot, value = cell.value })
+	TransmogUI.Hover(hand and { hand = hand, value = cell.value } or { slot = slot, value = cell.value })
 end
 
 local function pick(cell)
@@ -499,7 +511,7 @@ local function newCell(parent, w, h)
 	cell:SetScript("OnEnter", cellTooltip)
 	cell:SetScript("OnLeave", function()
 		GameTooltip:Hide()
-		TransmogUI.Preview()
+		TransmogUI.Unhover()
 	end)
 	return cell
 end
@@ -711,7 +723,7 @@ local function setTooltip(tt, row)
 		end
 		tt:AddLine("Showing on your character. Click to put it on this look.", 0.6, 0.6, 0.66, true)
 	end
-	TransmogUI.Preview(setPreview(row.shows))
+	TransmogUI.Hover(setPreview(row.shows))
 end
 
 -- Shows a status line for a few seconds, over the usual one.
@@ -778,7 +790,7 @@ function TransmogUI.Refresh()
 		end
 		if items then renderItems() else renderSets() end
 		renderStatus(items)
-		TransmogUI.Preview()
+		TransmogUI.Preview(panel.hover)
 	else
 		panel.status:SetText(S.Hex(C.muted, "Your Looks Haven't Arrived from the Server Yet"))
 	end
@@ -1042,7 +1054,7 @@ local function createSets(width, height)
 	sv.table.frame:SetPoint("TOPLEFT", 0, -top)
 	sv.table:SetSort(state.setSort or "name", state.setDesc)
 	for _, row in ipairs(sv.table.rows) do
-		row:HookScript("OnLeave", function() TransmogUI.Preview() end)
+		row:HookScript("OnLeave", function() TransmogUI.Unhover() end)
 	end
 	sv:Hide()
 	return sv
@@ -1139,7 +1151,7 @@ local function create(parent, width, height)
 	end)
 	panel:SetScript("OnHide", function()
 		if Custom_ClearDressupFacing then Custom_ClearDressupFacing() end
-		panel.items.cellsKey = nil
+		panel.items.cellsKey, panel.hover = nil, nil
 	end)
 	T.onChange = function() TransmogUI.Changed() end
 	return panel
