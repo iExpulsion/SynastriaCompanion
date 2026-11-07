@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-30-g9f155a5. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-32-g2409e15. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -816,19 +816,20 @@ local function headerWidth(self, c, col)
 end
 
 -- Places the shown columns left to right. Each is at least as wide as its header needs; the shown column marked
--- stretch (else the last shown) takes the spare width, such as a hidden column's, or gives up what the others
--- needed. The last shown keeps its text clear of the scroll bar, since the rows run under the bar to the table's
--- edge.
+-- stretch (else the first shown, usually the primary one) takes the spare width, such as a hidden column's, or
+-- gives up what the others needed. The last shown keeps its text clear of the scroll bar, since the rows run under
+-- the bar to the table's edge.
 local function layout(self)
-	local last, stretch = nil, nil
+	local first, last, stretch = nil, nil, nil
 	for _, col in ipairs(self.columns) do
 		col.width, col.barInset = col.baseWidth, nil
 		if not col.hidden then
+			first = first or col
 			last = col
 			if col.stretch and not stretch then stretch = col end
 		end
 	end
-	stretch = stretch or last
+	stretch = stretch or first
 	if last then
 		last.barInset = BAR_SPACE
 		local used = 0

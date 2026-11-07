@@ -228,7 +228,8 @@ local function label(parent, text, width)
 end
 
 -- Button widths that fill `area` exactly (joined buttons overlap by their 1px border). Each option's width is its
--- minimum; the narrow ones grow first, so the buttons come out as even as their labels allow.
+-- minimum; the narrow ones grow first, so the buttons come out as even as their labels allow. The first button
+-- takes what rounding leaves over.
 local function fitWidths(options, area)
 	local n = #options
 	local avail = area + n - 1
@@ -252,7 +253,7 @@ local function fitWidths(options, area)
 		widths[i] = wide[i] and o.width or even
 		used = used + widths[i]
 	end
-	widths[n] = widths[n] + avail - used
+	widths[1] = widths[1] + avail - used
 	return widths
 end
 
@@ -431,14 +432,15 @@ local function create(parent, width, height)
 	local x0, inner = PAD, width - 2 * PAD
 	local function rowY(n) return -PAD - (n - 1) * (CONTROL_H + ROW_GAP) end
 	-- the filters sit on four equal columns
+	-- the first column, the primary one, takes what rounding the others down leaves over, so the filters end where
+	-- the table does
 	local colW = math.floor((inner - 3 * GAP) / 4)
-	local function colX(n) return x0 + (n - 1) * (colW + GAP) end
-	-- the last column takes what rounding the others down left over, so the filters end where the table does
-	local lastW = inner - 3 * (colW + GAP)
-	panel.colW = colW
+	local firstW = inner - 3 * (colW + GAP)
+	local function colX(n) return n == 1 and x0 or x0 + firstW + GAP + (n - 2) * (colW + GAP) end
+	panel.colW, panel.firstW = colW, firstW
 
 	-- row 1: search (two columns unless the class dropdown needs one), mode, class; Advanced and Reset on the right
-	panel.name = S.Input(panel, "SynastriaCompanionAttuneName", 2 * colW + GAP, "Search Items", 60)
+	panel.name = S.Input(panel, "SynastriaCompanionAttuneName", firstW + GAP + colW, "Search Items", 60)
 	panel.name:SetPoint("TOPLEFT", x0, rowY(1))
 	panel.name:HookScript("OnTextChanged", function(self, user)
 		if user then
@@ -462,8 +464,8 @@ local function create(parent, width, height)
 		syncControls()
 		requery()
 	end, "Clear every filter and the search, advanced ones too.")
-	reset:SetPoint("TOPLEFT", colX(4) + lastW - 56, rowY(1))
-	panel.advanced = S.Button(panel, "Advanced", "secondary", lastW - 56 - 4, function()
+	reset:SetPoint("TOPLEFT", colX(4) + colW - 56, rowY(1))
+	panel.advanced = S.Button(panel, "Advanced", "secondary", colW - 56 - 4, function()
 		S.CloseMenus()
 		filter.advanced = not filter.advanced or nil
 		syncControls()
@@ -472,7 +474,7 @@ local function create(parent, width, height)
 	panel.advanced:SetPoint("RIGHT", reset, "LEFT", -4, 0)
 
 	-- row 2: the game's dropdown filters
-	panel.rarity = S.Dropdown(panel, colW, function(v) set("rarity", v or nil) end)
+	panel.rarity = S.Dropdown(panel, firstW, function(v) set("rarity", v or nil) end)
 	local rarities = { { value = false, text = "All" } }
 	for _, r in ipairs(Attune.RARITIES) do rarities[#rarities + 1] = r end
 	panel.rarity:SetOptions(rarities)
@@ -486,11 +488,11 @@ local function create(parent, width, height)
 
 	panel.mythic = triDropdown(colW, "mythic")
 	panel.mythic:SetPoint("TOPLEFT", colX(3), rowY(2))
-	panel.affix = triDropdown(lastW, "affix", "Items with or without a random affix.")
+	panel.affix = triDropdown(colW, "affix", "Items with or without a random affix.")
 	panel.affix:SetPoint("TOPLEFT", colX(4), rowY(2))
 
 	-- row 3: sources, the two level ranges, zone
-	panel.sources = triDropdown(colW, "sources", "Items with more than five places they come from.")
+	panel.sources = triDropdown(firstW, "sources", "Items with more than five places they come from.")
 	panel.sources:SetPoint("TOPLEFT", colX(1), rowY(3))
 
 	local LABEL_W, DASH_W = 28, 12
@@ -509,7 +511,7 @@ local function create(parent, width, height)
 	range(2, "Req", "minReq", "maxReq", "SynastriaCompanionAttuneMinReq", "SynastriaCompanionAttuneMaxReq")
 	range(3, "iLvl", "minLvl", "maxLvl", "SynastriaCompanionAttuneMinLvl", "SynastriaCompanionAttuneMaxLvl")
 
-	panel.zone = S.AddArrow(S.Button(panel, "Any Zone", "secondary", lastW, openZonePicker,
+	panel.zone = S.AddArrow(S.Button(panel, "Any Zone", "secondary", colW, openZonePicker,
 		"Only items that come from one zone, or the one you're in."))
 	panel.zone:SetPoint("TOPLEFT", colX(4), rowY(3))
 
@@ -560,7 +562,7 @@ end
 local function show()
 	local multi = CMCGetClassCount and CMCGetClassCount() >= 2
 	setShown(panel.class, multi)
-	panel.name:SetWidth(multi and panel.colW or 2 * panel.colW + GAP)
+	panel.name:SetWidth(multi and panel.firstW or panel.firstW + GAP + panel.colW)
 	if multi then
 		local options = { { value = false, text = "Mine" } }
 		for _, c in ipairs(CLASSES) do
