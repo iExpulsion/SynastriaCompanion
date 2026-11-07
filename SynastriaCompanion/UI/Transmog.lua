@@ -149,21 +149,11 @@ local function outfitFor(look, override)
 	return outfit
 end
 
--- The look you're wearing shows on your real character, as the server draws you: it has both weapons, which a
--- dressed preview can't (see OFF_HAND_ONLY). Any other look, or anything being tried, is dressed piece by piece.
+-- The preview is always dressed piece by piece. Your real character (SetUnit alone) isn't used for the look you're
+-- wearing: the client draws two two-handers with only the off-hand one, in the left hand.
 function TransmogUI.Preview(override)
 	local p = panel.preview
-	if override == nil and state.look == T.Active() then
-		p.want = nil
-		if p.mode ~= "real" then
-			p.mode = "real"
-			p.model:SetUnit("player")
-			p.model:SetFacing(p.model.facing)
-		end
-	else
-		p.mode = "dressed"
-		p.want = outfitFor(state.look, override)
-	end
+	p.want = outfitFor(state.look, override)
 	local bg = T.HasOption(T.BACKGROUND)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
 	p.naked.check:SetChecked(T.HasOption(T.NAKED))
@@ -779,10 +769,7 @@ function TransmogUI.Refresh()
 	end
 end
 
--- Something changed that the real character may show (a look, your gear, the server redrawing you), so it's
--- loaded again on the next refresh.
 function TransmogUI.Changed(delay)
-	if panel then panel.preview.mode = nil end
 	if panel and panel:IsVisible() then
 		panel.pending = math.max(panel.pending or 0, GetTime() + (delay or REFRESH_DELAY))
 	end
@@ -1119,8 +1106,6 @@ local function show()
 end
 
 SC:On("PLAYER_EQUIPMENT_CHANGED", function() TransmogUI.Changed() end)
-SC:On("UNIT_MODEL_CHANGED", function(unit) if unit == "player" then TransmogUI.Changed() end end)
-SC:On("UNIT_INVENTORY_CHANGED", function(unit) if unit == "player" then TransmogUI.Changed() end end)
 SC:On("ACTIVE_TALENT_GROUP_CHANGED", function() TransmogUI.Changed(1) end)
 
 SC.Window.AddScreen({
