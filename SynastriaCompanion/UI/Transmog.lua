@@ -165,7 +165,7 @@ end
 
 function TransmogUI.Unhover()
 	panel.hover = nil
-	TransmogUI.Preview()
+	TransmogUI.Preview(TransmogUI.ChosenPreview())
 end
 
 -- The race background is the dressing room's 320x384 picture in four files. Its last rows fade to black (the
@@ -721,7 +721,7 @@ local function setTooltip(tt, row)
 		if row.usable < row.total then
 			tt:AddLine("Red pieces aren't attuned or acquired on your account, so they're left out.", 1, 0.3, 0.3, true)
 		end
-		tt:AddLine("Showing on your character. Click to put it on this look.", 0.6, 0.6, 0.66, true)
+		tt:AddLine("Showing on your character. Click to choose which of its pieces to put on.", 0.6, 0.6, 0.66, true)
 	end
 	TransmogUI.Hover(setPreview(row.shows))
 end
@@ -732,13 +732,81 @@ local function flash(text)
 	panel.pending = GetTime() + 4.1
 end
 
-local function putOn(row)
-	local applied, skipped = T.ApplySet(state.look, row.shows)
+-- Choosing a set (or a version of one) shows its pieces beside the list, the usable ones checked; nothing goes on
+-- the look until Put On Selected. Changes save at once, so a stray click on a row can't overwrite slots.
+local function choose(version)
+	local checked = {}
+	for _, piece in ipairs(T.SetPieces(version)) do
+		if piece.usable then checked[piece.slot] = true end
+	end
+	panel.chosen, panel.checked = version, checked
 	PlaySound("igMainMenuOptionCheckBoxOn")
-	local text = ("Put On %d of %d Pieces"):format(applied, applied + skipped)
-	if skipped > 0 then text = text .. ": " .. S.Count(skipped, "Piece") .. " Not Attuned or Acquired" end
+end
+
+-- What the preview wears while a set is chosen on the Sets tab: the look with the checked pieces on.
+function TransmogUI.ChosenPreview()
+	local override
+	if state.tab == "sets" and panel.chosen then
+		local pieces = {}
+		for _, piece in ipairs(T.SetPieces(panel.chosen)) do
+			if panel.checked[piece.slot] then pieces[piece.slot] = piece.id end
+		end
+		override = { set = pieces }
+	end
+	return override
+end
+
+local function putOn()
+	local version = panel.chosen
+	local applied, total, missing = 0, 0, 0
+	for _, piece in ipairs(T.SetPieces(version)) do
+		total = total + 1
+		if piece.usable and panel.checked[piece.slot] then
+			T.SetSlot(state.look, piece.slot, piece.id)
+			applied = applied + 1
+		elseif not piece.usable then
+			missing = missing + 1
+		end
+	end
+	PlaySound("igMainMenuOptionCheckBoxOn")
+	local text = ("Put On %d of %d Pieces"):format(applied, total)
+	if missing > 0 then text = text .. ": " .. S.Count(missing, "Piece") .. " Not Attuned or Acquired" end
 	flash(applied > 0 and S.Hex(C.good, text) or S.Hex(C.bad, text))
 	TransmogUI.Refresh()
+end
+
+-- The chosen set's pieces, one row per slot.
+local function renderDetail()
+	local dv = panel.sets.detail
+	local version = panel.chosen
+	if version then dv.none:Hide() dv.content:Show() else dv.none:Show() dv.content:Hide() end
+	if version then
+		dv.title:SetText(version.name)
+		local usable, total = T.SetCount(version)
+		local checkedCount = 0
+		local pieces = T.SetPieces(version)
+		for i, row in ipairs(dv.rows) do
+			local piece = pieces[i]
+			if piece then
+				local name, quality = itemName(piece.piece)
+				row.piece = piece
+				row.icon:SetTexture(select(10, GetItemInfoCustom(piece.id)))
+				row.slotText:SetText(T.SLOTS[piece.slot].label)
+				row.name:SetText(name)
+				row.name:SetTextColor(unpack(piece.usable and S.QualityColor(quality) or C.bad))
+				row.check:SetChecked(panel.checked[piece.slot] == true)
+				row.check:SetEnabled(piece.usable)
+				if panel.checked[piece.slot] then checkedCount = checkedCount + 1 end
+				row:Show()
+			else
+				row.piece = nil
+				row:Hide()
+			end
+		end
+		dv.sub:SetText(S.Hex(C.muted, ("Level %d   |   %d / %d Pieces You Can Use"):format(version.level, usable, total)))
+		dv.putOn:SetLabel(("Put On %d Selected"):format(checkedCount))
+		if checkedCount > 0 then dv.putOn:Enable() else dv.putOn:Disable() end
+	end
 end
 
 -- Refresh ----------------------------------------------------------------------------------------------------
@@ -788,9 +856,14 @@ function TransmogUI.Refresh()
 			panel.pick:SetText(text)
 			panel.pick:SetTextColor(unpack(color))
 		end
-		if items then renderItems() else renderSets() end
+		if items then
+			renderItems()
+		else
+			renderSets()
+			renderDetail()
+		end
 		renderStatus(items)
-		TransmogUI.Preview(panel.hover)
+		TransmogUI.Preview(panel.hover or TransmogUI.ChosenPreview())
 	else
 		panel.status:SetText(S.Hex(C.muted, "Your Looks Haven't Arrived from the Server Yet"))
 	end
@@ -996,9 +1069,85 @@ local function createItems(width, height)
 	return iv
 end
 
+-- The chosen set's pieces: a check, icon, slot and name for each, and Put On Selected at the bottom.
+local DETAIL_ROW_H = 28
+local function createDetail(sv, x, width, height)
+	local dv = CreateFrame("Frame", nil, sv)
+	dv:SetPoint("TOPLEFT", x, 0)
+	dv:SetSize(width, height)
+	S.Well(dv)
+	dv.none = S.Text(dv, "small", C.muted)
+	dv.none:SetPoint("CENTER")
+	dv.none:SetText("Choose a set to pick its pieces.")
+	dv.content = CreateFrame("Frame", nil, dv)
+	dv.content:SetAllPoints(dv)
+	dv.title = S.Text(dv.content, "normal", C.heading)
+	dv.title:SetPoint("TOPLEFT", PAD, -PAD)
+	dv.title:SetPoint("RIGHT", -PAD, 0)
+	dv.title:SetJustifyH("LEFT")
+	dv.title:SetWordWrap(false)
+	dv.sub = S.Text(dv.content, "small")
+	dv.sub:SetPoint("TOPLEFT", dv.title, "BOTTOMLEFT", 0, -4)
+	dv.rows = {}
+	for i = 1, #T.SLOTS do
+		local row = CreateFrame("Button", nil, dv.content)
+		row:SetSize(width - 2 * PAD, DETAIL_ROW_H)
+		row:SetPoint("TOPLEFT", PAD, -PAD - 40 - (i - 1) * DETAIL_ROW_H)
+		S.Highlight(row)
+		row.check = S.Check(row, nil, function() row:Click() end)
+		row.check:SetPoint("LEFT", 0, 0)
+		row.icon = row:CreateTexture(nil, "ARTWORK")
+		row.icon:SetSize(DETAIL_ROW_H - 6, DETAIL_ROW_H - 6)
+		row.icon:SetPoint("LEFT", row.check, "RIGHT", GAP, 0)
+		row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		row.slotText = S.Text(row, "small", C.muted)
+		row.slotText:SetPoint("LEFT", row.icon, "RIGHT", GAP, 0)
+		row.slotText:SetWidth(66)
+		row.slotText:SetJustifyH("LEFT")
+		row.name = S.Text(row, "small")
+		row.name:SetPoint("LEFT", row.slotText, "RIGHT", 4, 0)
+		row.name:SetPoint("RIGHT", -4, 0)
+		row.name:SetJustifyH("LEFT")
+		row.name:SetWordWrap(false)
+		row:SetScript("OnClick", function(self)
+			local piece = self.piece
+			if piece and piece.usable then
+				panel.checked[piece.slot] = not panel.checked[piece.slot] or nil
+				PlaySound(panel.checked[piece.slot] and "igMainMenuOptionCheckBoxOn" or "igMainMenuOptionCheckBoxOff")
+				TransmogUI.Refresh()
+			end
+		end)
+		row:SetScript("OnEnter", function(self)
+			local piece = self.piece
+			if piece then
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				GameTooltip:SetHyperlink("item:" .. piece.id)
+				if piece.id ~= piece.piece and itemName(piece.id) ~= itemName(piece.piece) then
+					GameTooltip:AddLine("Same look as " .. itemName(piece.piece) .. ", from the set.", 0.6, 0.6, 0.66, true)
+				end
+				if not piece.usable then
+					GameTooltip:AddLine("Not attuned or acquired on your account, so it can't go on.", 1, 0.3, 0.3, true)
+				end
+				GameTooltip:Show()
+			end
+		end)
+		row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+		dv.rows[i] = row
+	end
+	dv.putOn = S.Button(dv.content, "Put On Selected", "primary", width - 2 * PAD, function() putOn() end,
+		"Put the checked pieces on this look. The slots the set doesn't cover keep what they have.")
+	dv.putOn:SetPoint("BOTTOMLEFT", PAD, PAD)
+	dv.content:Hide()
+	return dv
+end
+
+local SET_DETAIL_W = 280
+
 local function createSets(width, height)
 	local sv = CreateFrame("Frame", nil, panel)
 	sv:SetSize(width, height)
+	local listW = width - SET_DETAIL_W - GAP
+	sv.detail = createDetail(sv, listW + GAP, SET_DETAIL_W, height)
 	sv.class = S.Dropdown(sv, 110, function(value)
 		state.setClass = value
 		TransmogUI.Refresh()
@@ -1013,9 +1162,9 @@ local function createSets(width, height)
 	for id = 1, 4 do armors[#armors + 1] = { value = id, text = T.ARMOR_TYPES[id] } end
 	sv.armor:SetOptions(armors)
 	sv.armor:SetPoint("LEFT", sv.class, "RIGHT", GAP, 0)
-	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", width - 210 - 2 * GAP, "Search Sets", 40)
+	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", listW - 210 - 2 * GAP, "Search Sets", 40)
 	sv.search:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
-	sv.search:SetPoint("RIGHT", sv, "TOPRIGHT", 0, -CONTROL_H / 2)
+	sv.search:SetPoint("RIGHT", sv, "TOPLEFT", listW, -CONTROL_H / 2)
 	sv.search:HookScript("OnTextChanged", function(self, user)
 		if user then
 			state.setSearch = self:GetText()
@@ -1025,7 +1174,7 @@ local function createSets(width, height)
 	sv.search:SetScript("OnEnterPressed", sv.search.ClearFocus)
 
 	local top = CONTROL_H + GAP
-	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSets", width, height - top, {
+	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSets", listW, height - top, {
 		columns = {
 			{ key = "name", label = "Set", width = 160, stretch = true },
 			{ key = "level", label = "Level", width = 56, defaultDesc = true,
@@ -1036,14 +1185,18 @@ local function createSets(width, height)
 		rowH = ROW_H,
 		cell = setCell,
 		tooltip = setTooltip,
+		-- a set with versions opens (choosing its best one); a version, or a set without any, is chosen
+		isSelected = function(row)
+			local chosen = panel.chosen
+			return chosen ~= nil and (row.set == chosen or (not row.child and not row.open and chosen.base == row.set))
+		end,
 		onClick = function(row)
 			if row.recolored and not row.child then
 				state.setOpen[row.set.name] = not row.open or nil
 				sv.keepScroll = true
-				TransmogUI.Refresh()
-			else
-				putOn(row)
 			end
+			choose(row.shows)
+			TransmogUI.Refresh()
 		end,
 		onSort = function(key, desc)
 			state.setSort, state.setDesc = key, desc

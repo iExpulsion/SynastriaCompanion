@@ -95,8 +95,10 @@ or every set, with a search. **Pieces** shows how many of a set's pieces you can
 with the same look as a piece (the set's tooltip names it), and hovering a set tries it
 all on the preview. A set's recolors, like the Sanctified tier pieces, the 10- and 25-player versions and each
 arena season's version, are grouped under it: its row shows the version you have the most of, and clicking it
-lists every version. Click a set (or a version) to put it on the look: its pieces you've attuned or acquired go in, the slots it
-doesn't cover keep what they had, and the footer says how many pieces were left out.
+lists every version. Click a set (or a version) to choose it: its pieces show beside the list, the ones you've
+attuned or acquired checked, and your character wears the checked ones. Uncheck any you don't want, then **Put On
+Selected** puts them on the look; the slots it doesn't cover keep what they had, and the footer says how many
+pieces were left out.
 
 **Activate** wears the look, or turns transmog off when it's already the active one. Along the bottom, **Use
 Equipped** fills every slot from what you're wearing, **Import** and **Export** share a look as text, and **Reset** clears it. Every
