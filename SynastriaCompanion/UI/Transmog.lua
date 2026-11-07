@@ -208,7 +208,7 @@ local function createPreview(width, height)
 	p.model = model
 
 	p.hint = S.Text(drag, "small", C.muted)
-	p.hint:SetPoint("BOTTOM", 0, wi + 6)
+	p.hint:SetPoint("TOP", 0, -wi - 6)
 	p.hint:SetText("Drag to Rotate")
 	return p
 end
