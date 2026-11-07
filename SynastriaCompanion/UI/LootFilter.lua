@@ -449,7 +449,7 @@ local function create(parent, width, height)
 		end
 	end)
 	panel.name:SetScript("OnEnterPressed", panel.name.ClearFocus)
-	panel.enabled = S.Check(editor, 14, function(self)
+	panel.enabled = S.Check(editor, nil, function(self)
 		local rule = draft.rules[sel]
 		local on = not rule.enabled
 		-- with nothing else pending it saves at once, by the rule's saved place
@@ -517,7 +517,8 @@ local function create(parent, width, height)
 	note:SetText("These save as soon as you change them.")
 	-- Auto Loot on top, then the groups: Loot From and Gathering in the left column, Items in the right
 	panel.optionBoxes = {}
-	local OPTION_H, colW = 24, editorW / 2
+	-- rows a control's height apart plus a little, so checkboxes as tall as the controls don't touch
+	local OPTION_H, colW = CONTROL_H + 4, editorW / 2
 	local function toggle(box)
 		draft.options = bit.bxor(draft.options or 0, box.bit)
 		server.options = bit.bxor(server.options or 0, box.bit)
@@ -526,7 +527,7 @@ local function create(parent, width, height)
 	end
 	-- the description is the tooltip, on the box and on its name, which toggles it too
 	local function optionRow(opt, left, y, size)
-		local box = S.Check(options, 14, toggle)
+		local box = S.Check(options, nil, toggle)
 		box.bit, box.tooltipText = opt.bit, opt.desc
 		box:SetPoint("TOPLEFT", options, "TOPLEFT", left, y)
 		box.text = S.Text(options, size or "small")
