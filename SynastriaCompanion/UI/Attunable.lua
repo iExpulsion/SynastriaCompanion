@@ -433,6 +433,8 @@ local function create(parent, width, height)
 	-- the filters sit on four equal columns
 	local colW = math.floor((inner - 3 * GAP) / 4)
 	local function colX(n) return x0 + (n - 1) * (colW + GAP) end
+	-- the last column takes what rounding the others down left over, so the filters end where the table does
+	local lastW = inner - 3 * (colW + GAP)
 	panel.colW = colW
 
 	-- row 1: search (two columns unless the class dropdown needs one), mode, class; Advanced and Reset on the right
@@ -460,9 +462,8 @@ local function create(parent, width, height)
 		syncControls()
 		requery()
 	end, "Clear every filter and the search, advanced ones too.")
-	-- on the fourth column's right edge, which the rounded column widths leave short of the panel's padding
-	reset:SetPoint("TOPLEFT", colX(4) + colW - 56, rowY(1))
-	panel.advanced = S.Button(panel, "Advanced", "secondary", colW - 56 - 4, function()
+	reset:SetPoint("TOPLEFT", colX(4) + lastW - 56, rowY(1))
+	panel.advanced = S.Button(panel, "Advanced", "secondary", lastW - 56 - 4, function()
 		S.CloseMenus()
 		filter.advanced = not filter.advanced or nil
 		syncControls()
@@ -485,7 +486,7 @@ local function create(parent, width, height)
 
 	panel.mythic = triDropdown(colW, "mythic")
 	panel.mythic:SetPoint("TOPLEFT", colX(3), rowY(2))
-	panel.affix = triDropdown(colW, "affix", "Items with or without a random affix.")
+	panel.affix = triDropdown(lastW, "affix", "Items with or without a random affix.")
 	panel.affix:SetPoint("TOPLEFT", colX(4), rowY(2))
 
 	-- row 3: sources, the two level ranges, zone
@@ -508,7 +509,7 @@ local function create(parent, width, height)
 	range(2, "Req", "minReq", "maxReq", "SynastriaCompanionAttuneMinReq", "SynastriaCompanionAttuneMaxReq")
 	range(3, "iLvl", "minLvl", "maxLvl", "SynastriaCompanionAttuneMinLvl", "SynastriaCompanionAttuneMaxLvl")
 
-	panel.zone = S.AddArrow(S.Button(panel, "Any Zone", "secondary", colW, openZonePicker,
+	panel.zone = S.AddArrow(S.Button(panel, "Any Zone", "secondary", lastW, openZonePicker,
 		"Only items that come from one zone, or the one you're in."))
 	panel.zone:SetPoint("TOPLEFT", colX(4), rowY(3))
 
