@@ -125,7 +125,7 @@ local function cell(item, key)
 	elseif key == "rank" then
 		text, color = (rank or 0) .. "/" .. Perks.MaxRank(perk), rank and C.muted or C.warn
 	elseif key == "on" then
-		text, color = Perks.Active(perk.id) and "On" or "", C.good
+		text, color = Perks.Active(perk.id) and "Active" or "", C.good
 	end
 	return text, color
 end
@@ -142,8 +142,8 @@ local function rowTooltip(tt, item)
 		local desc = Perks.Description(perk.id, Perks.Rank(perk.id) or 1)
 		if desc then tt:AddLine(desc, 1, 1, 1, true) end
 		local _, why = Perks.CanToggle(perk)
-		tt:AddLine(why and "Click for details." or "Click for details. Right-click to turn it " ..
-			(Perks.Active(perk.id) and "off." or "on."), 0.6, 0.6, 0.66, true)
+		tt:AddLine(why and "Click for details." or "Click for details. Right-click to " ..
+			(Perks.Active(perk.id) and "deactivate" or "activate") .. " it.", 0.6, 0.6, 0.66, true)
 	elseif item.key then
 		tt:AddLine(collapsed(item.key, (state.search or "") ~= "") and "Click to expand." or "Click to collapse.", 0.8, 0.8, 0.8)
 		if item.key:find("^task") then
@@ -209,10 +209,10 @@ local function renderDetail()
 
 		local on = Perks.Active(id)
 		local ok, why = Perks.CanToggle(perk)
-		d.toggle:SetLabel(on and "Turn Off" or "Turn On")
+		d.toggle:SetLabel(on and "Deactivate" or "Activate")
 		if ok then d.toggle:Enable() else d.toggle:Disable() end
 		d.toggle.tooltipText = why
-		d.state:SetText(on and S.Hex(C.good, "On") or S.Hex(C.muted, "Off"))
+		d.state:SetText(on and S.Hex(C.good, "Active") or S.Hex(C.muted, "Inactive"))
 
 		local y = SECTIONS_Y
 		local function header(fs, text)
@@ -339,9 +339,9 @@ local function footer()
 	for id in pairs(PerkMgrPerks or {}) do
 		if Perks.Active(id) and not Perks.IsHidden(PerkMgrPerks[id]) then on = on + 1 end
 	end
-	panel.status:SetText(S.Count(on, "Perk") .. " On")
-	panel.session:SetText(Perks.Writable() and S.Hex(C.good, "At an Innkeeper: Perks Can Be Turned On and Off")
-		or S.Hex(C.muted, "Visit an Innkeeper to Turn Perks On or Off"))
+	panel.status:SetText(S.Count(on, "Active Perk"))
+	panel.session:SetText(Perks.Writable() and S.Hex(C.good, "At an Innkeeper: Perks Can Be Activated and Deactivated")
+		or S.Hex(C.muted, "Visit an Innkeeper to Activate or Deactivate Perks"))
 end
 
 function PerksUI.Refresh(keepScroll)
@@ -355,7 +355,7 @@ function PerksUI.Refresh(keepScroll)
 		local items, first = listItems()
 		if not (selected and PerkMgrPerks[selected] and not Perks.IsHidden(PerkMgrPerks[selected])) then selected = first end
 		local empty = (state.search or "") ~= "" and "No Perks Match"
-			or tasks and "No Tasks: Turn a Perk On to Work Toward Its Next Rank" or "No Perks Are On"
+			or tasks and "No Tasks: Activate a Perk to Work Toward Its Next Rank" or "No Active Perks"
 		panel.table:SetItems(items, empty, keepScroll)
 		footer()
 	else
@@ -435,7 +435,7 @@ local function createDetail(width, height)
 	d.sub = S.Text(child, "small", C.muted)
 	d.sub:SetPoint("TOPLEFT", d.name, "BOTTOMLEFT", 0, -4)
 	d.sub:SetPoint("RIGHT", -PAD, 0)
-	d.toggle = S.Button(child, "Turn On", "primary", 100, function() toggle(selected) end)
+	d.toggle = S.Button(child, "Activate", "primary", 100, function() toggle(selected) end)
 	d.toggle:SetPoint("TOPLEFT", PAD, -TOGGLE_Y)
 	d.state = S.Text(child, "small")
 	d.state:SetPoint("LEFT", d.toggle, "RIGHT", GAP, 0)
@@ -464,15 +464,15 @@ local function create(parent, width, height)
 		PerksUI.Refresh()
 	end, "Show every perk your character can have.")
 	panel.showAll:SetPoint("TOPLEFT", PAD, -PAD)
-	panel.showActive = S.Button(panel, "On", "secondary", SEGMENT_W, function()
+	panel.showActive = S.Button(panel, "Active", "secondary", SEGMENT_W, function()
 		state.filter = "active"
 		PerksUI.Refresh()
-	end, "Show only the perks that are on.")
+	end, "Show only active perks.")
 	panel.showActive:SetPoint("LEFT", panel.showAll, "RIGHT", -1, 0)
 	panel.showTasks = S.Button(panel, "Tasks", "secondary", SEGMENT_W, function()
 		state.filter = "tasks"
 		PerksUI.Refresh()
-	end, "Show what the perks that are on are working toward, and your progress on each.")
+	end, "Show what your active perks are working toward, and your progress on each.")
 	panel.showTasks:SetPoint("LEFT", panel.showActive, "RIGHT", -1, 0)
 	local searchW = LIST_W - 3 * SEGMENT_W + 2 - GAP
 	panel.search = S.Input(panel, "SynastriaCompanionPerkSearch", searchW, "Search Perks", 40)
@@ -494,7 +494,7 @@ local function create(parent, width, height)
 		columns = {
 			{ key = "name", label = "Perk", width = 190, stretch = true, sortable = false },
 			{ key = "rank", label = "Rank", width = 84, sortable = false },
-			{ key = "on", label = "On", width = 40, sortable = false },
+			{ key = "on", label = "Active", width = 52, sortable = false },
 		},
 		rowH = 20, icons = true, cell = cell,
 		icon = function(item) return item.perk and spellIcon(item.perk.icon) end,

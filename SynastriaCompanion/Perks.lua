@@ -186,13 +186,13 @@ end
 function Perks.CanToggle(perk)
 	local reason
 	if Perks.Locked(perk) then
-		reason = "This perk can't be turned on or off."
+		reason = "This perk can't be activated or deactivated."
 	elseif not Perks.Writable() then
-		reason = "Perks are turned on and off at an innkeeper: talk to one and pick Manage Perks."
+		reason = "Perks are activated and deactivated at an innkeeper: talk to one and pick Manage Perks."
 	elseif not Perks.Active(perk.id) then
 		local limit = Perks.Limit(perk.cat)
 		if limit and Perks.ActiveCount(perk.cat) >= limit then
-			reason = "This category is full. Turn another perk in it off first."
+			reason = "This category is full. Deactivate another perk in it first."
 		end
 	end
 	return reason == nil, reason
