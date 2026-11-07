@@ -74,7 +74,8 @@ innkeeper keeps Companion out of its way, and builds still apply.
 
 ### Transmog
 
-Laid out like the retail wardrobe. Along the top: pick one of your ten transmog looks from **Look** (**Active**
+Laid out like the retail wardrobe, in a larger window than the other screens (it shrinks to fit smaller screens).
+Along the top: pick one of your ten transmog looks from **Look** (**Active**
 marks the one you're wearing), rename it, choose the specs that switch it on automatically, and **Activate** it.
 
 Your character stands on the left, wearing the look, with a button for each slot around it and a small enchant
@@ -83,8 +84,8 @@ attuned or acquired; a red slot holds an item you haven't, which won't apply, an
 around. Under it, **Naked** shows only what you're trying, with nothing else on, and **Show Background** puts your
 race's background behind your character.
 
-Click a slot to see its appearances under **Items**: a page of models, each wearing one appearance, framed on that
-slot. What the slot is set to now shows beside its name. There's a type filter (armor type or weapon type) and a search, the arrows or the mouse wheel turn the page,
+Click a slot to see its appearances under **Items**: a page of twelve models as big as the game's own, each
+wearing one appearance, framed on that slot. What the slot is set to now shows beside its name. There's a type filter (armor type or weapon type) and a search, the arrows or the mouse wheel turn the page,
 and **Show Duplicates** also lists items that look the same as one already listed. Hovering an appearance tries it
 on your character; click one to choose it. Right-click a slot to go back to your equipped look.
 

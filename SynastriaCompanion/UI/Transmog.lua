@@ -16,8 +16,11 @@ local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 local DOLL_W = 360
 local SLOT_SIZE, SLOT_GAP, ENCHANT_SIZE = 36, 4, 22
 local STRIP_H = CONTROL_H + GAP
-local GRID_COLS, GRID_ROWS = 3, 2
-local PER_PAGE = GRID_COLS * GRID_ROWS
+-- The window's size for this screen, and the Items grid: as many cells of the game's window's size as fit (12 at
+-- full size), stretched to fill, and never fewer than 3x2 when a small screen shrinks the window.
+local WINDOW_W, WINDOW_H = 1230, 816
+local CELL_W, CELL_H = 160, 192
+local MIN_COLS, MIN_ROWS = 3, 2
 local NAME_H = 16
 local LOOKS_W, NAME_W, TAB_W = 150, 120, 80
 local ROW_H = 22
@@ -538,11 +541,12 @@ local function renderItems()
 		iv.page = nil
 	end
 	local choices, current = iv.choices, currentValue()
-	local pages = math.max(1, math.ceil(#choices / PER_PAGE))
+	local perPage = #iv.cells
+	local pages = math.max(1, math.ceil(#choices / perPage))
 	if not iv.page then
 		iv.page = 1
 		for i, entry in ipairs(choices) do
-			if entry.value == current then iv.page = math.ceil(i / PER_PAGE) end
+			if entry.value == current then iv.page = math.ceil(i / perPage) end
 		end
 	end
 	iv.page = math.max(1, math.min(pages, iv.page))
@@ -554,7 +558,7 @@ local function renderItems()
 	iv.cellsKey = cellsKey(key .. ":" .. iv.page)
 	if reload and Custom_ClearDressupFacing then Custom_ClearDressupFacing() end
 	for i, cell in ipairs(iv.cells) do
-		local entry = choices[(iv.page - 1) * PER_PAGE + i]
+		local entry = choices[(iv.page - 1) * perPage + i]
 		if entry then
 			if reload or cell.value ~= entry.value then loadCell(cell, entry) end
 			local text, color = valueText(entry.value, hand ~= nil)
@@ -942,11 +946,14 @@ local function createItems(width, height)
 	iv.prev:SetPoint("RIGHT", iv.pageText, "LEFT", -GAP, 0)
 
 	local gridTop = 2 * (CONTROL_H + GAP)
-	local cellW = (width - (GRID_COLS - 1) * GAP) / GRID_COLS
-	local cellH = (height - gridTop - (GRID_ROWS - 1) * GAP) / GRID_ROWS
-	iv.cells = {}
-	for r = 1, GRID_ROWS do
-		for c = 1, GRID_COLS do
+	local gridH = height - gridTop
+	local cols = math.max(MIN_COLS, math.floor((width + GAP) / (CELL_W + GAP)))
+	local rows = math.max(MIN_ROWS, math.floor((gridH + GAP) / (CELL_H + GAP)))
+	local cellW = (width - (cols - 1) * GAP) / cols
+	local cellH = (gridH - (rows - 1) * GAP) / rows
+	iv.cells, iv.cols, iv.rows = {}, cols, rows
+	for r = 1, rows do
+		for c = 1, cols do
 			local cell = newCell(iv, cellW, cellH)
 			cell:SetPoint("TOPLEFT", (c - 1) * (cellW + GAP), -gridTop - (r - 1) * (cellH + GAP))
 			iv.cells[#iv.cells + 1] = cell
@@ -1132,6 +1139,7 @@ SC:On("ACTIVE_TALENT_GROUP_CHANGED", function() TransmogUI.Changed(1) end)
 SC.Window.AddScreen({
 	key = "transmog",
 	label = "Transmog",
+	size = { WINDOW_W, WINDOW_H },
 	create = create,
 	show = show,
 	spell = T.SPELL,

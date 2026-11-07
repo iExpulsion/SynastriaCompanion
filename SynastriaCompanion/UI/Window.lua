@@ -64,7 +64,8 @@ end
 
 -- screen: { key, label, create(parent, width, height) -> panel, show(panel, ...), spell = the game's View spell
 -- for it, needsSpell() = true while its data only comes from casting that spell, gameArgs() = what the Game Window
--- button passes the game's open function,
+-- button passes the game's open function, size = { width, height } of the window for this screen (default 900x600,
+-- shrunk to fit the screen),
 -- hook = { open = global, close = global, frame = global frame name, extra = { [global] = handler } } }
 function Window.AddScreen(screen)
 	Window.screens[#Window.screens + 1] = screen
@@ -83,6 +84,19 @@ local function find(key)
 	for _, screen in ipairs(Window.screens) do
 		if screen.key == key then return screen end
 	end
+end
+
+-- How big the window is on a screen: its own size, or the default; never bigger than the screen allows, less a
+-- margin, though never smaller than the default.
+local SCREEN_MARGIN = 40
+local function sizeFor(screen, f)
+	local w, h = W, H
+	if screen.size then w, h = screen.size[1], screen.size[2] end
+	local edge = 2 * S.metrics.edge
+	local ratio = UIParent:GetEffectiveScale() / f:GetEffectiveScale()
+	local roomW = (UIParent:GetWidth() or math.huge) * ratio - edge - SCREEN_MARGIN
+	local roomH = (UIParent:GetHeight() or math.huge) * ratio - edge - SCREEN_MARGIN
+	return math.floor(math.max(W, math.min(w, roomW))), math.floor(math.max(H, math.min(h, roomH)))
 end
 
 -- The default spot is the style kit's, top middle of the screen, shared with Build Suite and Rotation Assist.
@@ -169,6 +183,7 @@ local function createSidebar(f, edge)
 	side:SetWidth(SIDEBAR_W)
 	side:SetHeight(H - TITLE_H)
 	S.Sidebar(side)
+	f.side = side
 	local inset = 1 + S.metrics.navInset
 
 	f.nav = {}
@@ -201,6 +216,7 @@ local function create()
 	frame = f
 	local edge = S.metrics.edge
 	f:SetSize(W + 2 * edge, H + 2 * edge)
+	f.windowW, f.windowH = W, H
 	-- the game's panel layer, with the bags and the auction house: whichever was clicked or opened last is on top
 	f:SetFrameStrata("MEDIUM")
 	f:SetToplevel(true)
@@ -233,6 +249,17 @@ local function create()
 	return f
 end
 
+-- Sets the window's size (without its frame), keeping it on the screen.
+function Window.Resize(w, h)
+	if frame and (frame.windowW ~= w or frame.windowH ~= h) then
+		local edge = S.metrics.edge
+		frame.windowW, frame.windowH = w, h
+		frame:SetSize(w + 2 * edge, h + 2 * edge)
+		frame.side:SetHeight(h - TITLE_H)
+		SC.SnapPosition(frame)
+	end
+end
+
 -- Shows the window on a screen (default: the last one), passing the rest on to that screen.
 function Window.Open(key, ...)
 	frame = frame or create()
@@ -243,12 +270,17 @@ function Window.Open(key, ...)
 	for k, panel in pairs(frame.panels) do
 		if k ~= current then panel:Hide() end
 	end
+	-- a screen's panel is laid out once, for the window size it was made at, and the window takes that size again
+	-- each time the screen opens
 	local panel = frame.panels[current]
 	if not panel then
-		panel = screen.create(frame.main, Window.CONTENT_W, Window.CONTENT_H)
+		local w, h = sizeFor(screen, frame)
+		panel = screen.create(frame.main, w - SIDEBAR_W, h - TITLE_H)
 		panel:SetAllPoints(frame.main)
+		panel.windowW, panel.windowH = w, h
 		frame.panels[current] = panel
 	end
+	Window.Resize(panel.windowW, panel.windowH)
 	if SC.Hooks.HasOriginal(current) then frame.gameWindow:Show() else frame.gameWindow:Hide() end
 	paintNav()
 	frame:Show()
