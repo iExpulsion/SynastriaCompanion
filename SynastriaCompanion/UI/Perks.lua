@@ -547,7 +547,7 @@ local watchedBuildSuite
 
 function PerksUI.BuildSuiteShown()
 	local f = _G.SynastriaBuildSuiteFrame
-	return f ~= nil and f:IsShown() == true
+	return f ~= nil and f:IsShown() ~= nil
 end
 
 local function watchBuildSuite()
