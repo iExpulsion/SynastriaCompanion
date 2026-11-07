@@ -978,6 +978,14 @@ function TransmogUI.Refresh()
 	panel.pending = nil
 	local tab = (state.tab == "sets" or state.tab == "saved") and state.tab or "items"
 	local items = tab == "items"
+	-- The Items cells' sideways facing (Custom_SetDressupFacing) reaches other models too, so it's cleared on the way
+	-- out, as the game's window clears it when its grid hides; the cells and cards then dress again.
+	if panel.shownTab == "items" and not items then
+		if Custom_ClearDressupFacing then Custom_ClearDressupFacing() end
+		panel.items.cellsKey = nil
+		for _, card in ipairs(panel.saved.cells) do card.key = nil end
+	end
+	panel.shownTab = tab
 	for key, button in pairs({ items = panel.itemsTab, sets = panel.setsTab, saved = panel.savedTab }) do
 		button:SetKind(key == tab and "selected" or "secondary")
 	end
