@@ -201,7 +201,8 @@ local function create()
 	frame = f
 	local edge = S.metrics.edge
 	f:SetSize(W + 2 * edge, H + 2 * edge)
-	f:SetFrameStrata("HIGH")
+	-- the game's panel layer, with the bags and the auction house: whichever was clicked or opened last is on top
+	f:SetFrameStrata("MEDIUM")
 	f:SetToplevel(true)
 	f:EnableMouse(true)
 	f:SetMovable(true)
@@ -251,6 +252,7 @@ function Window.Open(key, ...)
 	if SC.Hooks.HasOriginal(current) then frame.gameWindow:Show() else frame.gameWindow:Hide() end
 	paintNav()
 	frame:Show()
+	frame:Raise()
 	panel:Show()
 	if screen.show then screen.show(panel, ...) end
 end
