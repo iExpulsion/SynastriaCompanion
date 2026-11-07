@@ -26,6 +26,7 @@ local REFRESH_DELAY = 0.2
 -- a weapon to show an enchant visual on when the hand has none, as the game's window uses
 local DUMMY_WEAPON = 4925
 local ENCHANT_ICON = 20711
+local HIDDEN_MARK = "Interface\\RaidFrame\\ReadyCheck-NotReady"
 local ROTATE_SPEED = 0.012
 local QUARTER = 1.57079632
 -- seconds after a cell first dresses when it's framed again
@@ -292,6 +293,7 @@ local function paintSlot(b)
 	if value == T.HIDDEN and not b.hand then alpha = 0.3 end
 	b.icon:SetTexture(icon)
 	b.icon:SetAlpha(alpha)
+	if value == T.HIDDEN then b.hiddenMark:Show() else b.hiddenMark:Hide() end
 	if bad then b.icon:SetVertexColor(1, 0.3, 0.3) else b.icon:SetVertexColor(1, 1, 1) end
 	local slot, hand = selection()
 	local selected = b.hand == hand and (hand ~= nil or b.slot == slot)
@@ -326,6 +328,12 @@ local function newSlotButton(parent, slot, hand, size, anchor)
 	b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 	local hover = S.Solid(b, "HIGHLIGHT", { 1, 1, 1, 0.15 })
 	hover:SetAllPoints(b.icon)
+	-- a cross in the corner marks a hidden slot, which otherwise looks like an empty one
+	b.hiddenMark = b:CreateTexture(nil, "OVERLAY")
+	b.hiddenMark:SetTexture(HIDDEN_MARK)
+	b.hiddenMark:SetSize(math.floor(size * 0.5), math.floor(size * 0.5))
+	b.hiddenMark:SetPoint("BOTTOMRIGHT", -1, 1)
+	b.hiddenMark:Hide()
 	b.slot, b.hand, b.anchor = slot, hand, anchor
 	b:SetScript("OnClick", function(self, mouse)
 		if mouse == "RightButton" then
@@ -759,9 +767,15 @@ function TransmogUI.Refresh()
 	panel.setsTab:SetKind(items and "secondary" or "selected")
 	panel.title:SetText(items and selectionLabel() or "Item Sets")
 	if items then panel.items:Show() panel.sets:Hide() else panel.items:Hide() panel.sets:Show() end
+	panel.pick:SetText("")
 	if T.HasData() then
 		renderTop()
 		for _, b in ipairs(panel.slotButtons) do paintSlot(b) end
+		if items then
+			local text, color = valueText(currentValue(), state.hand ~= nil)
+			panel.pick:SetText(text)
+			panel.pick:SetTextColor(unpack(color))
+		end
 		if items then renderItems() else renderSets() end
 		renderStatus(items)
 		TransmogUI.Preview()
@@ -1082,6 +1096,12 @@ local function create(parent, width, height)
 	panel.setsTab:SetPoint("LEFT", panel.itemsTab, "RIGHT", -1, 0)
 	panel.title = S.Text(panel, "normal", C.heading)
 	panel.title:SetPoint("LEFT", panel.setsTab, "RIGHT", PAD, 0)
+	-- what the selected slot is set to now, which may not be on the page shown
+	panel.pick = S.Text(panel, "small")
+	panel.pick:SetPoint("LEFT", panel.title, "RIGHT", GAP, 0)
+	panel.pick:SetPoint("RIGHT", panel, "TOPRIGHT", -PAD, -top - CONTROL_H / 2)
+	panel.pick:SetJustifyH("LEFT")
+	panel.pick:SetWordWrap(false)
 
 	local viewTop = top + CONTROL_H + GAP
 	local viewH = bodyH - CONTROL_H - GAP
