@@ -3,8 +3,8 @@ local SC = NS.SC
 
 -- Transmog, laid out like the retail wardrobe: the look's name, specs and Activate along the top; your character
 -- on the left with a button for each slot around it; and on the right, Items (a page of models wearing each
--- appearance you can pick for the selected slot) and Sets. Hovering an appearance or a set tries it on your
--- character. Replaces the game's Transmog window.
+-- appearance you can pick for the selected slot), Sets and Saved (looks kept for the whole account). Hovering an
+-- appearance, a set or a saved look tries it on your character. Replaces the game's Transmog window.
 local TransmogUI = {}
 SC.TransmogUI = TransmogUI
 
@@ -809,6 +809,100 @@ local function renderDetail()
 	end
 end
 
+-- Saved looks ------------------------------------------------------------------------------------------------
+
+-- Looks saved for the whole account. Clicking one loads it into the selected look; hovering tries it on.
+
+local function renderSaved()
+	local rows = {}
+	T.Batch(function()
+		for i, saved in ipairs(T.SavedLooks()) do
+			local usable, total = T.SavedCount(saved)
+			rows[i] = { saved = saved, usable = usable, total = total }
+		end
+	end)
+	panel.saved.table:SetItems(rows, "No Saved Looks Yet", true)
+	panel.saved.hint:SetText(("Saved looks are shared by every character on your account. Click one to load it into %s.")
+		:format(T.Name(state.look)))
+end
+
+local function savedCell(row, key)
+	local text, color
+	if key == "name" then
+		text, color = row.saved.name, C.text
+	else
+		text = ("%d / %d"):format(row.usable, row.total)
+		color = row.usable == row.total and C.good or row.usable > 0 and C.text or C.muted
+	end
+	return text, color
+end
+
+local function savedTooltip(tt, row)
+	local saved = row.saved
+	tt:AddLine(saved.name, 1, 1, 1)
+	for slot, def in ipairs(T.SLOTS) do
+		local value = saved.slots and saved.slots[slot]
+		if value and value ~= T.EQUIPPED then
+			local text, color = valueText(value, false)
+			tt:AddDoubleLine(def.label, text, 0.6, 0.6, 0.66, unpack(color))
+		end
+	end
+	if row.usable < row.total then
+		tt:AddLine("Red pieces aren't attuned or acquired on your account, so they won't apply.", 1, 0.3, 0.3, true)
+	end
+	tt:AddLine(("Showing on your character. Click to load it into %s. Right-click to delete it. Drag to change the order.")
+		:format(T.Name(state.look)), 0.6, 0.6, 0.66, true)
+	local pieces = {}
+	for slot, value in ipairs(saved.slots or {}) do pieces[slot] = value end
+	TransmogUI.Hover({ set = pieces })
+end
+
+local function saveLook()
+	local input = panel.saved.name
+	local saved, replaced = T.SaveLook(state.look, input:GetText())
+	if saved then
+		input:SetText("")
+		input:ClearFocus()
+		PlaySound("igMainMenuOptionCheckBoxOn")
+		flash(S.Hex(C.good, (replaced and "Updated %s" or "Saved as %s"):format(saved.name)))
+	else
+		flash(S.Hex(C.bad, "The Game Couldn't Export This Look"))
+	end
+	TransmogUI.Refresh()
+end
+
+local function loadSaved(row, mouse)
+	local saved = row.saved
+	if mouse == "RightButton" then
+		local popup = StaticPopup_Show("SYNASTRIA_COMPANION_TRANSMOG_DELETE_SAVED", saved.name)
+		if popup then popup.data = saved end
+	elseif T.LoadSaved(state.look, saved) then
+		PlaySound("igMainMenuOptionCheckBoxOn")
+		flash(S.Hex(C.good, ("Loaded %s into %s"):format(saved.name, T.Name(state.look))))
+	else
+		flash(S.Hex(C.bad, ("The Game Couldn't Read %s"):format(saved.name)))
+	end
+	TransmogUI.Refresh()
+end
+
+StaticPopupDialogs.SYNASTRIA_COMPANION_TRANSMOG_DELETE_SAVED = {
+	text = "Delete the saved look %s? Every character on your account loses it.",
+	button1 = "Delete",
+	button2 = "Cancel",
+	OnAccept = function(_, saved)
+		for i, other in ipairs(T.SavedLooks()) do
+			if other == saved then
+				T.DeleteSaved(i)
+				break
+			end
+		end
+		TransmogUI.Refresh()
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+}
+
 -- Refresh ----------------------------------------------------------------------------------------------------
 
 -- The look picker lists all ten, with the active one marked.
@@ -828,13 +922,19 @@ local function renderTop()
 	panel.activate:SetLabel(T.Active() == look and "Deactivate" or "Activate")
 end
 
-local function renderStatus(items)
+local function renderStatus(tab)
 	local look = state.look
 	local active = T.Active() == look
 	local bad = #T.Unusable(look)
 	local message = panel.message and GetTime() < panel.message.untilTime and panel.message.text
-	local count = items and S.Count(panel.items.count or 0, state.hand and "Enchant Visual" or "Appearance")
-		or S.Count(panel.sets.count or 0, "Set")
+	local count
+	if tab == "items" then
+		count = S.Count(panel.items.count or 0, state.hand and "Enchant Visual" or "Appearance")
+	elseif tab == "sets" then
+		count = S.Count(panel.sets.count or 0, "Set")
+	else
+		count = S.Count(#T.SavedLooks(), "Saved Look")
+	end
 	panel.status:SetText(message or bad > 0 and S.Hex(C.bad, S.Count(bad, "Slot") .. " Won't Apply: Not Attuned or Acquired")
 		or (active and S.Hex(C.good, "Active Look") or S.Hex(C.muted, T.Active() == 0 and "No Look Active" or "Not Active"))
 		.. S.Hex(C.muted, "   |   " .. count))
@@ -842,11 +942,15 @@ end
 
 function TransmogUI.Refresh()
 	panel.pending = nil
-	local items = state.tab ~= "sets"
-	panel.itemsTab:SetKind(items and "selected" or "secondary")
-	panel.setsTab:SetKind(items and "secondary" or "selected")
-	panel.title:SetText(items and selectionLabel() or "Item Sets")
-	if items then panel.items:Show() panel.sets:Hide() else panel.items:Hide() panel.sets:Show() end
+	local tab = (state.tab == "sets" or state.tab == "saved") and state.tab or "items"
+	local items = tab == "items"
+	for key, button in pairs({ items = panel.itemsTab, sets = panel.setsTab, saved = panel.savedTab }) do
+		button:SetKind(key == tab and "selected" or "secondary")
+	end
+	for key, view in pairs({ items = panel.items, sets = panel.sets, saved = panel.saved }) do
+		if key == tab then view:Show() else view:Hide() end
+	end
+	panel.title:SetText(items and selectionLabel() or tab == "sets" and "Item Sets" or "Saved Looks")
 	panel.pick:SetText("")
 	if T.HasData() then
 		renderTop()
@@ -858,11 +962,13 @@ function TransmogUI.Refresh()
 		end
 		if items then
 			renderItems()
-		else
+		elseif tab == "sets" then
 			renderSets()
 			renderDetail()
+		else
+			renderSaved()
 		end
-		renderStatus(items)
+		renderStatus(tab)
 		TransmogUI.Preview(panel.hover or TransmogUI.ChosenPreview())
 	else
 		panel.status:SetText(S.Hex(C.muted, "Your Looks Haven't Arrived from the Server Yet"))
@@ -1225,6 +1331,47 @@ local function createSets(width, height)
 	return sv
 end
 
+-- One row to name and save the look, a line on how saved looks work, then the saved looks, dragged to reorder.
+local SAVE_W = 140
+
+local function createSaved(width, height)
+	local sv = CreateFrame("Frame", nil, panel)
+	sv:SetSize(width, height)
+	sv.save = S.Button(sv, "Save This Look", "primary", SAVE_W, saveLook,
+		"Save this look for every character on your account, under the name typed beside it or the look's own name. A saved look with the same name is updated.")
+	sv.save:SetPoint("TOPRIGHT", 0, 0)
+	sv.name = S.Input(sv, "SynastriaCompanionTransmogSaveName", width - SAVE_W - GAP, "Name to Save It As",
+		T.SAVED_NAME_MAX)
+	sv.name:SetPoint("TOPLEFT", 0, 0)
+	sv.name:SetScript("OnEnterPressed", saveLook)
+	sv.hint = S.Text(sv, "small", C.muted)
+	sv.hint:SetPoint("TOPLEFT", 0, -(CONTROL_H + GAP))
+	sv.hint:SetPoint("RIGHT", 0, 0)
+	sv.hint:SetJustifyH("LEFT")
+	local top = CONTROL_H + GAP + 14 + GAP
+	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSaved", width, height - top, {
+		columns = {
+			{ key = "name", label = "Saved Look", width = 200, stretch = true, sortable = false },
+			{ key = "pieces", label = "Pieces", width = 70, sortable = false,
+				tooltip = "Slots with an item you can use, out of the slots the look puts an item in." },
+		},
+		rowH = ROW_H,
+		cell = savedCell,
+		tooltip = savedTooltip,
+		onClick = loadSaved,
+		onMove = function(from, to)
+			T.MoveSaved(from, to)
+			TransmogUI.Refresh()
+		end,
+	})
+	sv.table.frame:SetPoint("TOPLEFT", 0, -top)
+	for _, row in ipairs(sv.table.rows) do
+		row:HookScript("OnLeave", function() TransmogUI.Unhover() end)
+	end
+	sv:Hide()
+	return sv
+end
+
 StaticPopupDialogs.SYNASTRIA_COMPANION_TRANSMOG_RESET = {
 	text = "Reset %s? Every slot goes back to your equipped look.",
 	button1 = "Reset",
@@ -1283,8 +1430,13 @@ local function create(parent, width, height)
 		TransmogUI.Refresh()
 	end, "Browse item sets and put one on this look.")
 	panel.setsTab:SetPoint("LEFT", panel.itemsTab, "RIGHT", -1, 0)
+	panel.savedTab = S.Button(panel, "Saved", "secondary", TAB_W, function()
+		state.tab = "saved"
+		TransmogUI.Refresh()
+	end, "Looks you've saved for every character on your account.")
+	panel.savedTab:SetPoint("LEFT", panel.setsTab, "RIGHT", -1, 0)
 	panel.title = S.Text(panel, "normal", C.heading)
-	panel.title:SetPoint("LEFT", panel.setsTab, "RIGHT", PAD, 0)
+	panel.title:SetPoint("LEFT", panel.savedTab, "RIGHT", PAD, 0)
 	-- what the selected slot is set to now, which may not be on the page shown
 	panel.pick = S.Text(panel, "small")
 	panel.pick:SetPoint("LEFT", panel.title, "RIGHT", GAP, 0)
@@ -1297,6 +1449,8 @@ local function create(parent, width, height)
 	panel.items:SetPoint("TOPLEFT", rightX, -viewTop)
 	panel.sets = createSets(rightW, viewH)
 	panel.sets:SetPoint("TOPLEFT", rightX, -viewTop)
+	panel.saved = createSaved(rightW, viewH)
+	panel.saved:SetPoint("TOPLEFT", rightX, -viewTop)
 	createFooter()
 
 	panel:SetScript("OnUpdate", function()

@@ -267,6 +267,73 @@ function Transmog.Import(look, text)
 	return ok
 end
 
+-- Saved looks ------------------------------------------------------------------------------------------------
+
+-- Looks kept for every character on the account, in the order the player put them. Each holds the game's export
+-- string, which is what loads, and the slot and enchant values it had when saved, for previews and counts.
+Transmog.SAVED_NAME_MAX = 40
+
+function Transmog.SavedLooks()
+	return SC.db.savedLooks
+end
+
+local function trim(text)
+	return ((text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- Saves the look under `name` (the look's own name when blank). A saved look with the same name, in any case, is
+-- replaced where it is. Returns the saved entry and whether it replaced one, or nil when the game can't export it.
+function Transmog.SaveLook(look, name)
+	local text = Transmog.Export(look)
+	local saved, replaced = nil, false
+	if text then
+		local label = trim(name):sub(1, Transmog.SAVED_NAME_MAX)
+		if label == "" then label = Transmog.Name(look) end
+		saved = { name = label, text = text, slots = {}, enchants = {} }
+		for slot in ipairs(Transmog.SLOTS) do saved.slots[slot] = Transmog.Slot(look, slot) end
+		for hand = 1, 2 do saved.enchants[hand] = Transmog.Enchant(look, hand) end
+		local list = SC.db.savedLooks
+		local at = #list + 1
+		for i, other in ipairs(list) do
+			if other.name:lower() == label:lower() then
+				at, replaced = i, true
+				break
+			end
+		end
+		list[at] = saved
+		changed()
+	end
+	return saved, replaced
+end
+
+-- Loads a saved look into the look, replacing what it had.
+function Transmog.LoadSaved(look, saved)
+	return Transmog.Import(look, saved.text)
+end
+
+function Transmog.DeleteSaved(index)
+	table.remove(SC.db.savedLooks, index)
+	changed()
+end
+
+function Transmog.MoveSaved(from, to)
+	local list = SC.db.savedLooks
+	table.insert(list, to, table.remove(list, from))
+	changed()
+end
+
+-- How many of the saved look's slots show an item, and how many of those the account can use.
+function Transmog.SavedCount(saved)
+	local usable, total = 0, 0
+	for _, value in ipairs(saved.slots or {}) do
+		if value ~= Transmog.EQUIPPED and value ~= Transmog.HIDDEN then
+			total = total + 1
+			if Transmog.Usable(value) then usable = usable + 1 end
+		end
+	end
+	return usable, total
+end
+
 -- Options ----------------------------------------------------------------------------------------------------
 
 function Transmog.Options()

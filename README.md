@@ -14,8 +14,8 @@ one of its windows, Companion opens instead.
 - **Perks in One Place:** every perk by category with its limit, the effect at your rank and the next, set bonuses,
   options, and what the next rank takes and how far along you are.
 - **A Wardrobe for Transmog:** your character with a button for every slot, a searchable grid of models for each
-  slot's appearances, and item sets with their recolors, where you pick which pieces to put on. Hovering any of
-  them tries it on your character.
+  slot's appearances, item sets with their recolors, where you pick which pieces to put on, and looks saved for
+  your whole account. Hovering any of them tries it on your character.
 - **No View Spells Needed:** screens that need the game's View spell cast it on the same click that opens them,
   so those spells can come off your action bars.
 - **Live Filters:** searches and filters apply as you type, with no Search button, and no cap on results.
@@ -102,6 +102,11 @@ lists every version. Click a set (or a version) to choose it: its pieces show be
 attuned or acquired checked, and your character wears the checked ones. Uncheck any you don't want, then **Put On
 Selected** puts them on the look; the slots it doesn't cover keep what they had, and the footer says how many
 pieces were left out.
+
+The **Saved** tab keeps looks for every character on your account, beyond the ten each character has. Type a name
+and click **Save This Look** (a blank name uses the look's own; saving under a name you already have updates it).
+Hovering a saved look tries it on your character, **Pieces** shows how many of its items you can use, and clicking
+one loads it into the selected look. Drag them to change the order; right-click one to delete it.
 
 **Activate** wears the look, or turns transmog off when it's already the active one, and **Import** and **Export**
 beside it share a look as text. Along the bottom, **Use Equipped** fills every slot from what you're wearing and

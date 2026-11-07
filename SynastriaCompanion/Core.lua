@@ -9,6 +9,8 @@ local DEFAULTS = {
 	-- per screen: false gives that screen back to the game's own window
 	replace = {},
 	attunable = {},
+	-- Transmog looks saved for every character: { name, text (the game's export string), slots, enchants }
+	savedLooks = {},
 	-- the style kit's skin: "material", "classic" or "cognac"
 	skin = "material",
 	-- scale windows so their units are whole screen pixels
