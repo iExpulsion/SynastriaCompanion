@@ -76,7 +76,8 @@ innkeeper keeps Companion out of its way, and builds still apply.
 
 Laid out like the retail wardrobe, in a larger window than the other screens (it shrinks to fit smaller screens).
 Along the top: pick one of your ten transmog looks from **Look** (**Active**
-marks the one you're wearing), rename it, choose the specs that switch it on automatically, and **Activate** it.
+marks the one you're wearing), rename it, and **Activate** it. **Auto Activate on Spec**, above your character,
+chooses the specs that switch it on automatically.
 
 Your character stands on the left, wearing the look, with a button for each slot around it and a small enchant
 visual button under each weapon. A slot can keep your **Equipped Look**, be **Hidden**, or show any item you've

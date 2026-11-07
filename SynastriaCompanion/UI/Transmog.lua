@@ -840,21 +840,6 @@ local function createTop(width)
 		if state then self:SetText(T.Rename(state.look, self:GetText())) end
 		TransmogUI.Refresh()
 	end)
-	local specLabel = S.Text(panel, "small", C.muted)
-	specLabel:SetPoint("LEFT", panel.name, "RIGHT", PAD, 0)
-	specLabel:SetText("Specs")
-	panel.specs = {}
-	local prev = specLabel
-	for spec = 1, T.SPECS do
-		local row = labeledCheck(panel, tostring(spec), ("Activate this look when you switch to spec %d."):format(spec),
-			function(on)
-				T.SetSpec(state.look, spec, on)
-				TransmogUI.Refresh()
-			end)
-		row:SetPoint("LEFT", prev, "RIGHT", spec == 1 and GAP or 6, 0)
-		panel.specs[spec] = row.check
-		prev = row
-	end
 	panel.activate = S.Button(panel, "Activate", "primary", 96, function()
 		T.Activate(T.Active() == state.look and 0 or state.look)
 		TransmogUI.Refresh()
@@ -894,6 +879,34 @@ local function createDoll(top, height)
 		end
 	end
 	for _, b in ipairs(panel.slotButtons) do b:SetFrameLevel(doll:GetFrameLevel() + 6) end
+
+	-- the specs that switch the look on, in the open space above the character, between the slot columns
+	local specs = CreateFrame("Frame", nil, doll)
+	specs:SetFrameLevel(doll:GetFrameLevel() + 6)
+	local specLabel = S.Text(specs, "small", C.muted)
+	specLabel:SetPoint("TOP", 0, -4)
+	specLabel:SetText("Auto Activate on Spec")
+	panel.specs = {}
+	local checks, specsW = {}, 0
+	for spec = 1, T.SPECS do
+		local row = labeledCheck(specs, tostring(spec), ("Activate this look when you switch to spec %d."):format(spec),
+			function(on)
+				T.SetSpec(state.look, spec, on)
+				TransmogUI.Refresh()
+			end)
+		checks[spec] = row
+		specsW = specsW + row.w + (spec > 1 and 6 or 0)
+		panel.specs[spec] = row.check
+	end
+	panel.specBar, panel.specRows = specs, checks
+	local x = -specsW / 2
+	for _, row in ipairs(checks) do
+		row:SetPoint("TOPLEFT", specs, "TOP", x, -18)
+		x = x + row.w + 6
+	end
+	specs:SetSize(math.max(specsW, 140) + 2 * GAP, 18 + CONTROL_H + 4)
+	specs:SetPoint("TOP", doll, "TOP", 0, -edge)
+	S.Solid(specs, "BACKGROUND", { 0, 0, 0, 0.45 }):SetAllPoints()
 
 	local strip = CreateFrame("Frame", nil, doll)
 	strip:SetPoint("BOTTOMLEFT", wi, wi)
