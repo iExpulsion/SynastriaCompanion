@@ -107,25 +107,54 @@ function TransmogUI.Preview(override)
 	for _, tex in ipairs(p.bg) do if bg then tex:Show() else tex:Hide() end end
 end
 
+-- The race background is the dressing room's 320x384 picture in four files. It's scaled to cover the pane without
+-- stretching and centered, and textures can't be clipped to a frame, so each piece is cut to the part that shows.
+local BG_W, BG_H = 320, 384
+local BG_PIECES = { { 0, 0, 256, 256 }, { 256, 0, 64, 256 }, { 0, 256, 256, 128 }, { 256, 256, 64, 128 } }
+
+-- Where each piece goes inside a w x h pane: { x, y, w, h, left, right, top, bottom } with texture coordinates, or
+-- nil for a piece that falls outside it.
+function TransmogUI.BackgroundLayout(w, h)
+	local scale = math.max(w / BG_W, h / BG_H)
+	local vx, vy = (BG_W - w / scale) / 2, (BG_H - h / scale) / 2
+	local out = {}
+	for i, piece in ipairs(BG_PIECES) do
+		local px, py, pw, ph = piece[1], piece[2], piece[3], piece[4]
+		local x0, x1 = math.max(px, vx), math.min(px + pw, vx + w / scale)
+		local y0, y1 = math.max(py, vy), math.min(py + ph, vy + h / scale)
+		if x1 > x0 and y1 > y0 then
+			out[i] = { x = (x0 - vx) * scale, y = (y0 - vy) * scale, w = (x1 - x0) * scale, h = (y1 - y0) * scale,
+				left = (x0 - px) / pw, right = (x1 - px) / pw, top = (y0 - py) / ph, bottom = (y1 - py) / ph }
+		end
+	end
+	return out
+end
+
+function TransmogUI.Background(parent, inset, w, h)
+	local path = DressUpTexturePath and DressUpTexturePath() or nil
+	local layout = TransmogUI.BackgroundLayout(w, h)
+	local list = {}
+	for i = 1, #BG_PIECES do
+		local cut = layout[i]
+		if cut and path then
+			local tex = parent:CreateTexture(nil, "BACKGROUND", nil, 1)
+			tex:SetTexture(path .. i)
+			tex:SetTexCoord(cut.left, cut.right, cut.top, cut.bottom)
+			tex:SetSize(cut.w, cut.h)
+			tex:SetPoint("TOPLEFT", inset + cut.x, -inset - cut.y)
+			tex:Hide()
+			list[#list + 1] = tex
+		end
+	end
+	return list
+end
+
 local function createPreview(width, height)
 	local p = CreateFrame("Frame", nil, panel)
 	p:SetSize(width, height)
 	S.Well(p)
 	local wi = 1 + S.metrics.wellInset
-	-- the race background, in the four pieces the game's dressing room uses
-	p.bg = {}
-	local path = DressUpTexturePath and DressUpTexturePath() or nil
-	local inner = { w = width - 2 * wi, h = height - 2 * wi }
-	local pieces = { { "TOPLEFT", 0.8, 0.667 }, { "TOPRIGHT", 0.2, 0.667 }, { "BOTTOMLEFT", 0.8, 0.333 }, { "BOTTOMRIGHT", 0.2, 0.333 } }
-	for i, piece in ipairs(pieces) do
-		local tex = p:CreateTexture(nil, "BACKGROUND", nil, 1)
-		tex:SetSize(inner.w * piece[2], inner.h * piece[3])
-		tex:SetPoint(piece[1], piece[1]:find("LEFT") and wi or -wi, piece[1]:find("TOP") and -wi or wi)
-		if path then tex:SetTexture(path .. i) end
-		tex:SetAlpha(0.7)
-		tex:Hide()
-		p.bg[i] = tex
-	end
+	p.bg = TransmogUI.Background(p, wi, width - 2 * wi, height - 2 * wi)
 
 	local model = CreateFrame("DressUpModel", "SynastriaCompanionTransmogModel", p)
 	model:SetPoint("TOPLEFT", wi, -wi)
@@ -446,8 +475,8 @@ local function create(parent, width, height)
 
 	panel.looks = SC.Table.New(panel, "SynastriaCompanionTransmogLooks", RAIL_W, bodyH, {
 		columns = {
-			{ key = "name", label = "Look", width = 110, stretch = true, sortable = false },
-			{ key = "active", label = "", width = 50, sortable = false },
+			{ key = "name", label = "Look", width = 96, stretch = true, sortable = false },
+			{ key = "active", label = "", width = 64, sortable = false },
 		},
 		rowH = ROW_H,
 		cell = function(row, key)
@@ -496,8 +525,8 @@ local function create(parent, width, height)
 	local slotsY = specY - CONTROL_H - GAP
 	panel.slots = SC.Table.New(panel, "SynastriaCompanionTransmogSlots", editW, bodyH + slotsY + PAD, {
 		columns = {
-			{ key = "label", label = "Slot", width = 110, sortable = false },
-			{ key = "value", label = "Appearance", width = 150, stretch = true, sortable = false },
+			{ key = "label", label = "Slot", width = 136, sortable = false },
+			{ key = "value", label = "Appearance", width = 140, stretch = true, sortable = false },
 		},
 		rowH = ROW_H, icons = true,
 		cell = function(row, key)
