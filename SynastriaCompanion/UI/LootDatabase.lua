@@ -324,8 +324,8 @@ local function create(parent, width, height)
 		self:SetChecked(not self.on)
 		render()
 	end)
-	-- centered where the smaller box used to sit, on the heading's line
-	panel.attunableOnly:SetPoint("TOPRIGHT", -PAD - 110, -PAD - CONTROL_H - GAP - 5)
+	-- centered where the 14px box used to sit, on the heading's line
+	panel.attunableOnly:SetPoint("TOPRIGHT", -PAD - 110, -PAD - CONTROL_H - GAP - 10 + (S.CHECK_H - 14) / 2)
 	panel.attunableLabel = S.Text(panel, "small")
 	panel.attunableLabel:SetPoint("LEFT", panel.attunableOnly, "RIGHT", 6, 0)
 	panel.attunableLabel:SetText("Still to Attune")

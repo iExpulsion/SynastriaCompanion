@@ -517,8 +517,7 @@ local function create(parent, width, height)
 	note:SetText("These save as soon as you change them.")
 	-- Auto Loot on top, then the groups: Loot From and Gathering in the left column, Items in the right
 	panel.optionBoxes = {}
-	-- rows a control's height apart plus a little, so checkboxes as tall as the controls don't touch
-	local OPTION_H, colW = CONTROL_H + 4, editorW / 2
+	local OPTION_H, colW = CONTROL_H, editorW / 2
 	local function toggle(box)
 		draft.options = bit.bxor(draft.options or 0, box.bit)
 		server.options = bit.bxor(server.options or 0, box.bit)
