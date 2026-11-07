@@ -225,19 +225,16 @@ function Transmog.Reset(look)
 	for hand = 1, 2 do Transmog.SetEnchant(look, hand, Transmog.EQUIPPED) end
 end
 
--- What the preview wears in a slot: the look's item, or the equipped one for Equipped Look, nil when hidden or
--- empty. Weapons also get their enchant visual.
-function Transmog.Appearance(look, slot)
-	local value = Transmog.Slot(look, slot)
+-- What a slot set to `value` shows, with `chosen` as its hand's enchant visual (weapons only): the item, or the
+-- equipped one for Equipped Look, nil when hidden or empty, and the weapon's enchant visual.
+local function appearance(slot, value, chosen)
 	local id, enchant = nil, nil
 	if value == Transmog.EQUIPPED then
 		id, enchant = Transmog.Equipped(slot)
 	elseif value ~= Transmog.HIDDEN then
 		id = value
 	end
-	local hand = Transmog.SLOTS[slot].enchant
-	if hand then
-		local chosen = Transmog.Enchant(look, hand)
+	if Transmog.SLOTS[slot].enchant then
 		if chosen == Transmog.HIDDEN then enchant = nil
 		elseif chosen ~= Transmog.EQUIPPED then enchant = chosen
 		elseif value ~= Transmog.EQUIPPED then enchant = select(2, Transmog.Equipped(slot))
@@ -246,6 +243,12 @@ function Transmog.Appearance(look, slot)
 		enchant = nil
 	end
 	return (id and id > 0) and id or nil, (enchant and enchant > 0) and enchant or nil
+end
+
+-- What the preview wears in a slot of the look.
+function Transmog.Appearance(look, slot)
+	local hand = Transmog.SLOTS[slot].enchant
+	return appearance(slot, Transmog.Slot(look, slot), hand and Transmog.Enchant(look, hand))
 end
 
 -- Sharing ----------------------------------------------------------------------------------------------------
@@ -275,6 +278,21 @@ Transmog.SAVED_NAME_MAX = 40
 
 function Transmog.SavedLooks()
 	return SC.db.savedLooks
+end
+
+-- The saved looks by name, ignoring case.
+function Transmog.SavedByName()
+	local list = {}
+	for i, saved in ipairs(SC.db.savedLooks) do list[i] = saved end
+	table.sort(list, function(a, b) return a.name:lower() < b.name:lower() end)
+	return list
+end
+
+-- What a saved look shows in a slot, as it was when saved.
+function Transmog.SavedAppearance(saved, slot)
+	local hand = Transmog.SLOTS[slot].enchant
+	local enchants = saved.enchants or {}
+	return appearance(slot, (saved.slots or {})[slot] or Transmog.EQUIPPED, hand and (enchants[hand] or Transmog.EQUIPPED))
 end
 
 local function trim(text)
@@ -313,12 +331,6 @@ end
 
 function Transmog.DeleteSaved(index)
 	table.remove(SC.db.savedLooks, index)
-	changed()
-end
-
-function Transmog.MoveSaved(from, to)
-	local list = SC.db.savedLooks
-	table.insert(list, to, table.remove(list, from))
 	changed()
 end
 

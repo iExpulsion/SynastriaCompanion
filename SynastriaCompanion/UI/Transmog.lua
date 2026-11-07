@@ -811,50 +811,84 @@ end
 
 -- Saved looks ------------------------------------------------------------------------------------------------
 
--- Looks saved for the whole account. Clicking one loads it into the selected look; hovering tries it on.
+-- Looks saved for the whole account, as a page of cards by name, each one your character wearing the whole look,
+-- full length. Clicking one loads it into the selected look; hovering also tries it on the big character.
 
-local function renderSaved()
-	local rows = {}
-	T.Batch(function()
-		for i, saved in ipairs(T.SavedLooks()) do
-			local usable, total = T.SavedCount(saved)
-			rows[i] = { saved = saved, usable = usable, total = total }
+-- What a card wears: every slot as saved, the main hand last so it's the weapon that shows (see OFF_HAND_ONLY).
+local function savedOutfit(saved)
+	local outfit, main = {}, nil
+	for slot in ipairs(T.SLOTS) do
+		local id, enchant = T.SavedAppearance(saved, slot)
+		if id and slot == T.MAIN_HAND then
+			main = { slot = slot, id = id, enchant = enchant }
+		elseif id then
+			outfit[#outfit + 1] = { slot = slot, id = id, enchant = enchant }
 		end
-	end)
-	panel.saved.table:SetItems(rows, "No Saved Looks Yet", true)
-	panel.saved.hint:SetText(("Saved looks are shared by every character on your account. Click one to load it into %s.")
-		:format(T.Name(state.look)))
-end
-
-local function savedCell(row, key)
-	local text, color
-	if key == "name" then
-		text, color = row.saved.name, C.text
-	else
-		text = ("%d / %d"):format(row.usable, row.total)
-		color = row.usable == row.total and C.good or row.usable > 0 and C.text or C.muted
 	end
-	return text, color
+	if main then outfit[#outfit + 1] = main end
+	return outfit
 end
 
-local function savedTooltip(tt, row)
-	local saved = row.saved
-	tt:AddLine(saved.name, 1, 1, 1)
+local function savedTooltip(card)
+	local saved = card.saved
+	GameTooltip:SetOwner(card, "ANCHOR_RIGHT")
+	GameTooltip:AddLine(saved.name, 1, 1, 1)
 	for slot, def in ipairs(T.SLOTS) do
 		local value = saved.slots and saved.slots[slot]
 		if value and value ~= T.EQUIPPED then
 			local text, color = valueText(value, false)
-			tt:AddDoubleLine(def.label, text, 0.6, 0.6, 0.66, unpack(color))
+			GameTooltip:AddDoubleLine(def.label, text, 0.6, 0.6, 0.66, unpack(color))
 		end
 	end
-	if row.usable < row.total then
-		tt:AddLine("Red pieces aren't attuned or acquired on your account, so they won't apply.", 1, 0.3, 0.3, true)
+	if card.usable < card.total then
+		GameTooltip:AddLine("Red pieces aren't attuned or acquired on your account, so they won't apply.", 1, 0.3, 0.3, true)
 	end
-	tt:AddLine(("Showing on your character. Click to load it into %s. Right-click to delete it. Drag to change the order.")
+	GameTooltip:AddLine(("Saved for every character on your account. Click to load it into %s. Right-click to delete it.")
 		:format(T.Name(state.look)), 0.6, 0.6, 0.66, true)
+	GameTooltip:Show()
 	local pieces = {}
 	for slot, value in ipairs(saved.slots or {}) do pieces[slot] = value end
 	TransmogUI.Hover({ set = pieces })
+end
+
+-- What the cards show also depends on what's equipped, for slots saved as Equipped Look.
+local function equippedKey()
+	local parts = {}
+	for slot in ipairs(T.SLOTS) do parts[slot] = T.Equipped(slot) end
+	return table.concat(parts, ":")
+end
+
+local function renderSaved()
+	local sv = panel.saved
+	local list = T.SavedByName()
+	local perPage = #sv.cells
+	local pages = math.max(1, math.ceil(#list / perPage))
+	sv.page = math.max(1, math.min(pages, sv.page or 1))
+	sv.pageText:SetText(("Page %d / %d"):format(sv.page, pages))
+	if sv.page > 1 then sv.prev:Enable() else sv.prev:Disable() end
+	if sv.page < pages then sv.next:Enable() else sv.next:Disable() end
+	local equipped, bg = equippedKey(), T.HasOption(T.BACKGROUND)
+	T.Batch(function()
+		for i, card in ipairs(sv.cells) do
+			local saved = list[(sv.page - 1) * perPage + i]
+			if saved then
+				local key = saved.text .. ":" .. equipped
+				if card.saved ~= saved or card.key ~= key then
+					card.saved, card.key, card.want = saved, key, true
+				end
+				card.usable, card.total = T.SavedCount(saved)
+				card.name:SetText(saved.name)
+				card.count:SetText(("%d / %d"):format(card.usable, card.total))
+				card.count:SetTextColor(unpack(card.usable == card.total and C.good or card.usable > 0 and C.text or C.muted))
+				for _, tex in ipairs(card.bg) do if bg then tex:Show() else tex:Hide() end end
+				card:Show()
+			else
+				card.saved, card.key = nil, nil
+				card:Hide()
+			end
+		end
+	end)
+	sv.empty:SetText(#list == 0 and "No Saved Looks Yet: Name This Look Above and Save It" or "")
 end
 
 local function saveLook()
@@ -871,8 +905,8 @@ local function saveLook()
 	TransmogUI.Refresh()
 end
 
-local function loadSaved(row, mouse)
-	local saved = row.saved
+local function loadSaved(card, mouse)
+	local saved = card.saved
 	if mouse == "RightButton" then
 		local popup = StaticPopup_Show("SYNASTRIA_COMPANION_TRANSMOG_DELETE_SAVED", saved.name)
 		if popup then popup.data = saved end
@@ -1331,43 +1365,107 @@ local function createSets(width, height)
 	return sv
 end
 
--- One row to name and save the look, a line on how saved looks work, then the saved looks, dragged to reorder.
-local SAVE_W = 140
+-- A saved look's card: your character wearing it, full length, with its name and Pieces count under it. The model
+-- dresses once it has loaded, and again as it settles, like the Items cells.
+local function newSavedCard(parent, w, h)
+	local card = CreateFrame("Button", nil, parent)
+	card:SetSize(w, h)
+	card:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	S.Panel(card, C.well, C.border)
+	card.bg = TransmogUI.Background(card, 1, w - 2, h - 2 - NAME_H)
+	local model = CreateFrame("DressUpModel", nil, card)
+	model:SetPoint("TOPLEFT", 1, -1)
+	model:SetPoint("BOTTOMRIGHT", -1, 1 + NAME_H)
+	model:SetFrameLevel(card:GetFrameLevel() + 2)
+	model:EnableMouse(false)
+	model:SetUnit("player")
+	model:SetScript("OnUpdate", function(self)
+		local now = GetTime()
+		if card.want and modelReady(self) then
+			card.want = nil
+			dress(self, savedOutfit(card.saved))
+			card.settle = { now + SETTLE[1], now + SETTLE[2] }
+		elseif card.settle and now >= card.settle[1] then
+			table.remove(card.settle, 1)
+			if #card.settle == 0 then card.settle = nil end
+			dress(self, savedOutfit(card.saved))
+		end
+	end)
+	model:SetScript("OnShow", function()
+		if card.saved then card.want = true end
+	end)
+	card.model = model
+	local hover = S.Solid(card, "HIGHLIGHT", { 1, 1, 1, 0.08 })
+	hover:SetPoint("TOPLEFT", 1, -1)
+	hover:SetPoint("BOTTOMRIGHT", -1, 1)
+	card.count = S.Text(card, "small")
+	card.count:SetPoint("BOTTOMRIGHT", -4, 2)
+	card.count:SetHeight(NAME_H - 2)
+	card.name = S.Text(card, "small")
+	card.name:SetPoint("BOTTOMLEFT", 4, 2)
+	card.name:SetPoint("RIGHT", card.count, "LEFT", -4, 0)
+	card.name:SetHeight(NAME_H - 2)
+	card.name:SetJustifyH("LEFT")
+	card.name:SetWordWrap(false)
+	card:SetScript("OnClick", loadSaved)
+	card:SetScript("OnEnter", savedTooltip)
+	card:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+		TransmogUI.Unhover()
+	end)
+	return card
+end
+
+-- One row to name and save the look, with the page arrows, then the cards, as many as fit, like the Items grid.
+local SAVE_W = 120
 
 local function createSaved(width, height)
 	local sv = CreateFrame("Frame", nil, panel)
 	sv:SetSize(width, height)
+	sv.next = S.Button(sv, ">", "secondary", 28, function()
+		sv.page = (sv.page or 1) + 1
+		TransmogUI.Refresh()
+	end, "Next page.")
+	sv.next:SetPoint("TOPRIGHT", 0, 0)
+	sv.pageText = S.Text(sv, "small", C.muted)
+	sv.pageText:SetWidth(PAGE_TEXT_W)
+	sv.pageText:SetJustifyH("CENTER")
+	sv.pageText:SetPoint("RIGHT", sv.next, "LEFT", -GAP, 0)
+	sv.prev = S.Button(sv, "<", "secondary", 28, function()
+		sv.page = (sv.page or 1) - 1
+		TransmogUI.Refresh()
+	end, "Previous page.")
+	sv.prev:SetPoint("RIGHT", sv.pageText, "LEFT", -GAP, 0)
 	sv.save = S.Button(sv, "Save This Look", "primary", SAVE_W, saveLook,
 		"Save this look for every character on your account, under the name typed beside it or the look's own name. A saved look with the same name is updated.")
-	sv.save:SetPoint("TOPRIGHT", 0, 0)
-	sv.name = S.Input(sv, "SynastriaCompanionTransmogSaveName", width - SAVE_W - GAP, "Name to Save It As",
-		T.SAVED_NAME_MAX)
+	sv.save:SetPoint("RIGHT", sv.prev, "LEFT", -PAD, 0)
+	sv.name = S.Input(sv, "SynastriaCompanionTransmogSaveName", 200, "Name to Save It As", T.SAVED_NAME_MAX)
 	sv.name:SetPoint("TOPLEFT", 0, 0)
+	sv.name:SetPoint("RIGHT", sv.save, "LEFT", -GAP, 0)
 	sv.name:SetScript("OnEnterPressed", saveLook)
-	sv.hint = S.Text(sv, "small", C.muted)
-	sv.hint:SetPoint("TOPLEFT", 0, -(CONTROL_H + GAP))
-	sv.hint:SetPoint("RIGHT", 0, 0)
-	sv.hint:SetJustifyH("LEFT")
-	local top = CONTROL_H + GAP + 14 + GAP
-	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSaved", width, height - top, {
-		columns = {
-			{ key = "name", label = "Saved Look", width = 200, stretch = true, sortable = false },
-			{ key = "pieces", label = "Pieces", width = 70, sortable = false,
-				tooltip = "Slots with an item you can use, out of the slots the look puts an item in." },
-		},
-		rowH = ROW_H,
-		cell = savedCell,
-		tooltip = savedTooltip,
-		onClick = loadSaved,
-		onMove = function(from, to)
-			T.MoveSaved(from, to)
-			TransmogUI.Refresh()
-		end,
-	})
-	sv.table.frame:SetPoint("TOPLEFT", 0, -top)
-	for _, row in ipairs(sv.table.rows) do
-		row:HookScript("OnLeave", function() TransmogUI.Unhover() end)
+
+	local gridTop = CONTROL_H + GAP
+	local gridH = height - gridTop
+	local cols = math.max(MIN_COLS, math.floor((width + GAP) / (CELL_W + GAP)))
+	local rows = math.max(MIN_ROWS, math.floor((gridH + GAP) / (CELL_H + GAP)))
+	local cardW = (width - (cols - 1) * GAP) / cols
+	local cardH = (gridH - (rows - 1) * GAP) / rows
+	sv.cells = {}
+	for r = 1, rows do
+		for c = 1, cols do
+			local card = newSavedCard(sv, cardW, cardH)
+			card:SetPoint("TOPLEFT", (c - 1) * (cardW + GAP), -gridTop - (r - 1) * (cardH + GAP))
+			card:Hide()
+			sv.cells[#sv.cells + 1] = card
+		end
 	end
+	sv.empty = S.Text(sv, "normal", C.muted)
+	sv.empty:SetPoint("TOP", 0, -gridTop - 60)
+	sv:EnableMouseWheel(true)
+	sv:SetScript("OnMouseWheel", function(_, delta)
+		sv.page = (sv.page or 1) - delta
+		TransmogUI.Refresh()
+	end)
 	sv:Hide()
 	return sv
 end

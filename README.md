@@ -105,8 +105,9 @@ pieces were left out.
 
 The **Saved** tab keeps looks for every character on your account, beyond the ten each character has. Type a name
 and click **Save This Look** (a blank name uses the look's own; saving under a name you already have updates it).
-Hovering a saved look tries it on your character, **Pieces** shows how many of its items you can use, and clicking
-one loads it into the selected look. Drag them to change the order; right-click one to delete it.
+Saved looks show as a page of models by name, each your character wearing the whole look, with how many of its
+items you can use under it. Hovering one also tries it on your character, clicking one loads it into the selected
+look, and right-clicking one deletes it.
 
 **Activate** wears the look, or turns transmog off when it's already the active one, and **Import** and **Export**
 beside it share a look as text. Along the bottom, **Use Equipped** fills every slot from what you're wearing and
