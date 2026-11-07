@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-24-g23f15cb. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-26-g8a0c0f6. Change it there, then run tools/sync_style.py.
 -- Classic: the default UI's own look, drawn entirely from textures the 3.3.5 client ships, so there's no art in
 -- this folder. Dialog-box windows, red panel buttons, gold text, tooltip-bordered menus and lists, and the quest
 -- log's row highlight. Load it after Style.lua; S.UseSkin("classic") switches to it.
@@ -12,6 +12,9 @@ local TOOLTIP_EDGE = "Interface\\Tooltips\\UI-Tooltip-Border"
 local BUTTON = "Interface\\Buttons\\UI-Panel-Button-"
 local INPUT = "Interface\\Common\\Common-Input-Border"
 local ROW_HIGHLIGHT = "Interface\\QuestFrame\\UI-QuestTitleHighlight"
+local CHECK = "Interface\\Buttons\\UI-CheckBox-"
+-- how much larger than the checkbox its art is drawn: the stock box fills about the middle 60% of its texture
+local CHECK_ART = 1.7
 
 -- How far a window's content starts in from its edges: inside the dialog border's 11 pixels.
 local EDGE = 12
@@ -130,6 +133,28 @@ S.RegisterSkin("classic", {
 	end,
 	paintNav = function(b, on)
 		if on then b.selectedTex:Show() else b.selectedTex:Hide() end
+	end,
+	-- the stock checkbox, its art drawn larger than the box, since the box fills only the middle of it
+	check = function(b)
+		local size = (b:GetWidth() or 14) * CHECK_ART
+		local function layer(name, path)
+			local t = b:CreateTexture(nil, name)
+			t:SetTexture(path)
+			t:SetPoint("CENTER")
+			t:SetWidth(size)
+			t:SetHeight(size)
+			return t
+		end
+		b.box = layer("BACKGROUND", CHECK .. "Up")
+		b.tick = layer("ARTWORK", CHECK .. "Check")
+		b.glow = layer("HIGHLIGHT", CHECK .. "Highlight")
+		b.glow:SetBlendMode("ADD")
+	end,
+	paintCheck = function(b)
+		if b.on then b.tick:Show() else b.tick:Hide() end
+		b.tick:SetTexture(CHECK .. (b.usable and "Check" or "Check-Disabled"))
+		b.box:SetDesaturated(not b.usable)
+		b.glow:SetAlpha(b.usable and 1 or 0)
 	end,
 	-- one-line fields are the stock edit box border; tall ones a tooltip-bordered box
 	input = function(e, tall)
