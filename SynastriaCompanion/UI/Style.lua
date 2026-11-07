@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.0.0-44-g6f085f7. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.0.0-46-gc3e43fd. Change it there, then run tools/sync_style.py.
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
 -- as NS.Style from its addon table; font objects are named after the addon, so copies never clash.
@@ -212,7 +212,7 @@ end
 
 -- Where windows open by default: centered across the screen, their tops S.WINDOW_TOP of UIParent's units below the
 -- screen's top, so windows of different heights, and different addons', line up.
-S.WINDOW_TOP = 60
+S.WINDOW_TOP = 128
 
 -- Puts a window at that spot. The offset is converted from UIParent's units, so a window with a scale of its own
 -- (S.PixelScale) lands in the same place as one without.
