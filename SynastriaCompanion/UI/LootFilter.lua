@@ -349,28 +349,43 @@ local function exportChoice(choice)
 	render()
 end
 
+-- Why an import didn't save: the game couldn't read the text, or the server refused one of its conditions.
+local function importFailed(err)
+	message(err and ("Not Imported: Rule %d, Condition %d: %s"):format(err.rule, err.cond, err.message)
+		or "The Game Couldn't Read That", C.bad)
+end
+
+-- Imports save at once. One that doesn't save puts the filter back as it was, since the game has already loaded it.
 local function importChoice(choice)
 	if dirty() then
 		message("Apply or Discard Your Changes First", C.warn)
 	elseif choice == "filter" then
-		SC.TextDialog.AskImport("Import Loot Filter", "Replaces your whole loot filter, options too.", function(text)
-			if LF.Import(text) then message("Imported", C.good) else message("The Game Couldn't Read That", C.bad) end
+		SC.TextDialog.AskImport("Import Loot Filter", "Replaces your whole loot filter, options too, and saves it.", function(text)
+			local before = server
+			local saved, err = LF.Import(text)
+			if saved then
+				message("Imported and Saved", C.good)
+			else
+				LF.Write(before)
+				importFailed(err)
+			end
 			load()
 			render()
 		end)
 	elseif #draft.rules < LF.MAX_RULES then
-		SC.TextDialog.AskImport("Import Rule", "Adds the rule at the bottom of your list.", function(text)
+		SC.TextDialog.AskImport("Import Rule", "Adds the rule at the bottom of your list and saves it.", function(text)
 			local filter = LF.Copy(server)
 			filter.rules[#filter.rules + 1] = LF.NewRule()
 			LF.Write(filter)
-			if LF.ImportRule(#filter.rules, text) then
-				message("Imported", C.good)
+			local saved, err = LF.ImportRule(#filter.rules, text)
+			if saved then
+				message("Imported and Saved", C.good)
 				load()
 				sel = #draft.rules
 			else
 				LF.Write(server)
 				load()
-				message("The Game Couldn't Read That", C.bad)
+				importFailed(err)
 			end
 			render()
 		end)

@@ -253,13 +253,22 @@ function LF.ExportRule(serverIndex)
 	return Custom_LootFilterExportRule and Custom_LootFilterExportRule(serverIndex)
 end
 
--- Replaces the whole filter with a share string. True when the game took it.
-function LF.Import(text)
-	return Custom_LootFilterImport ~= nil and Custom_LootFilterImport(text) and true or false
+-- The game's import only loads a share string into its local copy of the filter (its window then waits for Apply),
+-- so what it loaded is written to the server at once. Returns whether it saved, and Write's error when the server
+-- refused a condition.
+local function saveImported(loaded)
+	local err = loaded and LF.Write(LF.Read()) or nil
+	return loaded and err == nil, err
 end
 
+-- Replaces the whole filter with a share string and saves it.
+function LF.Import(text)
+	return saveImported(Custom_LootFilterImport ~= nil and Custom_LootFilterImport(text) and true or false)
+end
+
+-- Replaces the rule at serverIndex with a shared one and saves the filter.
 function LF.ImportRule(serverIndex, text)
-	return Custom_LootFilterImportRule ~= nil and Custom_LootFilterImportRule(serverIndex, text) and true or false
+	return saveImported(Custom_LootFilterImportRule ~= nil and Custom_LootFilterImportRule(serverIndex, text) and true or false)
 end
 
 function LF.ResetToDefault()
