@@ -1324,29 +1324,9 @@ local function createSets(width, height)
 	sv:SetSize(width, height)
 	local listW = width - SET_DETAIL_W - GAP
 	sv.detail = createDetail(sv, listW + GAP, SET_DETAIL_W, height)
-	sv.class = S.Dropdown(sv, 110, function(value)
-		state.setClass = value
-		TransmogUI.Refresh()
-	end)
-	sv.class:SetOptions({ { value = "mine", text = "Your Class" }, { value = "all", text = "All Classes" } })
-	sv.class:SetPoint("TOPLEFT", 0, 0)
-	sv.armor = S.Dropdown(sv, 100, function(value)
-		state.setArmor = value
-		TransmogUI.Refresh()
-	end)
-	local armors = { { value = 0, text = "Any Armor" } }
-	for id = 1, 4 do armors[#armors + 1] = { value = id, text = T.ARMOR_TYPES[id] } end
-	sv.armor:SetOptions(armors)
-	sv.armor:SetPoint("LEFT", sv.class, "RIGHT", GAP, 0)
-	sv.kind = S.Dropdown(sv, 120, function(value)
-		state.setKind = value
-		TransmogUI.Refresh()
-	end)
-	sv.kind:SetOptions(SET_KINDS)
-	sv.kind:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
-	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", listW - 330 - 3 * GAP, "Search Sets", 40)
-	sv.search:SetPoint("LEFT", sv.kind, "RIGHT", GAP, 0)
-	sv.search:SetPoint("RIGHT", sv, "TOPLEFT", listW, -CONTROL_H / 2)
+	-- the search on a row of its own across the list, then the filters, the class one taking the spare width
+	sv.search = S.Input(sv, "SynastriaCompanionTransmogSetSearch", listW, "Search Sets", 40)
+	sv.search:SetPoint("TOPLEFT", 0, 0)
 	sv.search:HookScript("OnTextChanged", function(self, user)
 		if user then
 			state.setSearch = self:GetText()
@@ -1354,8 +1334,29 @@ local function createSets(width, height)
 		end
 	end)
 	sv.search:SetScript("OnEnterPressed", sv.search.ClearFocus)
+	local ARMOR_W, KIND_W = 100, 120
+	sv.class = S.Dropdown(sv, listW - ARMOR_W - KIND_W - 2 * GAP, function(value)
+		state.setClass = value
+		TransmogUI.Refresh()
+	end)
+	sv.class:SetOptions({ { value = "mine", text = "Your Class" }, { value = "all", text = "All Classes" } })
+	sv.class:SetPoint("TOPLEFT", 0, -(CONTROL_H + GAP))
+	sv.armor = S.Dropdown(sv, ARMOR_W, function(value)
+		state.setArmor = value
+		TransmogUI.Refresh()
+	end)
+	local armors = { { value = 0, text = "Any Armor" } }
+	for id = 1, 4 do armors[#armors + 1] = { value = id, text = T.ARMOR_TYPES[id] } end
+	sv.armor:SetOptions(armors)
+	sv.armor:SetPoint("LEFT", sv.class, "RIGHT", GAP, 0)
+	sv.kind = S.Dropdown(sv, KIND_W, function(value)
+		state.setKind = value
+		TransmogUI.Refresh()
+	end)
+	sv.kind:SetOptions(SET_KINDS)
+	sv.kind:SetPoint("LEFT", sv.armor, "RIGHT", GAP, 0)
 
-	local top = CONTROL_H + GAP
+	local top = 2 * (CONTROL_H + GAP)
 	sv.table = SC.Table.New(sv, "SynastriaCompanionTransmogSets", listW, height - top, {
 		columns = {
 			{ key = "name", label = "Set", width = 160, stretch = true },
