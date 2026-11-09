@@ -81,9 +81,10 @@ local function changed()
 	if Transmog.onChange then Transmog.onChange() end
 end
 
--- Whether the server has sent the looks yet.
+-- Whether the server has sent the looks yet. The look values read 0 (not nil) before then, and 0 is also a real
+-- empty look, so the server's own "data is in" flag decides; the looks come with it.
 function Transmog.HasData()
-	return GetCustomGameData(DATA, 1) ~= nil
+	return (GetCustomGameData(41, 0) or 0) ~= 0 and GetCustomGameData(DATA, 1) ~= nil
 end
 
 -- The name filter and the duplicates option need a newer client patch.
