@@ -2,11 +2,13 @@ local _, NS = ...
 local SC = NS.SC
 
 -- What kind of place a loot zone is (dungeon, raid or open world) and which expansion it belongs to, for the
--- Attunable Items filters. Both are bit flags so an item's sources can be OR'd together.
+-- Attunable Items filters. Both are bit flags so an item's sources can be OR'd together. The Source filter's other
+-- kinds (quest, crafted, vendor) come from the source type rather than the zone.
 local ZoneInfo = {}
 SC.ZoneInfo = ZoneInfo
 
 ZoneInfo.DUNGEON, ZoneInfo.RAID, ZoneInfo.WORLD = 1, 2, 4
+ZoneInfo.QUEST, ZoneInfo.CRAFTED, ZoneInfo.VENDOR = 8, 16, 32
 ZoneInfo.CLASSIC, ZoneInfo.TBC, ZoneInfo.WOTLK = 1, 2, 4
 
 local D, R, W = ZoneInfo.DUNGEON, ZoneInfo.RAID, ZoneInfo.WORLD

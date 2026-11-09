@@ -48,10 +48,15 @@ local BINDS = {
 	{ value = Attune.BOE, text = "Equip", width = 50, tooltip = "Items that bind on equip." },
 	{ value = Attune.BOA, text = "Account", width = 64, tooltip = "Items that bind to your account." },
 }
-local KINDS = {
+local KINDS_DROPS = {
+	{ value = ZoneInfo.WORLD, text = "World", width = 52, tooltip = "Items that drop in the open world." },
 	{ value = ZoneInfo.DUNGEON, text = "Dungeon", width = 64, tooltip = "Items that drop in a dungeon." },
 	{ value = ZoneInfo.RAID, text = "Raid", width = 46, tooltip = "Items that drop in a raid." },
-	{ value = ZoneInfo.WORLD, text = "World", width = 52, tooltip = "Items that drop in the open world." },
+}
+local KINDS_OTHER = {
+	{ value = ZoneInfo.QUEST, text = "Quest", width = 52, tooltip = "Items given as a quest reward." },
+	{ value = ZoneInfo.CRAFTED, text = "Crafted", width = 62, tooltip = "Items made with a profession." },
+	{ value = ZoneInfo.VENDOR, text = "Vendor", width = 58, tooltip = "Items sold by a vendor." },
 }
 local EXPANSIONS = {
 	{ value = ZoneInfo.CLASSIC, text = "Classic", width = 58, tooltip = "Items from Classic zones and instances." },
@@ -404,15 +409,18 @@ local function createDrawer(window)
 
 	-- the filters that need the game's loot data
 	local lootGroups = {}
-	local function lootSection(text, key, options)
+	local function lootSection(text, key, ...)
 		local heading, rule = S.SectionHeading(drawer, text, x, y, x)
 		y = y - 20
-		local group = row(key, options, "multi")
+		local group = {}
+		for _, options in ipairs({ ... }) do
+			for _, b in ipairs(row(key, options, "multi")) do group[#group + 1] = b end
+		end
 		group[#group + 1], group[#group + 2] = heading, rule
 		lootGroups[#lootGroups + 1] = group
 		endSection()
 	end
-	lootSection("Source", "kind", KINDS)
+	lootSection("Source", "kind", KINDS_DROPS, KINDS_OTHER)
 	lootSection("Expansion", "exp", EXPANSIONS)
 	drawer.lootGroups = lootGroups
 end

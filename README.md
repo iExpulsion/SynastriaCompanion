@@ -146,7 +146,8 @@ your advanced choices kept for next time.
   The mode follows: an attuned level switches Attunable (Char) to Attuned (Char), and mixing in Not Attuned
   switches to All.
 - **Bind:** Bind on Pickup, Bind on Equip or Bind on Account. Pick several to combine them.
-- **Source:** items that drop in dungeons, raids or the open world.
+- **Source:** items that drop in the open world, dungeons or raids, quest rewards, crafted items, or items sold by
+  a vendor. Pick several to combine them.
 - **Expansion:** Classic, The Burning Crusade or Wrath of the Lich King, from the zones the item comes from (or
   its required level when none is known). Vendors don't count, since old zones sell gear from every expansion.
 

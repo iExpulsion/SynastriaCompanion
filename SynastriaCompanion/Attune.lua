@@ -128,8 +128,12 @@ end
 -- Source types that are drops from a creature or object, as opposed to quests, vendors and crafting.
 local DROPS = { [0] = true, [1] = true, [3] = true, [7] = true, [8] = true, [10] = true, [11] = true, [12] = true,
 	[13] = true, [14] = true, [20] = true, [21] = true }
--- Vendors don't date an item: the server sells gear from every expansion in old zones (arena gear in Gadgetzan).
-local VENDOR = 9
+-- Source types the Source filter names by type: quest rewards (2), crafting from a trainer or a recipe (5, 6) and
+-- vendors (9). Trainers and vendors don't date an item, since the server keeps every expansion's in old zones
+-- (arena gear in Gadgetzan), so those items fall back to their required level.
+local OTHER_KINDS = { [2] = SC.ZoneInfo.QUEST, [5] = SC.ZoneInfo.CRAFTED, [6] = SC.ZoneInfo.CRAFTED,
+	[9] = SC.ZoneInfo.VENDOR }
+local UNDATED = { [5] = true, [6] = true, [9] = true }
 local SOURCES_PER_FRAME = 4000
 local sourceReader = CreateFrame("Frame")
 sourceReader:Hide()
@@ -161,8 +165,9 @@ function Attune.ReadSources(onDone)
 					while src <= count and budget > 0 do
 						local srcType, _, _, _, _, _, _, _, zone = ItemLocGetSourceAt(item.id, src)
 						local kind, exp = ZoneInfo.Classify(zone)
-						if exp and srcType ~= VENDOR then item.exp = bit.bor(item.exp or 0, exp) end
+						if exp and not UNDATED[srcType] then item.exp = bit.bor(item.exp or 0, exp) end
 						if kind and DROPS[srcType] then item.kind = bit.bor(item.kind or 0, kind) end
+						if OTHER_KINDS[srcType] then item.kind = bit.bor(item.kind or 0, OTHER_KINDS[srcType]) end
 						src, budget = src + 1, budget - 1
 					end
 					if src > count then
