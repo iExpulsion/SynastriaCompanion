@@ -74,7 +74,13 @@ local scanner = CreateFrame("Frame")
 scanner:Hide()
 local waiting = {}
 
--- Builds the cache over several frames, then calls every onDone. Calls it at once when the cache is ready.
+-- Whether Synastria's item data has come in; a scan before then would find no item info and keep an empty cache.
+function Attune.DataReady()
+	return GetCustomGameData ~= nil and (GetCustomGameData(41, 0) or 0) ~= 0
+end
+
+-- Builds the cache over several frames, then calls every onDone. Calls it at once when the cache is ready. Waits
+-- for the server's data first.
 function Attune.Scan(onDone)
 	if Attune.items then
 		if onDone then onDone() end
@@ -84,21 +90,23 @@ function Attune.Scan(onDone)
 			Attune.scanning = true
 			local found, nextId, last = {}, 1, MAX_ITEMID or 0
 			scanner:SetScript("OnUpdate", function(self)
-				local stop = math.min(last, nextId + SCAN_PER_FRAME - 1)
-				for id = nextId, stop do
-					if IsAttunableBySomeone(id) then
-						local item = readItem(id)
-						if item then found[#found + 1] = item end
+				if Attune.DataReady() then
+					local stop = math.min(last, nextId + SCAN_PER_FRAME - 1)
+					for id = nextId, stop do
+						if IsAttunableBySomeone(id) then
+							local item = readItem(id)
+							if item then found[#found + 1] = item end
+						end
 					end
-				end
-				nextId = stop + 1
-				Attune.progress = last > 0 and stop / last or 1
-				if nextId > last then
-					self:Hide()
-					Attune.items, Attune.scanning = found, false
-					local done = waiting
-					waiting = {}
-					for _, fn in ipairs(done) do fn() end
+					nextId = stop + 1
+					Attune.progress = last > 0 and stop / last or 1
+					if nextId > last then
+						self:Hide()
+						Attune.items, Attune.scanning = found, false
+						local done = waiting
+						waiting = {}
+						for _, fn in ipairs(done) do fn() end
+					end
 				end
 			end)
 			scanner:Show()
@@ -265,7 +273,13 @@ function Attune.CanAttune(item, classId)
 	canCache[key] = cache
 	local ok = cache[item.id]
 	if ok == nil then
-		ok = (CanAttuneItemHelperEx(item.id, classId) or 0) > 0
+		local result
+		if CanAttuneItemHelperEx then
+			result = CanAttuneItemHelperEx(item.id, classId)
+		else
+			result = CanAttuneItemHelper(item.id)
+		end
+		ok = (result or 0) > 0
 		cache[item.id] = ok
 	end
 	return ok
@@ -445,4 +459,3 @@ SC:On("PLAYER_LEVEL_UP", function()
 	Attune.Changed()
 end)
 SC:OnCustomEvent("SYNASTRIA_ITEM_ATTUNED", Attune.Changed)
-SC:OnCustomEvent("SYNASTRIA_ITEM_ATTUNE_PCT_CHANGED", Attune.Changed)
