@@ -148,7 +148,7 @@ your advanced choices kept for next time.
 - **Bind:** Bind on Pickup, Bind on Equip or Bind on Account. Pick several to combine them.
 - **Source:** items that drop in dungeons, raids or the open world.
 - **Expansion:** Classic, The Burning Crusade or Wrath of the Lich King, from the zones the item comes from (or
-  its required level when none is known).
+  its required level when none is known). Vendors don't count, since old zones sell gear from every expansion.
 
 Source and Expansion read every item's sources the first time you use them, which takes a few seconds.
 

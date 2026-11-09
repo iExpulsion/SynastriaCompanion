@@ -128,6 +128,8 @@ end
 -- Source types that are drops from a creature or object, as opposed to quests, vendors and crafting.
 local DROPS = { [0] = true, [1] = true, [3] = true, [7] = true, [8] = true, [10] = true, [11] = true, [12] = true,
 	[13] = true, [14] = true, [20] = true, [21] = true }
+-- Vendors don't date an item: the server sells gear from every expansion in old zones (arena gear in Gadgetzan).
+local VENDOR = 9
 local SOURCES_PER_FRAME = 4000
 local sourceReader = CreateFrame("Frame")
 sourceReader:Hide()
@@ -140,7 +142,8 @@ function Attune.HasLootData()
 end
 
 -- Reads every cached item's sources over several frames into item.kind (dungeon, raid, world: places it drops) and
--- item.exp (expansions it comes from), then calls every onDone. Calls it at once when that's done already.
+-- item.exp (expansions of the zones it comes from, vendors aside, else its required level's), then calls every
+-- onDone. Calls it at once when that's done already.
 function Attune.ReadSources(onDone)
 	if Attune.sourcesRead then
 		if onDone then onDone() end
@@ -158,7 +161,7 @@ function Attune.ReadSources(onDone)
 					while src <= count and budget > 0 do
 						local srcType, _, _, _, _, _, _, _, zone = ItemLocGetSourceAt(item.id, src)
 						local kind, exp = ZoneInfo.Classify(zone)
-						if exp then item.exp = bit.bor(item.exp or 0, exp) end
+						if exp and srcType ~= VENDOR then item.exp = bit.bor(item.exp or 0, exp) end
 						if kind and DROPS[srcType] then item.kind = bit.bor(item.kind or 0, kind) end
 						src, budget = src + 1, budget - 1
 					end
