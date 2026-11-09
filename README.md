@@ -150,6 +150,7 @@ your advanced choices kept for next time.
   a vendor. Pick several to combine them.
 - **Expansion:** Classic, The Burning Crusade or Wrath of the Lich King, from the zones the item comes from (or
   its required level when none is known). Vendors don't count, since old zones sell gear from every expansion.
+  Synastria's own Mythic items drop everywhere, so they go by the expansion the game marks them with.
 
 Source and Expansion read every item's sources the first time you use them, which takes a few seconds.
 

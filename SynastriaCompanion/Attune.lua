@@ -54,6 +54,13 @@ local function band(a, b) return bit.band(a or 0, b) ~= 0 end
 -- Bind flags, for item.bind and the Bind filter; an item with none of them shows only while no bind is picked.
 Attune.BOP, Attune.BOE, Attune.BOA = 1, 2, 4
 
+-- Synastria's own items carry their expansion in their tags (8 TBC, 16 WotLK; 4 would be Classic), as ZoneInfo's
+-- expansion bits. They drop all over the world, so their zones can't date them. nil for other items.
+local function tagExpansion(tags1)
+	local exp = bit.rshift(bit.band(tags1 or 0, 28), 2)
+	return exp ~= 0 and exp or nil
+end
+
 local function readItem(id)
 	local name, _, quality, ilvl, req, _, _, _, equipLoc, icon = GetItemInfoCustom(id)
 	local item
@@ -63,7 +70,7 @@ local function readItem(id)
 			equipLoc = equipLoc or "", icon = icon, disabled = band(tags1, 32), mythic = band(tags1, 128),
 			affix = band(tags2, 1), prop = band(tags2, 8), tracksAffix = band(tags2, 16),
 			bind = (band(tags2, 0x80) and Attune.BOP or 0) + (band(tags3, 1) and Attune.BOE or 0)
-				+ (band(tags3, 2) and Attune.BOA or 0) }
+				+ (band(tags3, 2) and Attune.BOA or 0), tagExp = tagExpansion(tags1) }
 		item.upper = item.name:upper()
 	end
 	return item
@@ -146,7 +153,8 @@ function Attune.HasLootData()
 end
 
 -- Reads every cached item's sources over several frames into item.kind (dungeon, raid, world: places it drops) and
--- item.exp (expansions of the zones it comes from, vendors aside, else its required level's), then calls every
+-- item.exp (the expansion its tags name, else those of the zones it comes from, vendors and trainers aside, else its
+-- required level's), then calls every
 -- onDone. Calls it at once when that's done already.
 function Attune.ReadSources(onDone)
 	if Attune.sourcesRead then
@@ -171,7 +179,7 @@ function Attune.ReadSources(onDone)
 						src, budget = src + 1, budget - 1
 					end
 					if src > count then
-						item.exp = item.exp or ZoneInfo.ExpansionForLevel(item.req)
+						item.exp = item.tagExp or item.exp or ZoneInfo.ExpansionForLevel(item.req)
 						item.kind = item.kind or 0
 						index, src, budget = index + 1, 1, budget - 1
 					end
