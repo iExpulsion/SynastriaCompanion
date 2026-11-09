@@ -123,6 +123,9 @@ for what it counts, and sort by any column to see your biggest bonuses first.
 
 **Refresh** asks the server for the latest numbers. The footer shows how long ago they were updated.
 
+Above the table, how many items you've attuned on the account and on this character, with how many reached
+Titanforged, Warforged and Lightforged. These show as soon as the screen opens and update as you attune.
+
 ![Attuned Stats: attributes, physical and spell stats with Total, Misc, Plate, Weapon and Inactive columns](docs/images/attuned-stats.png)
 
 ### Attunable Items
@@ -142,7 +145,7 @@ your advanced choices kept for next time.
 - **Attunement:** Not Attuned, Attuned, or the best forge level reached (TF, WF, LF). Pick several to combine them.
   The mode follows: an attuned level switches Attunable (Char) to Attuned (Char), and mixing in Not Attuned
   switches to All.
-- **Bind:** BoP or BoE.
+- **Bind:** Bind on Pickup, Bind on Equip or Bind on Account. Pick several to combine them.
 - **Source:** items that drop in dungeons, raids or the open world.
 - **Expansion:** Classic, The Burning Crusade or Wrath of the Lich King, from the zones the item comes from (or
   its required level when none is known).

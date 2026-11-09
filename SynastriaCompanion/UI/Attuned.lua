@@ -1,18 +1,22 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Attuned Stats: the stats attuned items give, totaled for this character beside each part (Misc, its armor type,
--- Weapon) and what's attuned but inactive. Replaces the window the game opens with OpenAttuneSummary.
+-- Attuned Stats: how many items are attuned on the account and on this character, then the stats attuned items
+-- give, totaled for this character beside each part (Misc, its armor type, Weapon) and what's attuned but inactive.
+-- Replaces the window the game opens with OpenAttuneSummary.
 local AttunedUI = {}
 SC.AttunedUI = AttunedUI
 
 local S = SC.Style
 local C = S.colors
 local Attuned = SC.Attuned
-local PAD, CONTROL_H = S.PAD, S.CONTROL_H
+local FORGES = SC.Attune.FORGES
+local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
+local COUNT_ROW_H = 18
 
 local panel, tbl, cols, state
 local KEYS = { "total", "misc", "armor", "weapon", "inactive" }
+local counts = {}
 
 local function commas(n)
 	local text = tostring(n)
@@ -77,8 +81,19 @@ local function ago(t)
 	return ("%d Hr Ago"):format(secs / 3600)
 end
 
+-- The Account and This Character rows: attuned, then each forge level in its color.
+local function refreshCounts()
+	for r, scope in ipairs(Attuned.SCOPES) do
+		Attuned.Count(scope.flags, counts)
+		for c, fs in ipairs(panel.counts[r]) do
+			fs:SetText(commas(counts[c]) .. " " .. S.Hex(c == 1 and C.good or C.forge[c - 1], FORGES[c - 1]))
+		end
+	end
+end
+
 local function refresh()
 	local rows
+	if panel.counts then refreshCounts() end
 	cols, rows = Attuned.Read()
 	for _, key in ipairs(KEYS) do
 		local col = cols[key]
@@ -116,6 +131,28 @@ local function create(parent, width, height)
 		onClick = function() panel.status:SetText(S.Hex(C.muted, "Asking the Server...")) end })
 
 	local top = -PAD
+	if Attuned.CanCount() then
+		-- a label column, then attuned and the three forge levels; the label column takes the spare width
+		local inner = width - 2 * PAD
+		local cellW = math.floor(inner / 5)
+		local labelW = inner - 4 * cellW
+		panel.counts = {}
+		for r, scope in ipairs(Attuned.SCOPES) do
+			local y = top - (r - 0.5) * COUNT_ROW_H
+			local label = S.Text(panel, "small", C.muted)
+			label:SetPoint("LEFT", panel, "TOPLEFT", PAD, y)
+			label:SetText(scope.label)
+			local cells = {}
+			for c = 1, 4 do
+				local fs = S.Text(panel, "small")
+				fs:SetPoint("LEFT", panel, "TOPLEFT", PAD + labelW + (c - 1) * cellW, y)
+				fs:SetWidth(cellW)
+				cells[c] = fs
+			end
+			panel.counts[r] = cells
+		end
+		top = top - #Attuned.SCOPES * COUNT_ROW_H - GAP
+	end
 	local footerH = PAD + CONTROL_H + PAD
 	tbl = SC.Table.New(panel, "SynastriaCompanionAttunedTable", width - 2 * PAD, height + top - footerH, {
 		columns = COLUMNS, rowH = 20, cell = cell,

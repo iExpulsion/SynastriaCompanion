@@ -89,3 +89,21 @@ function Attuned.Received()
 	Attuned.receivedAt = time()
 	if Attuned.onChange then Attuned.onChange() end
 end
+
+-- How many items are attuned, and at each forge level, which the game counts without the stats being sent.
+Attuned.SCOPES = { { flags = 0, label = "Account" }, { flags = 1, label = "This Character" } }
+
+function Attuned.CanCount()
+	return CalculateAttunedCount ~= nil
+end
+
+-- For a scope's flags: { attuned, titanforged, warforged, lightforged }, written into `into`.
+function Attuned.Count(flags, into)
+	local n, tf, wf, lf = CalculateAttunedCount(flags)
+	into[1], into[2], into[3], into[4] = n or 0, tf or 0, wf or 0, lf or 0
+	return into
+end
+
+SC:OnCustomEvent("SYNASTRIA_ITEM_ATTUNED", function()
+	if Attuned.onChange then Attuned.onChange() end
+end)

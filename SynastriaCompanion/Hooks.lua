@@ -84,3 +84,14 @@ ticker:SetScript("OnUpdate", function(_, dt)
 end)
 
 SC:On("PLAYER_ENTERING_WORLD", Hooks.Check)
+
+-- The server's Lua and data arrive in a different order on a fresh login than on a reload; SynastriaSafeInvoke runs
+-- this once both are in.
+function SynastriaCompanion_OnReady()
+	SC.ready = true
+	Hooks.Check()
+end
+
+SC:OnLoad(function()
+	if SynastriaSafeInvoke then SynastriaSafeInvoke("SynastriaCompanion_OnReady") end
+end)

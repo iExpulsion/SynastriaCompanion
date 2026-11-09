@@ -44,8 +44,9 @@ local AFFIX_FORGES = {
 	{ value = 3, text = "LF", width = 36, tooltip = "Count affixes attuned at Lightforged." },
 }
 local BINDS = {
-	{ value = Attune.BOP, text = "BoP", width = 44, tooltip = "Bind on pickup." },
-	{ value = Attune.BOE, text = "BoE", width = 44, tooltip = "Bind on equip, bind on use, or not bound." },
+	{ value = Attune.BOP, text = "Pickup", width = 56, tooltip = "Items that bind on pickup." },
+	{ value = Attune.BOE, text = "Equip", width = 50, tooltip = "Items that bind on equip." },
+	{ value = Attune.BOA, text = "Account", width = 64, tooltip = "Items that bind to your account." },
 }
 local KINDS = {
 	{ value = ZoneInfo.DUNGEON, text = "Dungeon", width = 64, tooltip = "Items that drop in a dungeon." },
@@ -258,21 +259,14 @@ local function fitWidths(options, area)
 end
 
 -- A row of joined buttons for one filter in the drawer, filling `area` pixels from (x, y). kind "multi" keeps a bit
--- mask in filter[key] (nil: any); "single" keeps the chosen value, with 0 stored as nil; "clearable" is single,
--- and clicking the chosen button again clears it. Returns its buttons.
+-- mask in filter[key] (nil: any); "single" keeps the chosen value, with 0 stored as nil. Returns its buttons.
 local function buttonRow(key, options, kind, x, y, area)
 	local group, prev = {}, nil
 	for i, width in ipairs(fitWidths(options, area)) do
 		local o = options[i]
 		local b = S.Button(drawer, o.text, "secondary", width, function()
-			local value
-			if kind == "multi" then
-				value = bit.bxor(filter[key] or 0, o.value)
-			elseif kind == "clearable" and filter[key] == o.value then
-				value = 0
-			else
-				value = o.value
-			end
+			local value = o.value
+			if kind == "multi" then value = bit.bxor(filter[key] or 0, o.value) end
 			if key == "level" then filter.mode = Attune.ModeForLevel(filter.mode, value) end
 			set(key, value ~= 0 and value or nil)
 		end, o.tooltip)
@@ -405,7 +399,7 @@ local function createDrawer(window)
 	endSection()
 
 	section("Bind")
-	row("bind", BINDS, "clearable")
+	row("bind", BINDS, "multi")
 	endSection()
 
 	-- the filters that need the game's loot data

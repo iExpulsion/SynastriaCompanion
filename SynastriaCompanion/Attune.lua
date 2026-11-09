@@ -51,14 +51,19 @@ Attune.FORGES = { [0] = "Attuned", "Titanforged", "Warforged", "Lightforged" }
 
 local function band(a, b) return bit.band(a or 0, b) ~= 0 end
 
+-- Bind flags, for item.bind and the Bind filter; an item with none of them shows only while no bind is picked.
+Attune.BOP, Attune.BOE, Attune.BOA = 1, 2, 4
+
 local function readItem(id)
 	local name, _, quality, ilvl, req, _, _, _, equipLoc, icon = GetItemInfoCustom(id)
 	local item
 	if name then
-		local tags1, tags2 = GetItemTagsCustom(id)
+		local tags1, tags2, tags3 = GetItemTagsCustom(id)
 		item = { id = id, name = name, quality = quality or 1, ilvl = ilvl or 0, req = req or 0,
 			equipLoc = equipLoc or "", icon = icon, disabled = band(tags1, 32), mythic = band(tags1, 128),
-			affix = band(tags2, 1), prop = band(tags2, 8), tracksAffix = band(tags2, 16), bop = band(tags2, 0x80) }
+			affix = band(tags2, 1), prop = band(tags2, 8), tracksAffix = band(tags2, 16),
+			bind = (band(tags2, 0x80) and Attune.BOP or 0) + (band(tags3, 1) and Attune.BOE or 0)
+				+ (band(tags3, 2) and Attune.BOA or 0) }
 		item.upper = item.name:upper()
 	end
 	return item
@@ -76,7 +81,13 @@ local waiting = {}
 
 -- Whether Synastria's item data has come in; a scan before then would find no item info and keep an empty cache.
 function Attune.DataReady()
-	return GetCustomGameData ~= nil and (GetCustomGameData(41, 0) or 0) ~= 0
+	local ready
+	if SynastriaSafeInvoke then
+		ready = SC.ready == true
+	else
+		ready = GetCustomGameData ~= nil and (GetCustomGameData(41, 0) or 0) ~= 0
+	end
+	return ready
 end
 
 -- Builds the cache over several frames, then calls every onDone. Calls it at once when the cache is ready. Waits
@@ -285,8 +296,19 @@ function Attune.CanAttune(item, classId)
 	return ok
 end
 
+-- An item's best attune: -1 not attuned, 0 attuned, 1 to 3 Titanforged to Lightforged.
+local function forgeOf(id)
+	local forge
+	if GetItemAttuneForge then
+		forge = GetItemAttuneForge(id) or -1
+	else
+		forge = HasAttunedAnyVariantOfItem(id) and 0 or -1
+	end
+	return forge
+end
+
 function Attune.IsAttuned(item)
-	return HasAttunedAnyVariantOfItem(item.id) and true or false
+	return forgeOf(item.id) >= 0
 end
 
 function Attune.SourceCount(item)
@@ -296,11 +318,9 @@ function Attune.SourceCount(item)
 	return item.sources
 end
 
--- Index into Attune.FORGES for an attuned item, -1 for one that isn't.
+-- Index into Attune.FORGES for an item in a query's result, -1 for one that isn't attuned.
 function Attune.Forge(item)
-	local forge = -1
-	if item.attuned then forge = math.max(0, GetItemAttuneForge and GetItemAttuneForge(item.id) or 0) end
-	return forge
+	return item.forge or -1
 end
 
 -- Whether a mode can list attuned items, which is when the Forge column means something.
@@ -313,7 +333,6 @@ local function tri(want, has)
 end
 
 -- Bit flags for the multi-choice filters; none set means any.
-Attune.BOP, Attune.BOE = 1, 2
 Attune.NOT_ATTUNED = 1
 
 -- The mode an Attunement Level choice needs: attuned levels need a mode that lists attuned items (keeping Char or
@@ -331,9 +350,9 @@ function Attune.ModeForLevel(mode, level)
 end
 
 -- The Attunement Level flag for an item: Not Attuned, or 2, 4, 8, 16 for Attuned through Lightforged.
-local function levelFlag(item, isAttuned)
+local function levelFlag(forge)
 	local flag = Attune.NOT_ATTUNED
-	if isAttuned then flag = bit.lshift(2, math.max(0, GetItemAttuneForge and GetItemAttuneForge(item.id) or 0)) end
+	if forge >= 0 then flag = bit.lshift(2, forge) end
 	return flag
 end
 
@@ -375,13 +394,13 @@ function Attune.AdvancedCount(f)
 	return n
 end
 
-local function matches(item, f, isAttuned)
+local function matches(item, f, forge)
 	local zone = f.zone and ALL_ZONE_LIST and ALL_ZONE_LIST[f.zone]
 	return (f.rarity == nil or math.min(6, item.quality) == f.rarity)
 		and (f.slot == nil or slotOf[item.equipLoc] == f.slot)
-		and anyOf(f.bind, item.bop and Attune.BOP or Attune.BOE)
+		and anyOf(f.bind, item.bind)
 		and anyOf(f.kind, item.kind) and anyOf(f.exp, item.exp)
-		and (f.level == nil or anyOf(f.level, levelFlag(item, isAttuned)))
+		and (f.level == nil or anyOf(f.level, levelFlag(forge)))
 		and tri(f.mythic, item.mythic) and affixMatches(item, f)
 		and (f.sources == nil or tri(f.sources, Attune.SourceCount(item) > 5))
 		and (f.minReq == nil or item.req >= f.minReq) and (f.maxReq == nil or item.req <= f.maxReq)
@@ -397,13 +416,14 @@ function Attune.Query(f)
 	local mode = f.mode or 0
 	f.nameUpper = (f.name and f.name ~= "") and f.name:upper() or nil
 	for _, item in ipairs(Attune.items or {}) do
-		local isAttuned = Attune.IsAttuned(item)
+		local forge = forgeOf(item.id)
+		local isAttuned = forge >= 0
 		if (isAttuned or not item.disabled) and (not CHAR_POOL[mode] or Attune.CanAttune(item, f.class))
-			and matches(item, f, isAttuned) then
+			and matches(item, f, forge) then
 			pool = pool + 1
 			if isAttuned then attuned = attuned + 1 end
 			if not (UNATTUNED_ONLY[mode] and isAttuned) and not (ATTUNED_ONLY[mode] and not isAttuned) then
-				item.attuned = isAttuned
+				item.attuned, item.forge = isAttuned, forge
 				out[#out + 1] = item
 			end
 		end
