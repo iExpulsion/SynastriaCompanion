@@ -2,7 +2,7 @@
 
 Cleaner replacements for Synastria's own windows (WoW 3.3.5a), all in one window that matches
 [Synastria Build Suite](https://github.com/iExpulsion/SynastriaBuildSuite): your perks, transmog, your attuned stats, the
-attunable item search, the auto loot filter, the resource bank, the item database and the leaderboards. When the game would open
+attunable item search, the auto loot filter, the resource bank, the item database and the leaderboards, plus your friends' attunes. When the game would open
 one of its windows, Companion opens instead.
 
 ![The Synastria Companion window on Attunable Items: the screens in the sidebar, filters across the top, and every attunable item in a sortable table](docs/images/attunable-items.png)
@@ -28,6 +28,8 @@ one of its windows, Companion opens instead.
 - **Drop Chains:** follow an item to the creature that drops it, see the rest of that creature's loot, and step
   back.
 - **Your Leaderboard Place:** every board in one list, with your rank highlighted and the speed buff times on top.
+- **Friends' Attunes:** the attune counts of friends, guildmates and your group who use Companion, and item
+  tooltips that say which of them still need that item.
 - **The Game's Window When You Want It:** the **Game Window** button opens the game's own window for any screen.
 - **Themes:** the flat Material look, Classic for the game's own frames and buttons, or Cognac's painted gold
   frames on dark glass.
@@ -222,6 +224,19 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 
 ![Leaderboards: the board list by category, and the Total Attunes board's ranked players and scores](docs/images/leaderboards.png)
 
+### Friends
+
+Friends, guildmates and group members who also use Companion share their attune counts: items attuned on their
+account and on their character, and how many are Titanforged, Warforged and Lightforged. The list shows who's
+online first, with your own characters marked You and Alt. **Refresh** asks everyone online again; right-click
+a player to forget them.
+
+Hover an item anyone could attune and its tooltip lists which of them still need it: not attuned at all, or
+attuned but not this variant. It's handy for deciding who gets a drop or a Bind on Equip item.
+
+Sharing is on by default and covers only your attune counts and whether you need an item. Untick **Share My
+Attunes** (or type `/scomp share`) to stop; you still see what others share.
+
 ## Commands
 
 `/companion` works everywhere `/scomp` does.
@@ -237,6 +252,8 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp bank` | Opens the Resource Bank |
 | `/scomp lootdb` | Opens the Item Database (also `itemdb`) |
 | `/scomp leaderboards` | Opens Leaderboards |
+| `/scomp friends` | Opens Friends |
+| `/scomp share` | Turns sharing your attunes with friends, guild and group off or back on |
 | `/scomp minimap` | Hides or shows the minimap button |
 | `/scomp minimap reset` | Puts the minimap button back on the minimap |
 | `/scomp reset` | Moves the window back to the top middle of the screen |

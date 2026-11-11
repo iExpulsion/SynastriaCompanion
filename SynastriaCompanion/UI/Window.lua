@@ -22,7 +22,7 @@ Window.SECTIONS = {
 	{ label = "Character", screens = { "perks", "transmog" } },
 	{ label = "Attunes", screens = { "attuned", "attunable" } },
 	{ label = "Loot", screens = { "lootfilter", "bank", "lootdb" } },
-	{ label = "Community", screens = { "leaderboards" } },
+	{ label = "Community", screens = { "leaderboards", "friends" } },
 }
 
 -- The screens in sidebar order, each with its section label; screens no section names come last. It's asked for

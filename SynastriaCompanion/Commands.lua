@@ -26,6 +26,7 @@ local function usage()
 	SC:Print("/scomp theme <name> switches the look after a reload: %s.", themeNames())
 	SC:Print("/scomp pixel: whether windows snap to whole screen pixels, for crisp borders.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
+	SC:Print("/scomp share: whether friends, your guild and your group see your attunes and which items you need.")
 end
 
 SLASH_SYNASTRIACOMPANION1 = "/scomp"
@@ -54,6 +55,8 @@ SlashCmdList.SYNASTRIACOMPANION = function(msg)
 		SC.SetPixelScale(not SC.db.pixelScale)
 		SC:Print(SC.db.pixelScale and "Windows snap to whole screen pixels." or
 			"Windows follow the UI scale exactly; borders may blur at some scales.")
+	elseif cmd == "share" then
+		SC.Friends.SetShare(not SC.db.share)
 	elseif cmd == "replace" and replaced and (value == "on" or value == "off") then
 		SC.db.replace[replaced.key] = value == "on"
 		SC:Print("%s: %s.", replaced.label, value == "on" and "opens here" or "opens the game's window")
