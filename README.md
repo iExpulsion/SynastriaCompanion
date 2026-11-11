@@ -213,17 +213,6 @@ items and source lines in tooltips.
 
 ![Item Database: a search for "heart" with each item's type, item level and attune status](docs/images/item-database.png)
 
-### Leaderboards
-
-Every board in one list: the general boards, then dungeons and raids by expansion (WotLK, TBC, Classic and their
-Mythic versions), then prestiged runs. Click an expansion to open its boards.
-
-Each board shows its ranks with the player, their account, the score (a count, a time or a percentage) and, on
-boards that have one, the date. Your own place is highlighted and scrolled into view, and the times for the speed
-buff show at the top. **Refresh** asks for a board again; the server answers at most once a minute per board.
-
-![Leaderboards: the board list by category, and the Total Attunes board's ranked players and scores](docs/images/leaderboards.png)
-
 ### Friends
 
 Friends, guildmates and group members who also use Companion share their attune counts: items attuned on their
@@ -236,6 +225,17 @@ attuned but not this variant. It's handy for deciding who gets a drop or a Bind 
 
 Sharing is on by default and covers only your attune counts and whether you need an item. Untick **Share My
 Attunes** (or type `/scomp share`) to stop; you still see what others share.
+
+### Leaderboards
+
+Every board in one list: the general boards, then dungeons and raids by expansion (WotLK, TBC, Classic and their
+Mythic versions), then prestiged runs. Click an expansion to open its boards.
+
+Each board shows its ranks with the player, their account, the score (a count, a time or a percentage) and, on
+boards that have one, the date. Your own place is highlighted and scrolled into view, and the times for the speed
+buff show at the top. **Refresh** asks for a board again; the server answers at most once a minute per board.
+
+![Leaderboards: the board list by category, and the Total Attunes board's ranked players and scores](docs/images/leaderboards.png)
 
 ## Commands
 
