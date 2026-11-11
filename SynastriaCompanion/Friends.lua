@@ -3,13 +3,15 @@ local SC = NS.SC
 
 -- Friends: attune counts shared over addon messages with friends, guildmates and the group, kept account-wide, and
 -- asking them who still needs an item. Messages are fields joined by ";", the second the protocol version:
--- H asks for statuses, S is a status, Q asks who needs an item (by item string), N is a whispered "I need it".
+-- S is a status, R a status that asks for theirs back, H asks without one (sharing is off), Q asks who needs an
+-- item (by item string), N is a whispered "I need it".
 local Friends = { queries = {} }
 SC.Friends = Friends
 
 local PREFIX, VERSION = "SComp", "1"
-local SEND_GAP = 0.2
+local SEND_GAP, BURST, BREAK = 0.2, 30, 1.5
 local LOGIN_DELAY, GROUP_DELAY, ONLINE_DELAY, ATTUNED_DELAY = 5, 3, 10, 30
+local HOVER_DELAY = 0.5
 local HELLO_COOLDOWN = 60
 local QUERY_COOLDOWN, ANSWER_TTL = 120, 600
 local FORGET_AFTER = 60 * 86400
@@ -20,17 +22,22 @@ local function me()
 	return UnitName("player")
 end
 
--- Outgoing messages, one per SEND_GAP; the frame runs only while something waits.
+-- Outgoing messages, one per SEND_GAP. The server mutes a character's chat for a while after too many addon
+-- messages in a row, each within a second of the last, counting every addon's; so after BURST quick ones the queue
+-- waits BREAK, which starts the server's count over. The frame runs only while something waits.
 local queue = {}
 local sender = CreateFrame("Frame")
 sender:Hide()
-local sinceSend = 0
-sender:SetScript("OnUpdate", function(self, dt)
-	sinceSend = sinceSend + dt
-	if sinceSend >= SEND_GAP then
-		sinceSend = 0
+local lastSent, burst = -math.huge, 0
+sender:SetScript("OnUpdate", function(self)
+	local since = GetTime() - lastSent
+	if since >= BREAK then burst = 0 end
+	if since >= (burst >= BURST and BREAK or SEND_GAP) then
 		local m = table.remove(queue, 1)
-		if m then SendAddonMessage(PREFIX, m[1], m[2], m[3]) end
+		if m then
+			SendAddonMessage(PREFIX, m[1], m[2], m[3])
+			burst, lastSent = burst + 1, GetTime()
+		end
 		if #queue == 0 then self:Hide() end
 	end
 end)
@@ -138,14 +145,22 @@ function Friends.Status()
 	return msg
 end
 
--- Sends this character's status (if shared), and with hello asks everyone for theirs.
-function Friends.SendStatus(hello, groupOnly)
+-- What asks someone for their status: this character's own status marked R when it's shared, else a bare H.
+local function greeting()
 	local status = SC.db.share and Friends.Status()
-	if status then Friends.Broadcast(status, groupOnly) end
+	return status and ("R" .. status:sub(2)) or ("H;" .. VERSION)
+end
+
+-- Sends this character's status (if shared); with hello the same message asks everyone for theirs.
+function Friends.SendStatus(hello, groupOnly)
+	local msg
 	if hello then
-		Friends.Broadcast("H;" .. VERSION, groupOnly)
+		msg = greeting()
 		if not groupOnly then Friends.helloAt = time() end
+	else
+		msg = SC.db.share and Friends.Status()
 	end
+	if msg then Friends.Broadcast(msg, groupOnly) end
 end
 
 -- Asks everyone again, at most once a minute; whether it asked.
@@ -211,7 +226,35 @@ function Friends.Need(str)
 	if progress and progress < 100 then return forge, progress end
 end
 
--- Asks who needs the item in a link, unless it was asked lately or nobody could attune it. Returns its item string.
+-- Tooltips: the item each one shows and the names already listed on it, so late answers are appended once.
+local shown = {}
+
+local function onScreen(str)
+	for tt, entry in pairs(shown) do
+		if entry.item == str and tt:IsShown() then return true end
+	end
+	return false
+end
+
+-- One pending question: it goes out once a tooltip has shown its item for HOVER_DELAY, so moving the mouse over a
+-- bag full of items asks only about the one it stops on. A tooltip set again to the same item keeps the wait going.
+local pendingQuery, queryAt = nil, 0
+local querier = CreateFrame("Frame")
+querier:Hide()
+querier:SetScript("OnUpdate", function(self)
+	if GetTime() >= queryAt then
+		self:Hide()
+		local str = pendingQuery
+		pendingQuery = nil
+		if str and onScreen(str) then
+			Friends.queries[str].asked = time()
+			Friends.Broadcast("Q;" .. VERSION .. ";" .. str)
+		end
+	end
+end)
+
+-- Asks who needs the item in a link, once its tooltip stays up, unless it was asked lately or nobody could attune
+-- it. Returns its item string.
 function Friends.Ask(link)
 	local str = itemString(link)
 	local id = str and itemId(str)
@@ -219,9 +262,9 @@ function Friends.Ask(link)
 	if attunable then
 		local q = Friends.queries[str] or { asked = 0, answers = {} }
 		Friends.queries[str] = q
-		if time() - q.asked >= QUERY_COOLDOWN then
-			q.asked = time()
-			Friends.Broadcast("Q;" .. VERSION .. ";" .. str)
+		if time() - q.asked >= QUERY_COOLDOWN and pendingQuery ~= str then
+			pendingQuery, queryAt = str, GetTime() + HOVER_DELAY
+			querier:Show()
 		end
 	end
 	return attunable and str or nil
@@ -250,9 +293,6 @@ function Friends.NeedText(forge, progress)
 	end
 	return text
 end
-
--- Tooltips: the item each one shows and the names already listed on it, so late answers are appended once.
-local shown = {}
 
 local function addAnswer(tt, entry, a)
 	if not entry.header then
@@ -305,19 +345,27 @@ end
 -- When each player who asked for statuses was last answered, so asking over and over gets one answer a minute.
 local repliedAt = {}
 
-function Friends.Receive(prefix, msg, _, from)
-	if prefix == PREFIX and from and from ~= me() then
+local function reply(from)
+	local status = SC.db.share and time() - (repliedAt[from] or 0) >= HELLO_COOLDOWN and Friends.Status()
+	if status then
+		repliedAt[from] = time()
+		send(status, "WHISPER", from)
+	end
+end
+
+-- Messages from the guild and group channels come from members; a whisper counts only from a friend, a guildmate
+-- or someone in the group, so strangers can't add rows or make this character answer them.
+function Friends.Receive(prefix, msg, channel, from)
+	local known = from and (channel ~= "WHISPER" or Friends.Relations()[from] ~= nil)
+	if prefix == PREFIX and known and from ~= me() then
 		local f = { strsplit(";", msg) }
 		local kind, version = f[1], f[2]
 		if version == VERSION then
-			if kind == "H" and SC.db.share and time() - (repliedAt[from] or 0) >= HELLO_COOLDOWN then
-				local status = Friends.Status()
-				if status then
-					repliedAt[from] = time()
-					send(status, "WHISPER", from)
-				end
-			elseif kind == "S" then
+			if kind == "H" then
+				reply(from)
+			elseif kind == "S" or kind == "R" then
 				store(from, f[3], f[4], { f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12] }, nil, f[13])
+				if kind == "R" then reply(from) end
 			elseif kind == "Q" and SC.db.share and f[3] then
 				local forge, progress = Friends.Need(f[3])
 				if forge then send(table.concat({ "N", VERSION, f[3], forge, progress }, ";"), "WHISPER", from) end
@@ -437,9 +485,7 @@ asker:SetScript("OnUpdate", function(self)
 	for name, at in pairs(askAt) do
 		if now >= at then
 			askAt[name] = nil
-			local status = SC.db.share and Friends.Status()
-			if status then send(status, "WHISPER", name) end
-			send("H;" .. VERSION, "WHISPER", name)
+			send(greeting(), "WHISPER", name)
 		else
 			waiting = true
 		end
