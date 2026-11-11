@@ -29,7 +29,7 @@ local COLUMNS = {
 	{ key = "seen", label = "Updated", width = 84, defaultDesc = true },
 }
 
-local RELATION_ORDER = { You = 1, Alt = 2, Group = 3, Friend = 4, Guild = 5, [""] = 6 }
+local RELATION_ORDER = Friends.RELATION_ORDER
 
 local function count(n)
 	return SC.Leaderboards.ValueText(n or 0, 1)
@@ -133,16 +133,21 @@ local function tooltip(tt, row)
 	tt:AddDoubleLine("Account", count(c[1]), 1, 1, 1, 1, 1, 1)
 	tt:AddDoubleLine("   Titanforged / Warforged / Lightforged", count(c[2]) .. " / " .. count(c[3]) .. " / " .. count(c[4]),
 		0.7, 0.7, 0.7, 1, 1, 1)
-	tt:AddDoubleLine("Character", count(c[5]), 1, 1, 1, 1, 1, 1)
+	tt:AddDoubleLine(row.name, count(c[5]), 1, 1, 1, 1, 1, 1)
 	tt:AddDoubleLine("   Titanforged / Warforged / Lightforged", count(c[6]) .. " / " .. count(c[7]) .. " / " .. count(c[8]),
 		0.7, 0.7, 0.7, 1, 1, 1)
+	if #row.others > 0 then
+		tt:AddLine(" ")
+		tt:AddLine((row.own and "Your other characters: " or "Their other characters: ") .. table.concat(row.others, ", "),
+			1, 1, 1, true)
+	end
 	tt:AddLine(" ")
 	tt:AddLine("Updated " .. ago(row.seen):lower() .. ".", unpack(C.muted))
-	if row.relation ~= "You" then tt:AddLine("Right-click to forget them.", unpack(C.muted)) end
+	if not row.own then tt:AddLine("Right-click to forget them.", unpack(C.muted)) end
 end
 
 local function onClick(row, button)
-	if button == "RightButton" and row.relation ~= "You" then Friends.Forget(row.name) end
+	if button == "RightButton" and not row.own then Friends.Forget(row) end
 end
 
 local function create(parent, width, height)

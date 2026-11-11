@@ -217,8 +217,9 @@ items and source lines in tooltips.
 
 Friends, guildmates and group members who also use Companion share their attune counts: items attuned on their
 account and on their character, and how many are Titanforged, Warforged and Lightforged. The list shows who's
-online first, with your own characters marked You and Alt. **Refresh** asks everyone online again; right-click
-a player to forget them.
+online first. Each player gets one row however many characters they play, shown as the one they're on (or played
+last), with the others in the tooltip; your own characters share the You row. **Refresh** asks everyone online
+again; right-click a player to forget them.
 
 Hover an item anyone could attune and its tooltip lists which of them still need it: not attuned at all, or
 attuned but not this variant. It's handy for deciding who gets a drop or a Bind on Equip item.

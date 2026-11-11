@@ -97,12 +97,23 @@ function Friends.Broadcast(msg, groupOnly)
 	end
 end
 
--- Records: name -> { class (token), level, counts = { account, TF, WF, LF, character, TF, WF, LF }, seen, own }.
-local function store(name, class, level, counts, own)
+-- A random ID made once and kept in saved data, which every character on the WoW account shares, so others can
+-- tell which characters are one player's.
+function Friends.AccountId()
+	if not SC.db.accountId then
+		SC.db.accountId = ("%08x%06x"):format(time() % 0x100000000, math.random(0, 0xffffff))
+	end
+	return SC.db.accountId
+end
+
+-- Records: name -> { class (token), level, counts = { account, TF, WF, LF, character, TF, WF, LF }, seen, own,
+-- account (the sender's account ID) }.
+local function store(name, class, level, counts, own, account)
 	local rec = SC.db.friends[name] or { counts = {} }
 	SC.db.friends[name] = rec
 	rec.class, rec.level, rec.seen = class, tonumber(level) or 0, time()
 	rec.own = own or rec.own or nil
+	if account and account ~= "" then rec.account = account end
 	for i = 1, 8 do rec.counts[i] = tonumber(counts[i]) or 0 end
 	if Friends.onChange then Friends.onChange() end
 	return rec
@@ -119,8 +130,10 @@ function Friends.Status()
 		for i = 1, 4 do both[i], both[i + 4] = accBuf[i], charBuf[i] end
 		local _, class = UnitClass("player")
 		local level = UnitLevel("player") or 0
-		store(me(), class, level, both, true)
-		msg = table.concat({ "S", VERSION, class or "", level, unpack(both) }, ";")
+		local account = Friends.AccountId()
+		store(me(), class, level, both, true, account)
+		msg = table.concat({ "S", VERSION, class or "", level, both[1], both[2], both[3], both[4], both[5], both[6],
+			both[7], both[8], account }, ";")
 	end
 	return msg
 end
@@ -304,7 +317,7 @@ function Friends.Receive(prefix, msg, _, from)
 					send(status, "WHISPER", from)
 				end
 			elseif kind == "S" then
-				store(from, f[3], f[4], { f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12] })
+				store(from, f[3], f[4], { f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12] }, nil, f[13])
 			elseif kind == "Q" and SC.db.share and f[3] then
 				local forge, progress = Friends.Need(f[3])
 				if forge then send(table.concat({ "N", VERSION, f[3], forge, progress }, ";"), "WHISPER", from) end
@@ -315,10 +328,28 @@ function Friends.Receive(prefix, msg, _, from)
 	end
 end
 
--- Every record with its relation (You, Alt, Group, Friend, Guild, or "" for someone heard from before) and whether
--- they're online now.
+-- Relations, closest first.
+Friends.RELATION_ORDER = { You = 1, Alt = 2, Group = 3, Friend = 4, Guild = 5, [""] = 6 }
+
+-- Whether character a should stand for its account over b: online first, then this character, then the latest.
+local function shows(a, b)
+	local result
+	if a.online ~= b.online then
+		result = a.online
+	elseif (a.relation == "You") ~= (b.relation == "You") then
+		result = a.relation == "You"
+	else
+		result = (a.seen or 0) > (b.seen or 0)
+	end
+	return result
+end
+
+-- One row per player: their characters that share an account ID (and all of this account's) merged under the one
+-- online or seen last, with the others' names in `others`. A row's relation is the closest any of its characters
+-- has (You, Alt, Group, Friend, Guild, or "" for someone heard from before); online if any of them is.
 function Friends.Rows()
-	local rows, relations, player = {}, Friends.Relations(), me()
+	local rows, byAccount, relations, player = {}, {}, Friends.Relations(), me()
+	local order = Friends.RELATION_ORDER
 	for name, rec in pairs(SC.db.friends) do
 		local rel = relations[name]
 		local relation, online
@@ -329,9 +360,25 @@ function Friends.Rows()
 		else
 			relation, online = rel and rel.relation or "", rel and rel.online or false
 		end
-		rows[#rows + 1] = { name = name, class = rec.class, level = rec.level, counts = rec.counts, seen = rec.seen,
-			relation = relation, online = online, own = rec.own }
+		local char = { name = name, class = rec.class, level = rec.level, counts = rec.counts, seen = rec.seen,
+			relation = relation, online = online, own = rec.own, others = {} }
+		local key = rec.own and "own" or rec.account or ("character:" .. name)
+		local row = byAccount[key]
+		if row and shows(char, row) then
+			char.others, row.others = row.others, nil
+			char.others[#char.others + 1] = row.name
+			if order[row.relation] < order[char.relation] then char.relation = row.relation end
+			char.online = char.online or row.online
+			rows[row.index], char.index, byAccount[key] = char, row.index, char
+		elseif row then
+			row.others[#row.others + 1] = name
+			if order[relation] < order[row.relation] then row.relation = relation end
+		else
+			char.index = #rows + 1
+			rows[char.index], byAccount[key] = char, char
+		end
 	end
+	for _, row in ipairs(rows) do table.sort(row.others) end
 	return rows
 end
 
@@ -344,8 +391,10 @@ function Friends.SetShare(on)
 	if Friends.onChange then Friends.onChange() end
 end
 
-function Friends.Forget(name)
-	SC.db.friends[name] = nil
+-- Forgets a row's player: every character merged into it.
+function Friends.Forget(row)
+	SC.db.friends[row.name] = nil
+	for _, name in ipairs(row.others or {}) do SC.db.friends[name] = nil end
 	if Friends.onChange then Friends.onChange() end
 end
 
@@ -354,6 +403,7 @@ SC:OnLoad(function()
 	for name, rec in pairs(SC.db.friends) do
 		if not rec.seen or now - rec.seen > FORGET_AFTER then SC.db.friends[name] = nil end
 	end
+	Friends.AccountId()
 end)
 
 local greeted, groupSize = false, 0
