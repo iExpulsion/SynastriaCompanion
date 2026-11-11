@@ -9,7 +9,7 @@ SC.Friends = Friends
 
 local PREFIX, VERSION = "SComp", "1"
 local SEND_GAP = 0.2
-local LOGIN_DELAY, GROUP_DELAY, ATTUNED_DELAY = 5, 3, 30
+local LOGIN_DELAY, GROUP_DELAY, ONLINE_DELAY, ATTUNED_DELAY = 5, 3, 10, 30
 local HELLO_COOLDOWN = 60
 local QUERY_COOLDOWN, ANSWER_TTL = 120, 600
 local FORGET_AFTER = 60 * 86400
@@ -425,6 +425,46 @@ local function groupChanged()
 end
 SC:On("PARTY_MEMBERS_CHANGED", groupChanged)
 SC:On("RAID_ROSTER_UPDATE", groupChanged)
+
+-- A friend who comes online (Synastria's friends list follows the account, so also one switching characters) is
+-- whispered this character's status and asked for theirs once their addons have loaded. The first friend list after
+-- login only notes who's on, since the login hello reaches them; a friend who goes offline first isn't asked.
+local onlineNow, onlineBefore, friendsKnown, askAt = {}, {}, false, {}
+local asker = CreateFrame("Frame")
+asker:Hide()
+asker:SetScript("OnUpdate", function(self)
+	local now, waiting = GetTime(), false
+	for name, at in pairs(askAt) do
+		if now >= at then
+			askAt[name] = nil
+			local status = SC.db.share and Friends.Status()
+			if status then send(status, "WHISPER", name) end
+			send("H;" .. VERSION, "WHISPER", name)
+		else
+			waiting = true
+		end
+	end
+	if not waiting then self:Hide() end
+end)
+
+SC:On("FRIENDLIST_UPDATE", function()
+	onlineNow, onlineBefore = onlineBefore, onlineNow
+	wipe(onlineNow)
+	for i = 1, GetNumFriends() do
+		local name, _, _, _, connected = GetFriendInfo(i)
+		if name and connected then
+			onlineNow[name] = true
+			if friendsKnown and not onlineBefore[name] then
+				askAt[name] = GetTime() + ONLINE_DELAY
+				asker:Show()
+			end
+		end
+	end
+	for name in pairs(askAt) do
+		if not onlineNow[name] then askAt[name] = nil end
+	end
+	friendsKnown = true
+end)
 
 SC:On("CHAT_MSG_ADDON", Friends.Receive)
 
