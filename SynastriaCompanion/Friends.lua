@@ -303,9 +303,26 @@ local function addAnswer(tt, entry, a)
 	tt:AddDoubleLine(a.name, Friends.NeedText(a.forge, a.progress), 1, 1, 1, 0.7, 0.7, 0.7)
 end
 
+-- Whether the tooltip shows an item nobody else could be given: soulbound, account bound or a quest item, unless
+-- it's still inside its loot trade window.
+local function bound(tt)
+	local name = tt:GetName()
+	local trade = BIND_TRADE_TIME_REMAINING and BIND_TRADE_TIME_REMAINING:match("^(.-)%%s")
+	local found, tradable = false, false
+	for i = 2, tt:NumLines() do
+		local region = _G[name .. "TextLeft" .. i]
+		local text = region and region:GetText()
+		if text then
+			found = found or text == ITEM_SOULBOUND or text == ITEM_ACCOUNTBOUND or text == ITEM_BIND_QUEST
+			tradable = tradable or (trade ~= nil and trade ~= "" and text:find(trade, 1, true) == 1)
+		end
+	end
+	return found and not tradable
+end
+
 local function onTooltip(tt)
 	local _, link = tt:GetItem()
-	local str = Friends.Ask(link)
+	local str = not bound(tt) and Friends.Ask(link) or nil
 	local entry = shown[tt] or { names = {} }
 	shown[tt] = entry
 	entry.item, entry.header = str, false
