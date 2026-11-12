@@ -2,7 +2,7 @@
 ## Title: Synastria Companion
 ## Notes: Cleaner replacements for Synastria's own windows: perks, transmog, attunes, auto loot, the resource bank, the item database and leaderboards, plus friends' attunes. /scomp
 ## Author: Expulsion
-## Version: 1.7.0
+## Version: 1.7.1
 ## SavedVariables: SynastriaCompanionDB
 
 Libs\LibStub\LibStub.lua
