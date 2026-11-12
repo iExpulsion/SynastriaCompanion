@@ -134,6 +134,27 @@ local function createThemePicker(bar, anchor)
 	picker:SetOptions(options)
 	picker:SetText(inUse or "")
 	picker:SetPoint("LEFT", label, "RIGHT", S.GAP, 0)
+	return picker
+end
+
+-- The size picker: the window's scale on top of the UI scale, for big screens.
+local function createSizePicker(bar, anchor)
+	local label = S.Text(bar, "small", C.muted)
+	label:SetPoint("LEFT", anchor, "RIGHT", 2 * S.GAP, 0)
+	label:SetText("Size")
+	local options = {}
+	for _, scale in ipairs(SC.WINDOW_SCALES) do
+		options[#options + 1] = { value = scale, text = SC.ScaleLabel(scale) }
+	end
+	local picker
+	picker = S.Dropdown(bar, 64, function(scale)
+		SC.SetWindowScale(scale)
+		picker:SetText(SC.ScaleLabel(scale))
+	end)
+	picker:SetOptions(options)
+	picker:SetText(SC.ScaleLabel(SC.db.windowScale))
+	picker:SetPoint("LEFT", label, "RIGHT", S.GAP, 0)
+	return picker
 end
 
 local function createTitleBar(f, edge)
@@ -161,7 +182,7 @@ local function createTitleBar(f, edge)
 	local version = S.Text(bar, "small", C.muted)
 	version:SetPoint("LEFT", title, "RIGHT", S.GAP, 0)
 	version:SetText("v" .. SC.version)
-	createThemePicker(bar, version)
+	f.sizePicker = createSizePicker(bar, createThemePicker(bar, version))
 
 	local inset = (TITLE_H - S.CONTROL_H) / 2
 	local close = S.Button(bar, "Close", "ghost", 56, function() f:Hide() end)
@@ -298,6 +319,17 @@ end
 function Window.ResetPosition()
 	SC.db.window = {}
 	if frame then
+		placeDefault(frame)
+		SC.SnapPosition(frame)
+	end
+end
+
+-- After the window scale changes: a window at the default spot goes back to it at its new size, and a moved one
+-- saves where it now is in its new units.
+function Window.Rescaled()
+	if frame and SC.db.window.point then
+		savePosition(frame)
+	elseif frame then
 		placeDefault(frame)
 		SC.SnapPosition(frame)
 	end

@@ -24,6 +24,7 @@ local function usage()
 	SC:Print("/scomp minimap shows or hides the minimap button, and /scomp minimap reset puts it back on the minimap.")
 	SC:Print("/scomp reset moves the window back to the top middle of the screen.")
 	SC:Print("/scomp theme <name> switches the look after a reload: %s.", themeNames())
+	SC:Print("/scomp scale <percent> makes the windows bigger or smaller, such as /scomp scale 150.")
 	SC:Print("/scomp pixel: whether windows snap to whole screen pixels, for crisp borders.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
 	SC:Print("/scomp share: whether friends, your guild and your group see your attunes and which items you need.")
@@ -51,6 +52,12 @@ SlashCmdList.SYNASTRIACOMPANION = function(msg)
 		SC:Print("Theme: %s. /reload if it hasn't switched yet.", arg)
 	elseif cmd == "theme" then
 		SC:Print("Theme: %s. Themes: %s.", SC.Style.Skin(), themeNames())
+	elseif cmd == "scale" and SC.SetWindowScale(tonumber(arg) and tonumber(arg) / 100) then
+		local f = SC.Window.Frame()
+		if f then f.sizePicker:SetText(SC.ScaleLabel(SC.db.windowScale)) end
+		SC:Print("Window size: %s.", SC.ScaleLabel(SC.db.windowScale))
+	elseif cmd == "scale" then
+		SC:Print("Window size: %s. /scomp scale <50-300> sets it, in percent.", SC.ScaleLabel(SC.db.windowScale))
 	elseif cmd == "pixel" then
 		SC.SetPixelScale(not SC.db.pixelScale)
 		SC:Print(SC.db.pixelScale and "Windows snap to whole screen pixels." or

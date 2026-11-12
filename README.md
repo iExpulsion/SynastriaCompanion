@@ -55,7 +55,8 @@ asks for them. Clicks can only ask out of combat.
 
 - **Sidebar:** the screens, under Character, Attunes, Loot and Community. Companion remembers the last one you used.
 - **Title Bar:** **Theme** switches between Material, Classic and Cognac, after a reload; Companion offers to reload for
-  you. **Game Window** closes Companion and opens the game's own window for the screen you're on. **Close** closes
+  you. **Size** makes the window and its popups bigger or smaller, from 80% to 200%, for large screens or bigger
+  text. **Game Window** closes Companion and opens the game's own window for the screen you're on. **Close** closes
   it.
 - **Footer:** counts sit at the bottom left, and the bottom right shows what clicking a row does.
 
@@ -260,12 +261,13 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp minimap reset` | Puts the minimap button back on the minimap |
 | `/scomp reset` | Moves the window back to the top middle of the screen |
 | `/scomp theme <name>` | Switches the theme after a reload: `material`, `classic` or `cognac` |
+| `/scomp scale <percent>` | Sets the window size, from 50 to 300 (`/scomp scale 150`) |
 | `/scomp pixel` | Turns pixel snapping off or back on (see below) |
 | `/scomp replace <screen> off` | Gives a screen back to the game's own window; `on` takes it back |
 
 Companion's windows snap to whole screen pixels, so their borders stay crisp. At most UI scales that makes the
 window a little larger or smaller than the rest of your UI; `/scomp pixel` turns it off if you'd rather it matched
-exactly.
+exactly. Sizes other than 100% snap only when they land on whole pixels, so their borders may blur slightly.
 
 ## Credits
 

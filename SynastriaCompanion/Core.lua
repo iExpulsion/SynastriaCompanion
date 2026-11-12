@@ -15,6 +15,8 @@ local DEFAULTS = {
 	skin = "material",
 	-- scale windows so their units are whole screen pixels
 	pixelScale = true,
+	-- the player's size for Companion's windows, from 1 (S.SetWindowScale)
+	windowScale = 1,
 	-- send this character's attune counts and answer "who needs this item" for friends, guild and group
 	share = true,
 	-- attune counts heard from others and this account's characters (Friends.lua)
