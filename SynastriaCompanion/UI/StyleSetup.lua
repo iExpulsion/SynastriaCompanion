@@ -75,6 +75,7 @@ function SC.SetPixelScale(on)
 		S.PixelScale(frame, on)
 		SC.SnapPosition(frame)
 	end
+	SC.Window.Rescaled()
 end
 
 StaticPopupDialogs.SYNASTRIA_COMPANION_RELOAD = {

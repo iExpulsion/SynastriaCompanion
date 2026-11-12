@@ -147,14 +147,35 @@ local function createSizePicker(bar, anchor)
 		options[#options + 1] = { value = scale, text = SC.ScaleLabel(scale) }
 	end
 	local picker
-	picker = S.Dropdown(bar, 64, function(scale)
-		SC.SetWindowScale(scale)
-		picker:SetText(SC.ScaleLabel(scale))
-	end)
+	picker = S.Dropdown(bar, 64, function(scale) SC.SetWindowScale(scale) end)
 	picker:SetOptions(options)
-	picker:SetText(SC.ScaleLabel(SC.db.windowScale))
 	picker:SetPoint("LEFT", label, "RIGHT", S.GAP, 0)
 	return picker
+end
+
+-- The pixel snapping box: crisp borders, or exactly the UI scale.
+local function createSnapBox(bar, anchor)
+	local box = S.Check(bar, nil, function() SC.SetPixelScale(not SC.db.pixelScale) end)
+	box:SetPoint("LEFT", anchor, "RIGHT", 2 * S.GAP, 0)
+	local label = S.Text(bar, "small", C.muted)
+	label:SetPoint("LEFT", box, "RIGHT", 6, 0)
+	label:SetText("Snap to Pixels")
+	box:HookScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+		GameTooltip:AddLine("Snap to Pixels", 1, 1, 1)
+		GameTooltip:AddLine("Lines the window up with whole screen pixels so its borders stay crisp. It can make the "
+			.. "window a little larger or smaller than the rest of your UI; turn it off to match the UI scale exactly.",
+			nil, nil, nil, true)
+		GameTooltip:Show()
+	end)
+	box:HookScript("OnLeave", function() GameTooltip:Hide() end)
+	return box
+end
+
+-- Shows the window size and pixel snapping as saved, after either changes from the title bar or a command.
+local function paintSettings()
+	frame.sizePicker:SetText(SC.ScaleLabel(SC.db.windowScale))
+	frame.snapBox:SetChecked(SC.db.pixelScale)
 end
 
 local function createTitleBar(f, edge)
@@ -183,6 +204,7 @@ local function createTitleBar(f, edge)
 	version:SetPoint("LEFT", title, "RIGHT", S.GAP, 0)
 	version:SetText("v" .. SC.version)
 	f.sizePicker = createSizePicker(bar, createThemePicker(bar, version))
+	f.snapBox = createSnapBox(bar, f.sizePicker)
 
 	local inset = (TITLE_H - S.CONTROL_H) / 2
 	local close = S.Button(bar, "Close", "ghost", 56, function() f:Hide() end)
@@ -253,6 +275,7 @@ local function create()
 	f:Hide()
 
 	createTitleBar(f, edge)
+	paintSettings()
 	createSidebar(f, edge)
 	f.main = CreateFrame("Frame", nil, f)
 	f.main:SetPoint("TOPLEFT", edge + SIDEBAR_W, -edge - TITLE_H)
@@ -324,14 +347,17 @@ function Window.ResetPosition()
 	end
 end
 
--- After the window scale changes: a window at the default spot goes back to it at its new size, and a moved one
--- saves where it now is in its new units.
+-- After the window scale or pixel snapping changes: a window at the default spot goes back to it at its new size,
+-- and a moved one saves where it now is in its new units.
 function Window.Rescaled()
-	if frame and SC.db.window.point then
-		savePosition(frame)
-	elseif frame then
-		placeDefault(frame)
-		SC.SnapPosition(frame)
+	if frame then
+		if SC.db.window.point then
+			savePosition(frame)
+		else
+			placeDefault(frame)
+			SC.SnapPosition(frame)
+		end
+		paintSettings()
 	end
 end
 

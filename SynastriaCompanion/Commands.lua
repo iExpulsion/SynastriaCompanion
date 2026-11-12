@@ -53,8 +53,6 @@ SlashCmdList.SYNASTRIACOMPANION = function(msg)
 	elseif cmd == "theme" then
 		SC:Print("Theme: %s. Themes: %s.", SC.Style.Skin(), themeNames())
 	elseif cmd == "scale" and SC.SetWindowScale(tonumber(arg) and tonumber(arg) / 100) then
-		local f = SC.Window.Frame()
-		if f then f.sizePicker:SetText(SC.ScaleLabel(SC.db.windowScale)) end
 		SC:Print("Window size: %s.", SC.ScaleLabel(SC.db.windowScale))
 	elseif cmd == "scale" then
 		SC:Print("Window size: %s. /scomp scale <50-300> sets it, in percent.", SC.ScaleLabel(SC.db.windowScale))

@@ -56,7 +56,7 @@ asks for them. Clicks can only ask out of combat.
 - **Sidebar:** the screens, under Character, Attunes, Loot and Community. Companion remembers the last one you used.
 - **Title Bar:** **Theme** switches between Material, Classic and Cognac, after a reload; Companion offers to reload for
   you. **Size** makes the window and its popups bigger or smaller, from 80% to 200%, for large screens or bigger
-  text. **Game Window** closes Companion and opens the game's own window for the screen you're on. **Close** closes
+  text. **Snap to Pixels** keeps borders crisp; turn it off to match your UI scale exactly. **Game Window** closes Companion and opens the game's own window for the screen you're on. **Close** closes
   it.
 - **Footer:** counts sit at the bottom left, and the bottom right shows what clicking a row does.
 
