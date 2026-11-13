@@ -277,5 +277,5 @@ Thanks to **Lulleh** for finding the cause of the window's drag lag.
 
 Synastria Companion's code is released under the [MIT License](LICENSE). The Cognac art in
 `SynastriaCompanion/UI/Skins/Cognac` is from [AttuneNext](https://github.com/speedyrulz/AttuneNext) and isn't
-covered by it. `SynastriaCompanion/Libs` holds LibStub and LibDataBroker-1.1 (public domain) and
-CallbackHandler-1.0 (from Ace3, under its own BSD-style license).
+covered by it. `SynastriaCompanion/Libs` holds LibStub (public domain), LibDataBroker-1.1 (by Tekkub,
+with no license stated) and CallbackHandler-1.0 (from Ace3, under its own BSD-style license, included next to it).
