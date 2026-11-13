@@ -1,5 +1,5 @@
 ## Interface: 30300
-## Title: Synastria Companion
+## Title: |cffff9a2eSynastria Companion|r
 ## Notes: Cleaner replacements for Synastria's own windows: perks, transmog, attunes, auto loot, the resource bank, the item database and leaderboards, plus friends' attunes. /scomp
 ## Author: Expulsion
 ## Version: 1.7.2
