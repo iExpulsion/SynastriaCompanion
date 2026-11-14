@@ -36,7 +36,7 @@ local function dirty()
 	return draft ~= nil and server ~= nil and not LF.Same(draft, server)
 end
 
-local render
+local render, templateOptions
 
 local function load()
 	server = LF.Read()
@@ -307,6 +307,8 @@ function render()
 	end
 
 	panel.optionsButton:SetKind(panel.showOptions and available and "selected" or "secondary")
+	if available then panel.templates:Enable() else panel.templates:Disable() end
+	panel.templates:SetOptions(templateOptions())
 	local isDirty = dirty()
 	panel.apply:SetEnabled(isDirty)
 	panel.discard:SetEnabled(isDirty)
@@ -393,6 +395,74 @@ local function importChoice(choice)
 		message("You Have the Most Rules the Filter Holds", C.warn)
 	end
 	render()
+end
+
+-- Templates ----------------------------------------------------------------------------------------------------
+
+-- A loaded template is a draft change like any other: Apply saves it, Discard takes it back.
+local function afterLoad(kind, t)
+	if kind == "filters" then
+		sel = #draft.rules > 0 and 1 or nil
+		message("Loaded " .. t.name .. ": Apply to Save, Discard to Undo", C.good)
+	else
+		sel = #draft.rules
+		message("Added " .. t.name .. ": Apply to Save", C.good)
+	end
+	panel.showOptions = false
+	render()
+end
+
+-- What the templates sheet works on: the draft, the selected rule, and whether edits are waiting.
+local host = {
+	filter = function() return draft end,
+	rule = function() return draft and not panel.showOptions and sel and draft.rules[sel] or nil end,
+	dirty = function() return dirty() end,
+	loaded = afterLoad,
+}
+
+function templateOptions()
+	local LT, options = SC.LootTemplates, {}
+	for _, t in ipairs(LT.List("filters")) do
+		options[#options + 1] = { value = { filter = t.name }, text = "Load Filter: " .. t.name,
+			tooltip = LT.Describe("filters", t) .. ". Replaces the filter in the editor; Apply saves it." }
+	end
+	for _, t in ipairs(LT.List("rules")) do
+		options[#options + 1] = { value = { rule = t.name }, text = "Add Rule: " .. t.name,
+			tooltip = LT.Describe("rules", t) .. ". Adds it at the bottom; Apply saves it." }
+	end
+	options[#options + 1] = { value = "saveFilter", text = "Save Filter as Template...",
+		tooltip = "Save every rule and option, as they are in the editor, under a name." }
+	if host.rule() then
+		options[#options + 1] = { value = "saveRule", text = "Save Rule as Template...",
+			tooltip = "Save the selected rule under a name, to add to any filter." }
+	end
+	options[#options + 1] = { value = "manage", text = "Manage Templates...", tooltip = "Load, rename or delete your templates." }
+	options[#options + 1] = { value = "import", text = "Import Filter...",
+		tooltip = "Replace your whole loot filter, options too, with a shared one." }
+	options[#options + 1] = { value = "export", text = "Export Filter...", tooltip = "Copy every rule and option as text to share it." }
+	return options
+end
+
+local function pickTemplate(value)
+	local LT = SC.LootTemplates
+	local filter = type(value) == "table" and value.filter and LT.Get("filters", value.filter)
+	local rule = type(value) == "table" and value.rule and LT.Get("rules", value.rule)
+	if filter and dirty() then
+		message("Apply or Discard Your Changes First", C.warn)
+		render()
+	elseif filter then
+		LT.LoadFilter(filter, draft)
+		afterLoad("filters", filter)
+	elseif rule and LT.AddRule(rule, draft) then
+		afterLoad("rules", rule)
+	elseif rule then
+		message("You Have the Most Rules the Filter Holds", C.warn)
+		render()
+	elseif value == "import" or value == "export" then
+		if value == "import" then importChoice("filter") else exportChoice("filter") end
+	elseif value == "saveFilter" or value == "saveRule" or value == "manage" then
+		SC.LootTemplateSheet.Open(value == "saveRule" and "rules" or "filters", host, value ~= "manage")
+	end
 end
 
 local function label(parent, text)
@@ -587,13 +657,14 @@ local function create(parent, width, height)
 	end, "Turn auto looting and its parts on or off.")
 	optionsButton:SetPoint("BOTTOMLEFT", PAD, footerY)
 	panel.optionsButton = optionsButton
-	local import = S.Button(panel, "Import Filter", "secondary", 90, function() importChoice("filter") end,
-		"Replace your whole loot filter, options too, with a shared one.")
-	import:SetPoint("LEFT", optionsButton, "RIGHT", 4, 0)
-	panel.importFilter = import
-	local export = S.Button(panel, "Export Filter", "secondary", 90, function() exportChoice("filter") end,
-		"Copy every rule and option as text to share it.")
-	export:SetPoint("LEFT", import, "RIGHT", 4, 0)
+	-- templates and sharing in one menu, opening upward from the footer and wide enough for its Save lines
+	panel.templates = S.Dropdown(panel, 100, pickTemplate)
+	panel.templates:SetPoint("LEFT", optionsButton, "RIGHT", 4, 0)
+	panel.templates:SetText("Templates")
+	panel.templates.tooltipText = "Save the filter or a rule as a template, load one, or import and export the filter."
+	panel.templates.menu:SetWidth(240)
+	panel.templates.menu:ClearAllPoints()
+	panel.templates.menu:SetPoint("BOTTOMLEFT", panel.templates, "TOPLEFT", 0, 2)
 	panel.reset = S.Button(panel, "Reset to Default", "danger", 120, function(self)
 		armButton(self, "Reset to Default", "Click to Confirm", function()
 			LF.ResetToDefault()
@@ -602,7 +673,7 @@ local function create(parent, width, height)
 		end)
 		render()
 	end, "Replace every rule and option with the server's default filter. Asks you to click again.")
-	panel.reset:SetPoint("LEFT", export, "RIGHT", 4, 0)
+	panel.reset:SetPoint("LEFT", panel.templates, "RIGHT", 4, 0)
 
 	panel.apply = S.Button(panel, "Apply", "primary", 80, apply, "Save your changes to the loot filter.")
 	panel.apply:SetPoint("BOTTOMRIGHT", -PAD, footerY)

@@ -178,8 +178,14 @@ copies a condition.
 
 Changes wait for **Apply**, and **Discard** throws them away. Turning a rule on or off saves at once when nothing
 else is waiting. Sharing uses the game's own share strings, so filters other players post still work: **Import**
-under the list adds a shared rule, **Export** above a rule copies it, and **Import Filter** and **Export Filter** at
-the bottom cover the whole filter. **Reset to Default** asks for a second click.
+under the list adds a shared rule, **Export** above a rule copies it, and **Import Filter** and **Export Filter** in
+the **Templates** menu at the bottom cover the whole filter. **Reset to Default** asks for a second click.
+
+**Templates** saves filters and rules for all your characters, so you can switch setups without rebuilding them. Save
+the whole filter (every rule and option) as a template, such as one for leveling and one for raids, and load it to
+replace the filter in the editor. Save a single rule, like one that skips junk, and add it to any filter. Loaded
+templates wait for **Apply** like any other change, so **Discard** takes one back. **Manage Templates** renames and
+deletes them. If Synastria Build Suite's Hunt Gear adds rules to your filter, sync it again after loading a filter.
 
 ![Auto Loot: the rule list with each rule's action, and the selected rule's match setting and item conditions](docs/images/auto-loot.png)
 

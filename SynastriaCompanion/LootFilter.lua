@@ -290,9 +290,9 @@ function LF.Copy(filter)
 	return out
 end
 
--- Whether two filters would save the same.
+-- Whether two filters would save the same. Options count too: a loaded template can change them in the draft.
 function LF.Same(a, b)
-	local same = #a.rules == #b.rules
+	local same = #a.rules == #b.rules and (a.options or 0) == (b.options or 0)
 	for i = 1, #a.rules do
 		local x, y = a.rules[i], b.rules[i]
 		same = same and y ~= nil and x.type == y.type and x.enabled == y.enabled and x.outcome == y.outcome

@@ -11,6 +11,9 @@ local DEFAULTS = {
 	attunable = {},
 	-- Transmog looks saved for every character: { name, text (the game's export string), slots, enchants }
 	savedLooks = {},
+	-- Auto Loot templates for every character: { filters = { [name] = { name, options, rules } },
+	-- rules = { [name] = { name, rule } } } (LootTemplates.lua)
+	lootTemplates = { filters = {}, rules = {} },
 	-- the style kit's skin: "material", "classic" or "cognac"
 	skin = "material",
 	-- scale windows so their units are whole screen pixels

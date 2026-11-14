@@ -18,6 +18,7 @@ Attuned.lua
 Leaderboards.lua
 Friends.lua
 LootFilter.lua
+LootTemplates.lua
 Perks.lua
 Data\ItemSets.lua
 Transmog.lua
@@ -40,6 +41,7 @@ UI\LootDatabase.lua
 UI\ResourceBank.lua
 UI\Leaderboards.lua
 UI\Friends.lua
+UI\LootTemplates.lua
 UI\LootFilter.lua
 UI\Minimap.lua
 Commands.lua
