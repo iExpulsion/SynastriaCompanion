@@ -49,8 +49,10 @@ function Sheet.Render()
 	local LT = SC.LootTemplates
 	local kind = LT.Kind(state.kind)
 	sheet.title:SetText("Auto Loot Templates")
-	sheet.sub:SetText(state.kind == "filters" and "Every rule and option. Loading one replaces the filter in the editor."
-		or "One rule each. Loading one adds it at the bottom of your rules.")
+	sheet.sub:SetText(state.kind == "filters"
+		and "Whole filters, rules and options, for every character. Loading one replaces the filter in the editor."
+		or "Single rules, for every character. Loading one adds it at the bottom of your rules.")
+	sheet.stack:Layout()
 	sheet.filtersTab:SetKind(state.kind == "filters" and "selected" or "secondary")
 	sheet.rulesTab:SetKind(state.kind == "rules" and "selected" or "secondary")
 	local selected = state.selected and LT.Get(state.kind, state.selected)
@@ -130,12 +132,9 @@ local function create()
 	local PAD, GAP, CONTROL_H = S.metrics.inset, S.GAP, S.CONTROL_H
 	local grow = 2 * (PAD - S.PAD)
 	local innerW = W - 2 * S.PAD
-	local switchY = PAD + 16 + 4 + 12 + PAD
-	local listTop = switchY + CONTROL_H + GAP
-	local nameY = listTop + LIST_H + GAP + CONTROL_H / 2
 	S.RefreshFonts()
 	local f = CreateFrame("Frame", "SynastriaCompanionLootTemplates", UIParent)
-	f:SetSize(W + grow, nameY + CONTROL_H / 2 + PAD + CONTROL_H + PAD)
+	f:SetWidth(W + grow)
 	f:SetPoint("CENTER")
 	f:SetFrameStrata("DIALOG")
 	f:EnableMouse(true)
@@ -149,22 +148,29 @@ local function create()
 	f:HookScript("OnHide", S.Dismiss)
 	f:Hide()
 
-	f.title = S.Text(f, "large")
-	f.title:SetPoint("TOPLEFT", PAD, -PAD)
-	-- one line within the dialog's padding, so a wide font or skin cuts it short rather than past the edge
-	f.sub = S.Text(f, "small", C.muted)
-	f.sub:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
-	f.sub:SetWidth(innerW)
-	f.sub:SetWordWrap(false)
+	-- top to bottom: title, a subtitle that wraps, the switch, the list, the name row, the buttons; the dialog is as
+	-- tall as they are
+	f.stack = S.Stack(f, { width = innerW, onLayout = function(bottom) f:SetHeight(bottom + PAD) end })
+	local function row(gap)
+		local r = CreateFrame("Frame", nil, f)
+		r:SetHeight(CONTROL_H)
+		r:Show()
+		f.stack:Add(r, { gap = gap, fill = true })
+		return r
+	end
+	f.title = f.stack:Add(S.Text(f, "large"))
+	f.title:SetHeight(16)
+	f.sub = f.stack:Add(S.Wrapped(f, "small", C.muted), { gap = 4 })
 	local close = S.Button(f, "Close", "ghost", 56, function() f:Hide() end)
 	close:SetPoint("TOPRIGHT", -PAD, -(PAD - 4))
 
 	-- a segmented switch: the halves share their 1px border
+	local switch = row(PAD)
 	local rulesW = math.floor((innerW + 1) / 2)
-	f.filtersTab = S.Button(f, "Filters", "secondary", innerW + 1 - rulesW, function() setKind("filters") end,
+	f.filtersTab = S.Button(switch, "Filters", "secondary", innerW + 1 - rulesW, function() setKind("filters") end,
 		"Whole filters: every rule and option.")
-	f.filtersTab:SetPoint("TOPLEFT", PAD, -switchY)
-	f.rulesTab = S.Button(f, "Rules", "secondary", rulesW, function() setKind("rules") end,
+	f.filtersTab:SetPoint("LEFT")
+	f.rulesTab = S.Button(switch, "Rules", "secondary", rulesW, function() setKind("rules") end,
 		"Single rules, to add to any filter.")
 	f.rulesTab:SetPoint("LEFT", f.filtersTab, "RIGHT", -1, 0)
 
@@ -186,30 +192,33 @@ local function create()
 			Sheet.Render()
 		end,
 	})
-	f.list.frame:SetPoint("TOPLEFT", PAD, -listTop)
+	f.list.frame:Show()
+	f.stack:Add(f.list.frame, { gap = GAP, height = LIST_H })
 
 	-- the name box takes the row's spare width, so Rename ends in line with the list and Load
-	local nameLabel = S.Text(f, "small", C.muted)
-	nameLabel:SetPoint("LEFT", f, "TOPLEFT", PAD, -nameY)
+	local nameRow = row(GAP)
+	local nameLabel = S.Text(nameRow, "small", C.muted)
+	nameLabel:SetPoint("LEFT")
 	nameLabel:SetText("Name")
 	local nameW = innerW - LABEL_W - 2 * (BUTTON_W + GAP)
-	f.name = S.Input(f, "SynastriaCompanionLootTemplateName", nameW, "Template Name", 40)
-	f.name:SetPoint("LEFT", f, "TOPLEFT", PAD + LABEL_W, -nameY)
+	f.name = S.Input(nameRow, "SynastriaCompanionLootTemplateName", nameW, "Template Name", 40)
+	f.name:SetPoint("LEFT", LABEL_W, 0)
 	f.name:HookScript("OnTextChanged", function(_, userInput)
 		if userInput then Sheet.Render() end
 	end)
-	f.save = S.Button(f, "Save", "secondary", BUTTON_W, save)
+	f.save = S.Button(nameRow, "Save", "secondary", BUTTON_W, save)
 	f.save:SetPoint("LEFT", f.name, "RIGHT", GAP, 0)
-	f.rename = S.Button(f, "Rename", "secondary", BUTTON_W, rename, "Give the selected template the name in the box.")
+	f.rename = S.Button(nameRow, "Rename", "secondary", BUTTON_W, rename, "Give the selected template the name in the box.")
 	f.rename:SetPoint("LEFT", f.save, "RIGHT", GAP, 0)
 
 	-- Delete and Load sit under Save and Rename, the four buttons one block in the corner
-	f.load = S.Button(f, "Load", "primary", BUTTON_W, load)
-	f.load:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-	f.delete = S.Button(f, "Delete", "danger", BUTTON_W, delete, "Delete the selected template.")
+	local footer = row(PAD)
+	f.load = S.Button(footer, "Load", "primary", BUTTON_W, load)
+	f.load:SetPoint("RIGHT")
+	f.delete = S.Button(footer, "Delete", "danger", BUTTON_W, delete, "Delete the selected template.")
 	f.delete:SetPoint("RIGHT", f.load, "LEFT", -GAP, 0)
-	f.note = S.Text(f, "small", C.muted)
-	f.note:SetPoint("LEFT", f, "BOTTOMLEFT", PAD, PAD + CONTROL_H / 2)
+	f.note = S.Text(footer, "small", C.muted)
+	f.note:SetPoint("LEFT")
 	f.note:SetPoint("RIGHT", f.delete, "LEFT", -PAD, 0)
 	return f
 end
