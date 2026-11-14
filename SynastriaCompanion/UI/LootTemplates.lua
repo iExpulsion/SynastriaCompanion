@@ -49,9 +49,8 @@ function Sheet.Render()
 	local LT = SC.LootTemplates
 	local kind = LT.Kind(state.kind)
 	sheet.title:SetText("Auto Loot Templates")
-	sheet.sub:SetText(state.kind == "filters"
-		and "Whole filters, rules and options, for every character. Loading one replaces the filter in the editor."
-		or "Single rules, for every character. Loading one adds it at the bottom of your rules.")
+	sheet.sub:SetText(state.kind == "filters" and "Every rule and option. Loading one replaces the filter in the editor."
+		or "One rule each. Loading one adds it at the bottom of your rules.")
 	sheet.filtersTab:SetKind(state.kind == "filters" and "selected" or "secondary")
 	sheet.rulesTab:SetKind(state.kind == "rules" and "selected" or "secondary")
 	local selected = state.selected and LT.Get(state.kind, state.selected)
@@ -152,8 +151,11 @@ local function create()
 
 	f.title = S.Text(f, "large")
 	f.title:SetPoint("TOPLEFT", PAD, -PAD)
+	-- one line within the dialog's padding, so a wide font or skin cuts it short rather than past the edge
 	f.sub = S.Text(f, "small", C.muted)
 	f.sub:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
+	f.sub:SetWidth(innerW)
+	f.sub:SetWordWrap(false)
 	local close = S.Button(f, "Close", "ghost", 56, function() f:Hide() end)
 	close:SetPoint("TOPRIGHT", -PAD, -(PAD - 4))
 
