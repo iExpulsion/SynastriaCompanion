@@ -9,34 +9,38 @@ local S = SC.Style
 local C = S.colors
 local PAD, GAP, CONTROL_H = S.PAD, S.GAP, S.CONTROL_H
 
-local W, H = 460, 260
+-- the text box: shorter on import, to make room for the Import button under it
+local W, WELL_H = 460, 196
 local dialog
 
--- The contents keep their size in every skin; the dialog grows around them by the skin's padding.
+-- Top to bottom: title, a note that wraps (below Close in the corner), the text box, then on import its button. The
+-- contents keep their width in every skin, the dialog grows around them by the skin's padding, and it's as tall as
+-- they are.
 local function create()
 	local inset = S.metrics.inset
 	dialog = CreateFrame("Frame", "SynastriaCompanionTextDialog", UIParent)
-	dialog:SetSize(W - 2 * PAD + 2 * inset, H - 2 * PAD + 2 * inset)
+	dialog:SetWidth(W - 2 * PAD + 2 * inset)
 	dialog:SetFrameStrata("DIALOG")
 	dialog:SetToplevel(true)
 	dialog:EnableMouse(true)
 	SC.PixelScale(dialog)
 	S.Frame(dialog, "popup")
 	tinsert(UISpecialFrames, "SynastriaCompanionTextDialog")
+	dialog.stack = S.Stack(dialog, { width = W - 2 * PAD,
+		onLayout = function(bottom) dialog:SetHeight(bottom + inset) end })
 
 	-- Close sits top right, beside the title, as in Build Suite; the bottom row is for Import alone
 	dialog.cancel = S.Button(dialog, "Close", "ghost", 70, function() dialog:Hide() end)
 	dialog.cancel:SetPoint("TOPRIGHT", -inset, -(inset - 4))
-	dialog.title = S.Text(dialog, "normal", C.heading)
-	dialog.title:SetPoint("TOPLEFT", inset, -inset)
-	dialog.note = S.Text(dialog, "small", C.muted)
-	dialog.note:SetPoint("TOPLEFT", dialog.title, "BOTTOMLEFT", 0, -4)
-	dialog.note:SetPoint("RIGHT", dialog.cancel, "LEFT", -GAP, 0)
+	dialog.title = dialog.stack:Add(S.Text(dialog, "normal", C.heading))
+	dialog.title:SetHeight(16)
+	dialog.note = dialog.stack:Add(S.Wrapped(dialog, "small", C.muted), { gap = 4 })
 
 	local well = CreateFrame("Frame", nil, dialog)
-	well:SetPoint("TOPLEFT", inset, -inset - 40)
-	well:SetSize(W - 2 * PAD, H - 2 * PAD - 40)
-	dialog.well, dialog.inset = well, inset
+	well:SetSize(W - 2 * PAD, WELL_H)
+	well:Show()
+	dialog.stack:Add(well, { gap = GAP })
+	dialog.well = well
 	S.Well(well)
 	local wi = 6 + S.metrics.wellInset
 	local scroll = CreateFrame("ScrollFrame", "SynastriaCompanionTextDialogScroll", well, "UIPanelScrollFrameTemplate")
@@ -55,23 +59,24 @@ local function create()
 	dialog.edit = edit
 	S.TrackInput(edit, well)
 
-	dialog.ok = S.Button(dialog, "Import", "primary", 90, function()
+	dialog.okRow = CreateFrame("Frame", nil, dialog)
+	dialog.okRow:SetHeight(CONTROL_H)
+	dialog.stack:Add(dialog.okRow, { gap = GAP, fill = true })
+	dialog.ok = S.Button(dialog.okRow, "Import", "primary", 90, function()
 		local text = edit:GetText()
 		dialog:Hide()
 		if dialog.onOk then dialog.onOk(text) end
 	end)
-	dialog.ok:SetPoint("BOTTOMRIGHT", -inset, inset)
+	dialog.ok:SetPoint("RIGHT")
 	dialog:SetScript("OnHide", function() edit:ClearFocus() end)
 	S.OnDismiss(function() dialog:Hide() end)
 end
 
 -- The text box runs to the bottom when exporting, and stops above the Import button when importing.
 local function fitWell(importing)
-	local inset = dialog.inset
-	dialog.well:ClearAllPoints()
-	dialog.well:SetPoint("TOPLEFT", inset, -inset - 40)
-	dialog.well:SetPoint("BOTTOMRIGHT", -inset, inset + (importing and CONTROL_H + GAP or 0))
-	if importing then dialog.ok:Show() else dialog.ok:Hide() end
+	dialog.well:SetHeight(importing and WELL_H - CONTROL_H - GAP or WELL_H)
+	if importing then dialog.okRow:Show() else dialog.okRow:Hide() end
+	dialog.stack:Layout()
 end
 
 -- Shows text to copy; the text is selected so Ctrl+C copies it.
