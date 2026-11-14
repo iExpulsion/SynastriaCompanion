@@ -498,7 +498,7 @@ local function create(parent, width, height)
 		},
 		rowH = 20, icons = true, cell = cell,
 		icon = function(item) return item.perk and spellIcon(item.perk.icon) end,
-		header = function(item) return item.header end,
+		header = function(item) return item.header end, headerClicks = true,
 		isSelected = function(item) return item.perk ~= nil and item.perk.id == selected end,
 		tooltip = rowTooltip,
 		onClick = function(item, button)
