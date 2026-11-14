@@ -31,8 +31,8 @@ one of its windows, Companion opens instead.
 - **Friends' Attunes:** the attune counts of friends, guildmates and your group who use Companion, and item
   tooltips that say which of them still need that item.
 - **The Game's Window When You Want It:** the **Game Window** button opens the game's own window for any screen.
-- **Themes:** the flat Material look, Classic for the game's own frames and buttons, or Cognac's painted gold
-  frames on dark glass.
+- **Themes:** the flat Material look, Classic for the game's own frames and buttons, Cognac's painted gold
+  frames on dark glass, or Material Glass, the Material look on see-through frosted glass.
 
 ## Installation
 
@@ -54,8 +54,8 @@ asks for them. Clicks can only ask out of combat.
 ## The Window
 
 - **Sidebar:** the screens, under Character, Attunes, Loot and Community. Companion remembers the last one you used.
-- **Title Bar:** **Theme** switches between Material, Classic and Cognac, after a reload; Companion offers to reload for
-  you. **Size** makes the window and its popups bigger or smaller, from 80% to 200%, for large screens or bigger
+- **Title Bar:** **Theme** switches between Material, Classic, Cognac and Material Glass, after a reload;
+  Companion offers to reload for you. **Size** makes the window and its popups bigger or smaller, from 80% to 200%, for large screens or bigger
   text. **Snap to Pixels** keeps borders crisp; turn it off to match your UI scale exactly. **Game Window** closes Companion and opens the game's own window for the screen you're on. **Close** closes
   it.
 - **Footer:** counts sit at the bottom left, and the bottom right shows what clicking a row does.
@@ -260,7 +260,7 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp minimap` | Hides or shows the minimap button |
 | `/scomp minimap reset` | Puts the minimap button back on the minimap |
 | `/scomp reset` | Moves the window back to the top middle of the screen |
-| `/scomp theme <name>` | Switches the theme after a reload: `material`, `classic` or `cognac` |
+| `/scomp theme <name>` | Switches the theme after a reload: `material`, `classic`, `cognac` or `materialglass` |
 | `/scomp scale <percent>` | Sets the window size, from 50 to 300 (`/scomp scale 150`) |
 | `/scomp pixel` | Turns pixel snapping off or back on (see below) |
 | `/scomp replace <screen> off` | Gives a screen back to the game's own window; `on` takes it back |
