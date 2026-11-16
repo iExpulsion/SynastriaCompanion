@@ -26,6 +26,18 @@ local DEFAULTS = {
 	friends = {},
 }
 
+-- What other addons may use, as SynastriaCompanion.API. Look it up when needed, since Companion may not be
+-- installed or may load later. Fields are only ever added, and version goes up when they are. It stays in this
+-- file: the client reads the .toc only at startup, so a new file would be skipped by a /reload after an update.
+local API = { version = 1 }
+SC.API = API
+
+-- True while Companion's window is open.
+function API.IsShown()
+	local f = SC.Window and SC.Window.Frame()
+	return f ~= nil and f:IsShown() ~= nil
+end
+
 function SC:Print(fmt, ...)
 	local msg = select("#", ...) > 0 and fmt:format(...) or fmt
 	DEFAULT_CHAT_FRAME:AddMessage("|cffffc400Synastria Companion|r: " .. msg)

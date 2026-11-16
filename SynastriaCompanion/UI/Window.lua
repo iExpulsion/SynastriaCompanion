@@ -289,6 +289,7 @@ local function create()
 		-- closing mid-drag (Escape) can skip OnDragStop
 		f:StopMovingOrSizing()
 		SC.SecureCast.SetSuspended(false)
+		SC.Perks.WindowClosed()
 	end)
 	return f
 end

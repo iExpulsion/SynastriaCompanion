@@ -180,6 +180,22 @@ function Perks.End()
 	if Perks.onChange then Perks.onChange() end
 end
 
+function Perks.BuildSuiteShown()
+	local addon = _G.SynastriaBuildSuite
+	local api = addon and addon.API
+	return api ~= nil and api.IsShown()
+end
+
+-- The hidden Perk Manager stays open while Companion's or Synastria Build Suite's window is; whichever closes last
+-- closes it. Build Suite does the same from its side.
+function Perks.WindowClosed()
+	local frame = PerkMgrFrame
+	if frame and frame:IsShown() and frame:GetAlpha() == 0 and not Perks.BuildSuiteShown() then
+		Perks.End()
+		if frame:IsShown() then ClosePerkMgr() end
+	end
+end
+
 -- Toggling --------------------------------------------------------------------------------------------------
 
 -- Whether the perk can be turned on or off right now, and why not.
