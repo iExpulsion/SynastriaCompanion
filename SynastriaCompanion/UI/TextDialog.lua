@@ -36,28 +36,13 @@ local function create()
 	dialog.title:SetHeight(16)
 	dialog.note = dialog.stack:Add(S.Wrapped(dialog, "small", C.muted), { gap = 4 })
 
-	local well = CreateFrame("Frame", nil, dialog)
-	well:SetSize(W - 2 * PAD, WELL_H)
+	local well = S.TextArea(dialog, "SynastriaCompanionTextDialogScroll", W - 2 * PAD, WELL_H,
+		{ pad = 6, onEscape = function() dialog:Hide() end })
 	well:Show()
 	dialog.stack:Add(well, { gap = GAP })
 	dialog.well = well
-	S.Well(well)
-	local wi = 6 + S.metrics.wellInset
-	local scroll = CreateFrame("ScrollFrame", "SynastriaCompanionTextDialogScroll", well, "UIPanelScrollFrameTemplate")
-	scroll:SetPoint("TOPLEFT", wi, -wi)
-	scroll:SetPoint("BOTTOMRIGHT", -16 - S.metrics.wellInset, wi)
-	S.ScrollBar(scroll, "SynastriaCompanionTextDialogScroll")
-	local edit = CreateFrame("EditBox", nil, scroll)
-	edit:SetMultiLine(true)
-	edit:SetAutoFocus(false)
-	edit:SetWidth(W - 2 * PAD - 26 - 2 * S.metrics.wellInset)
-	S.SetFont(edit, "small")
-	edit:SetScript("OnEscapePressed", function() dialog:Hide() end)
-	scroll:SetScrollChild(edit)
-	well:EnableMouse(true)
-	well:SetScript("OnMouseDown", function() edit:SetFocus() end)
+	local edit = well.edit
 	dialog.edit = edit
-	S.TrackInput(edit, well)
 
 	dialog.okRow = CreateFrame("Frame", nil, dialog)
 	dialog.okRow:SetHeight(CONTROL_H)
