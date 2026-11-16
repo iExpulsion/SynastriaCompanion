@@ -1,65 +1,16 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Minimap button: left-click opens or closes the window, right-click opens a menu of the screens, drag moves it
--- around the minimap and Shift-drag anywhere on screen. Position and visibility are saved in SynastriaCompanionDB.minimap. When a LibDataBroker
--- display is installed, a launcher is registered there too.
+-- Minimap button (S.MinimapButton): left-click opens or closes the window, right-click opens a menu of the
+-- screens. Position and visibility are saved in SynastriaCompanionDB.minimap. When a LibDataBroker display is
+-- installed, a launcher is registered there too.
 local MinimapButton = {}
 SC.MinimapButton = MinimapButton
 
 local S = SC.Style
 
 local ICON = "Interface\\Icons\\INV_Misc_Spyglass_02"
-local DEFAULT_ANGLE = 220
 local button, menu
-
--- Which quadrants of each minimap shape are round, in the order GetMinimapShape addons use.
-local SHAPES = {
-	ROUND = { true, true, true, true },
-	SQUARE = { false, false, false, false },
-	["CORNER-TOPLEFT"] = { false, false, false, true },
-	["CORNER-TOPRIGHT"] = { false, false, true, false },
-	["CORNER-BOTTOMLEFT"] = { false, true, false, false },
-	["CORNER-BOTTOMRIGHT"] = { true, false, false, false },
-	["SIDE-LEFT"] = { false, true, false, true },
-	["SIDE-RIGHT"] = { true, false, true, false },
-	["SIDE-TOP"] = { false, false, true, true },
-	["SIDE-BOTTOM"] = { true, true, false, false },
-	["TRICORNER-TOPLEFT"] = { false, true, true, true },
-	["TRICORNER-TOPRIGHT"] = { true, false, true, true },
-	["TRICORNER-BOTTOMLEFT"] = { true, true, false, true },
-	["TRICORNER-BOTTOMRIGHT"] = { true, true, true, false },
-}
-
--- Shift-drag frees the button: it moves to UIParent at a saved spot (db.minimap.free), so it stays up even when
--- the minimap is hidden. A plain drag puts it back on the minimap's edge.
-local function place()
-	local free = SC.db.minimap.free
-	local parent = free and UIParent or Minimap
-	if button:GetParent() ~= parent then
-		button:SetParent(parent)
-		button:SetFrameStrata("MEDIUM")
-		button:SetFrameLevel(8)
-	end
-	button:ClearAllPoints()
-	if free then
-		button:SetPoint("CENTER", UIParent, "BOTTOMLEFT", free.x, free.y)
-	else
-		local angle = math.rad(SC.db.minimap.angle or DEFAULT_ANGLE)
-		local x, y = math.cos(angle), math.sin(angle)
-		local quadrant = 1 + (x < 0 and 1 or 0) + (y > 0 and 2 or 0)
-		local shape = GetMinimapShape and GetMinimapShape() or "ROUND"
-		local radius = Minimap:GetWidth() / 2 + 5
-		if (SHAPES[shape] or SHAPES.ROUND)[quadrant] then
-			x, y = x * radius, y * radius
-		else
-			local diagonal = math.sqrt(2 * radius * radius) - 10
-			x = math.max(-radius, math.min(x * diagonal, radius))
-			y = math.max(-radius, math.min(y * diagonal, radius))
-		end
-		button:SetPoint("CENTER", Minimap, "CENTER", x, y)
-	end
-end
 
 -- The screen menu: section headings and a row per screen, like the window's sidebar.
 local ROW_H, MENU_W, MENU_ICON = 22, 170, 16
@@ -135,72 +86,18 @@ local function onClick(owner, mouse)
 	end
 end
 
-local function fillBrokerTooltip(tt)
+local function fillTooltip(tt)
 	tt:AddLine("Synastria Companion", 1, 0.77, 0)
 	tt:AddLine("Left-click to open or close the window.", 0.8, 0.8, 0.8)
 	tt:AddLine("Right-click to pick a screen.", 0.8, 0.8, 0.8)
 end
 
-local function fillTooltip(tt)
-	fillBrokerTooltip(tt)
-	tt:AddLine("Drag to move it around the minimap, Shift-drag to place it anywhere.", 0.6, 0.6, 0.66)
-	tt:AddLine("/scomp minimap hides it; /scomp minimap reset puts it back.", 0.6, 0.6, 0.66)
-end
-
--- Ends on the mouse release itself: a reparent mid-drag can cost the OnDragStop.
-local function onDragUpdate(self)
-	if IsMouseButtonDown("LeftButton") then
-		local px, py = GetCursorPosition()
-		if SC.db.minimap.free then
-			local scale = UIParent:GetEffectiveScale()
-			SC.db.minimap.free.x, SC.db.minimap.free.y = px / scale, py / scale
-		else
-			local mx, my = Minimap:GetCenter()
-			local scale = Minimap:GetEffectiveScale()
-			SC.db.minimap.angle = math.deg(math.atan2(py / scale - my, px / scale - mx)) % 360
-		end
-		place()
-	else
-		self:SetScript("OnUpdate", nil)
-	end
-end
-
 local function create()
-	button = CreateFrame("Button", "SynastriaCompanionMinimapButton", Minimap)
-	button:SetSize(31, 31)
-	button:SetClampedToScreen(true)
-	button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	button:RegisterForDrag("LeftButton")
-	button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-	local background = button:CreateTexture(nil, "BACKGROUND")
-	background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-	background:SetSize(20, 20)
-	background:SetPoint("TOPLEFT", 7, -5)
-	button.icon = button:CreateTexture(nil, "ARTWORK")
-	button.icon:SetTexture(ICON)
-	button.icon:SetSize(17, 17)
-	button.icon:SetPoint("TOPLEFT", 7, -6)
-	button.icon:SetTexCoord(0.05, 0.95, 0.05, 0.95)
-	local border = button:CreateTexture(nil, "OVERLAY")
-	border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-	border:SetSize(53, 53)
-	border:SetPoint("TOPLEFT")
-
-	button:SetScript("OnClick", onClick)
-	button:SetScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		fillTooltip(GameTooltip)
-		GameTooltip:Show()
-	end)
-	button:SetScript("OnLeave", function() GameTooltip:Hide() end)
-	button:SetScript("OnDragStart", function(self)
-		GameTooltip:Hide()
-		if menu then menu:Hide() end
-		SC.db.minimap.free = IsShiftKeyDown() and (SC.db.minimap.free or {}) or nil
-		self:SetScript("OnUpdate", onDragUpdate)
-	end)
-	button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
-	place()
+	button = S.MinimapButton({
+		name = "SynastriaCompanionMinimapButton", icon = ICON, db = SC.db.minimap, angle = 220,
+		onClick = onClick, tooltip = fillTooltip, hint = "/scomp minimap hides it; /scomp minimap reset puts it back.",
+		onDragStart = function() if menu then menu:Hide() end end,
+	})
 
 	-- a left-click that opens the window on a screen needing its spell casts it too; closing never does
 	SC.SecureCast.Overlay(button, {
@@ -222,22 +119,21 @@ LibStub("LibDataBroker-1.1"):NewDataObject("SynastriaCompanion", {
 	label = "Synastria Companion",
 	text = "Companion",
 	OnClick = onClick,
-	OnTooltipShow = fillBrokerTooltip,
+	OnTooltipShow = fillTooltip,
 })
 
 function MinimapButton.Refresh()
-	if SC.db.minimap.hide then button:Hide() else button:Show() end
+	button:Refresh()
 end
 
 function MinimapButton.Toggle()
 	SC.db.minimap.hide = not SC.db.minimap.hide
-	MinimapButton.Refresh()
+	button:Refresh()
 	SC:Print(SC.db.minimap.hide and "Minimap button hidden. /scomp minimap shows it again." or "Minimap button shown.")
 end
 
 function MinimapButton.ResetPosition()
-	SC.db.minimap.free, SC.db.minimap.angle = nil, nil
-	place()
+	button:ResetPosition()
 	SC:Print("Minimap button moved back to the minimap.")
 end
 
@@ -248,5 +144,4 @@ end
 SC:On("PLAYER_LOGIN", function()
 	SC.db.minimap = SC.db.minimap or {}
 	create()
-	MinimapButton.Refresh()
 end)
