@@ -42,9 +42,24 @@ local function collapsed(key, searching)
 	return not searching and state.collapsed[key] == true
 end
 
-local function headerItem(key, label, counts, searching)
+local function headerItem(key, label, counts, searching, color)
 	local mark = collapsed(key, searching) and "+  " or "-  "
-	return { header = S.Hex(C.muted, mark) .. label .. "   " .. counts, key = key }
+	return { header = S.Hex(C.muted, mark) .. label .. "   " .. counts, key = key, color = color }
+end
+
+-- Each category's heading color: a theme hue for the four general ones, the class color for a class category, and
+-- the usual heading color for Misc. Class colors are made once each.
+local CATEGORY_HUES = { [15] = "red", [16] = "blue", [17] = "green", [18] = "yellow" }
+local CLASS_TOKENS = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK",
+	nil, "DRUID" }
+local classColors = {}
+
+local function categoryColor(cat)
+	local hue = CATEGORY_HUES[cat]
+	local token = CLASS_TOKENS[cat]
+	local raid = token and RAID_CLASS_COLORS and RAID_CLASS_COLORS[token]
+	if raid and not classColors[cat] then classColors[cat] = { raid.r, raid.g, raid.b, 1 } end
+	return hue and C[hue] or classColors[cat]
 end
 
 local function categoryCounts(c)
@@ -68,7 +83,7 @@ local function categoryItems(q)
 		end
 		if #rows > 0 then
 			local key = "cat" .. c.cat
-			items[#items + 1] = headerItem(key, c.label, categoryCounts(c), searching)
+			items[#items + 1] = headerItem(key, c.label, categoryCounts(c), searching, categoryColor(c.cat))
 			if not collapsed(key, searching) then
 				for _, row in ipairs(rows) do items[#items + 1] = row end
 			end
@@ -499,6 +514,7 @@ local function create(parent, width, height)
 		rowH = 20, icons = true, cell = cell,
 		icon = function(item) return item.perk and spellIcon(item.perk.icon) end,
 		header = function(item) return item.header end, headerClicks = true, stickyHeaders = true,
+		headerColor = function(item) return item.color end,
 		isSelected = function(item) return item.perk ~= nil and item.perk.id == selected end,
 		tooltip = rowTooltip,
 		onClick = function(item, button)
