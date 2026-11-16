@@ -215,6 +215,7 @@ end
 SC.Window.AddScreen({
 	key = "friends",
 	label = "Friends",
+	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
 	create = create,
 	show = show,
 })

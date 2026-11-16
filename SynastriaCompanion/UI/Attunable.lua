@@ -595,6 +595,8 @@ end
 SC.Window.AddScreen({
 	key = "attunable",
 	label = "Attunable Items",
+	-- View Attunable List
+	iconSpell = 80338,
 	create = create,
 	show = show,
 	hook = { open = "OpenAttuneMgr", close = "CloseAttuneMgr", frame = "AttuneMgrFrame" },

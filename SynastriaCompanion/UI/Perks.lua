@@ -498,7 +498,7 @@ local function create(parent, width, height)
 		},
 		rowH = 20, icons = true, cell = cell,
 		icon = function(item) return item.perk and spellIcon(item.perk.icon) end,
-		header = function(item) return item.header end, headerClicks = true,
+		header = function(item) return item.header end, headerClicks = true, stickyHeaders = true,
 		isSelected = function(item) return item.perk ~= nil and item.perk.id == selected end,
 		tooltip = rowTooltip,
 		onClick = function(item, button)
@@ -548,6 +548,8 @@ end
 SC.Window.AddScreen({
 	key = "perks",
 	label = "Perks",
+	-- View Perks
+	iconSpell = 80100,
 	create = create,
 	show = show,
 	-- the game's window opens with the session this one has

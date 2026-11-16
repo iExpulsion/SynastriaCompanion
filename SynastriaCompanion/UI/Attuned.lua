@@ -185,6 +185,7 @@ end
 SC.Window.AddScreen({
 	key = "attuned",
 	label = "Attuned Stats",
+	iconSpell = Attuned.SPELL,
 	spell = Attuned.SPELL,
 	needsSpell = function() return not Attuned.HasData() end,
 	create = create,

@@ -62,7 +62,7 @@ local function place()
 end
 
 -- The screen menu: section headings and a row per screen, like the window's sidebar.
-local ROW_H, MENU_W = 22, 170
+local ROW_H, MENU_W, MENU_ICON = 22, 170, 16
 local function createMenu()
 	menu = CreateFrame("Frame", "SynastriaCompanionMinimapMenu", UIParent)
 	menu:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -87,8 +87,14 @@ local function createMenu()
 		item:SetPoint("TOPRIGHT", -m, -y)
 		item:SetWidth(MENU_W - 2 * m)
 		S.Highlight(item)
+		local icon = item:CreateTexture(nil, "ARTWORK")
+		icon:SetSize(MENU_ICON, MENU_ICON)
+		icon:SetPoint("LEFT", S.PAD + 6, 0)
+		icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		icon:SetTexture(SC.Window.ScreenIcon(screen))
+		item.icon = icon
 		local text = S.Text(item, "small")
-		text:SetPoint("LEFT", S.PAD + 6, 0)
+		text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
 		text:SetText(screen.label)
 		local function pick()
 			menu:Hide()

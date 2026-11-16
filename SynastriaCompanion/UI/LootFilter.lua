@@ -731,6 +731,8 @@ end
 SC.Window.AddScreen({
 	key = "lootfilter",
 	label = "Auto Loot",
+	-- View Auto-loot Options
+	iconSpell = 80413,
 	create = create,
 	show = show,
 	hook = {

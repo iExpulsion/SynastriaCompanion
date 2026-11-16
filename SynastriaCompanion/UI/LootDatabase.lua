@@ -374,6 +374,8 @@ end
 SC.Window.AddScreen({
 	key = "lootdb",
 	label = "Item Database",
+	-- View Loot Database
+	iconSpell = 80645,
 	create = create,
 	show = show,
 	hook = { open = "OpenLootDb", close = "CloseLootDb", frame = "LootDBFrame" },

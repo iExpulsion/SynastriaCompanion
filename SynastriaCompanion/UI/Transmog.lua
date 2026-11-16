@@ -1603,6 +1603,7 @@ SC:On("ACTIVE_TALENT_GROUP_CHANGED", function() TransmogUI.Changed(1) end)
 SC.Window.AddScreen({
 	key = "transmog",
 	label = "Transmog",
+	iconSpell = T.SPELL,
 	size = { WINDOW_W, WINDOW_H },
 	create = create,
 	show = show,

@@ -1,4 +1,4 @@
--- Vendored from MaterialCraftUI v1.6.0. Change it there, then run tools/sync_style.py.
+-- Vendored from MaterialCraftUI v1.6.0-1-gac19393. Change it there, then run tools/sync_style.py.
 -- MIT License, Copyright (c) 2026 Expulsion: https://github.com/iExpulsion/MaterialCraftUI
 -- MaterialCraftUI: a flat dark style kit for WoW 3.3.5 addons on Material 3 color roles: one accent color, 1px
 -- borders, state layers and a few button kinds. Each addon ships its own copy, listed in its .toc, and reads it
@@ -1073,11 +1073,24 @@ function S.Highlight(frame)
 end
 
 -- An entry in a navigation sidebar: its label (b.label, in the "normal" size) and its hover and selected look.
+-- With an icon texture, b.icon sits where the skin puts the label and the label moves right of it.
 -- b:SetSelected(on) repaints it.
-function S.NavEntry(b, text)
+local NAV_ICON = 18
+function S.NavEntry(b, text, icon)
 	b.label = S.Text(b, "normal")
 	b.label:SetText(text)
 	skin.navEntry(b)
+	if icon then
+		local _, _, _, x = b.label:GetPoint()
+		b.icon = b:CreateTexture(nil, "ARTWORK")
+		b.icon:SetSize(NAV_ICON, NAV_ICON)
+		b.icon:SetPoint("LEFT", x or S.PAD, 0)
+		-- crops the uneven dark frame around Blizzard's icon art
+		b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		b.icon:SetTexture(icon)
+		b.label:ClearAllPoints()
+		b.label:SetPoint("LEFT", (x or S.PAD) + NAV_ICON + 6, 0)
+	end
 	function b:SetSelected(on)
 		self.selected = on
 		skin.paintNav(self, on)
@@ -1304,6 +1317,15 @@ local function newRow(self, i)
 	row.headerText:SetPoint("LEFT", 6, 0)
 	row.headerText:SetPoint("RIGHT", -6 - BAR_SPACE, 0)
 	row.headerText:Hide()
+	if i == 1 and self.stickyHeaders then
+		-- marks the top row's header as held in place, with the group's rows passing under it
+		local rule, ruleH = line(row, "header")
+		rule:SetHeight(ruleH)
+		rule:SetPoint("BOTTOMLEFT")
+		rule:SetPoint("BOTTOMRIGHT")
+		rule:Hide()
+		row.stickyRule = rule
+	end
 
 	-- the row's item, or nil for an empty row or a group heading, which get no tooltip and no clicks unless the
 	-- table takes header clicks
@@ -1411,6 +1433,7 @@ end
 -- first column has an icon), cell(item, key) -> text, color, icon(item) -> texture, tooltip(tt, item),
 -- onClick(item, button, row) (row: the clicked row, to open an S.ContextMenu beside), onSort(key, desc), header(item) -> label when the item is a group header row,
 -- headerClicks (group header rows also get tooltip and onClick, to collapse a group or act on all of it),
+-- stickyHeaders (once a group's header scrolls off, the top row shows it over the group's rows),
 -- isSelected(item), plain (a bare list for inside a menu or popup: no well frame and no column headers),
 -- onMove(from, to) (rows can be dragged to reorder; from and to are item indexes, to as it is after the move, and
 -- the table leaves moving the item to the caller). The table's frame is .frame; its contents sit inside the well's
@@ -1421,7 +1444,7 @@ function Table.New(parent, name, width, height, opts)
 	local inset = opts.plain and 0 or 1 + S.metrics.wellInset
 	local self = setmetatable({ columns = opts.columns, rowH = opts.rowH or 20, icons = opts.icons, cell = opts.cell,
 		iconOf = opts.icon, tooltip = opts.tooltip, onClick = opts.onClick, onSort = opts.onSort, header = opts.header,
-		headerClicks = opts.headerClicks, isSelected = opts.isSelected, plain = opts.plain, onMove = opts.onMove, items = {}, width = width,
+		headerClicks = opts.headerClicks, stickyHeaders = opts.stickyHeaders, isSelected = opts.isSelected, plain = opts.plain, onMove = opts.onMove, items = {}, width = width,
 		innerW = width - 2 * inset,
 		offset = 0, rows = {}, headers = {} }, { __index = Table })
 	local columns = {}
@@ -1583,11 +1606,28 @@ function Table:SetItems(items, emptyText, keepScroll)
 	self:Redraw()
 end
 
+-- The header of the group the top row is in, once that header has scrolled off: its item and label, or nil.
+local function stickyHeader(self)
+	local top = self.items[self.offset + 1]
+	if self.stickyHeaders and self.header and top and not self.header(top) then
+		for index = self.offset, 1, -1 do
+			local item = self.items[index]
+			local label = self.header(item)
+			if label then return item, label end
+		end
+	end
+end
+
 function Table:Redraw()
+	local stuckItem, stuckLabel = stickyHeader(self)
 	for i, row in ipairs(self.rows) do
 		local item = self.items[self.offset + i]
-		row.item = item
 		local header = item and self.header and self.header(item)
+		if i == 1 and stuckItem then item, header = stuckItem, stuckLabel end
+		if row.stickyRule then
+			if i == 1 and stuckItem then row.stickyRule:Show() else row.stickyRule:Hide() end
+		end
+		row.item = item
 		row.moveIndex = item and not header and self.offset + i or nil
 		if header then
 			for _, fs in ipairs(row.cells) do fs:SetText("") end

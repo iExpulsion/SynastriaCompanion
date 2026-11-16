@@ -62,7 +62,8 @@ function Window.Default()
 	return first
 end
 
--- screen: { key, label, create(parent, width, height) -> panel, show(panel, ...), spell = the game's View spell
+-- screen: { key, label, create(parent, width, height) -> panel, show(panel, ...), iconSpell = the spell whose icon
+-- marks it in the sidebar (Synastria's View spell for it), icon = a texture instead, spell = the game's View spell
 -- for it, needsSpell() = true while its data only comes from casting that spell, gameArgs() = what the Game Window
 -- button passes the game's open function, size = { width, height } of the window for this screen (default 900x600,
 -- shrunk to fit the screen),
@@ -78,6 +79,14 @@ function Window.AddScreen(screen)
 		for name, fn in pairs(hook.extra or {}) do replace[name] = fn end
 		SC.Hooks.Register({ key = screen.key, frame = hook.frame, open = hook.open, show = show, replace = replace })
 	end
+end
+
+local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
+
+-- The icon for a screen in the sidebar and the minimap menu.
+function Window.ScreenIcon(screen)
+	local spellIcon = screen.iconSpell and select(3, GetSpellInfo(screen.iconSpell))
+	return spellIcon or screen.icon or QUESTION
 end
 
 local function find(key)
@@ -243,7 +252,7 @@ local function createSidebar(f, edge)
 		b:SetPoint("TOPRIGHT", -inset, -y)
 		b:SetWidth(SIDEBAR_W - 2 * inset)
 		y = y + NAV_H
-		S.NavEntry(b, screen.label)
+		S.NavEntry(b, screen.label, Window.ScreenIcon(screen))
 		b.screen = screen
 		b:SetScript("OnClick", function() Window.Open(screen.key) end)
 		-- a screen that needs its spell cast gets it cast by the same click

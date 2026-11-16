@@ -229,6 +229,8 @@ end
 SC.Window.AddScreen({
 	key = "bank",
 	label = "Resource Bank",
+	-- View Resource Bank
+	iconSpell = 80270,
 	create = create,
 	show = show,
 	hook = { open = "OpenResourceSummary", close = "CloseResourceSummary", frame = "RBankFrame" },

@@ -247,6 +247,8 @@ end
 SC.Window.AddScreen({
 	key = "leaderboards",
 	label = "Leaderboards",
+	-- View Leaderboards
+	iconSpell = 80335,
 	create = create,
 	show = show,
 	hook = {
