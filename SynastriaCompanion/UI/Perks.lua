@@ -542,21 +542,26 @@ SC:On("ACTIVE_TALENT_GROUP_CHANGED", function() PerksUI.Changed(SPEC_DELAY) end)
 
 -- Synastria Build Suite's innkeeper line opens its own window and then picks Manage Perks, so the server's open
 -- call arrives with Build Suite already showing. Then the session starts without this window covering it, and
--- lasts until both windows are closed.
-local watchedBuildSuite
+-- lasts until both windows are closed. Build Suite is optional, so it's reached only through its API.
+local watchingBuildSuite
+
+local function buildSuite()
+	local addon = _G.SynastriaBuildSuite
+	return addon and addon.API
+end
 
 function PerksUI.BuildSuiteShown()
-	local f = _G.SynastriaBuildSuiteFrame
-	return f ~= nil and f:IsShown() ~= nil
+	local api = buildSuite()
+	return api ~= nil and api.IsShown()
 end
 
 local function watchBuildSuite()
-	local f = _G.SynastriaBuildSuiteFrame
-	if f and watchedBuildSuite ~= f then
-		watchedBuildSuite = f
-		f:HookScript("OnHide", function()
+	local api = buildSuite()
+	if api and not watchingBuildSuite then
+		watchingBuildSuite = true
+		api.OnShownChanged(function(shown)
 			local window = SC.Window.Frame()
-			if not (window and window:IsShown()) then Perks.End() end
+			if not shown and not (window and window:IsShown()) then Perks.End() end
 		end)
 	end
 end
