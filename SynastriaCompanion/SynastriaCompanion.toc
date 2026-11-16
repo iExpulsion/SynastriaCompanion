@@ -30,7 +30,6 @@ UI\Skins\MaterialGlass\Skin.lua
 UI\StyleSetup.lua
 UI\SecureCast.lua
 UI\Window.lua
-UI\Picker.lua
 UI\ZonePicker.lua
 UI\TextDialog.lua
 UI\Perks.lua

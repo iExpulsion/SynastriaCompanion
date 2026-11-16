@@ -107,14 +107,14 @@ local function openValuePicker(row)
 	if c then
 		local v = LF.Value(c.type)
 		if v.kind == K.MASK then
-			SC.Picker.Open(row.valueButton, { items = v.options, multi = true, placeholder = "Search Choices",
+			S.Picker.Open(row.valueButton, { items = v.options, multi = true, placeholder = "Search Choices",
 				isSelected = function(value) return bit.band(c.value or 0, value) ~= 0 end,
 				onPick = function(value)
 					c.value = bit.bxor(c.value or 0, value)
 					changed()
 				end })
 		elseif v.kind == K.ITEM then
-			SC.Picker.Open(row.valueButton, { search = itemSearch, placeholder = "Type an Item Name",
+			S.Picker.Open(row.valueButton, { search = itemSearch, placeholder = "Type an Item Name",
 				emptyText = "Type at Least Two Letters", isSelected = function(id) return id == c.value end,
 				onPick = function(id)
 					c.value = id
@@ -138,7 +138,7 @@ local function newConditionRow(parent, index)
 		local items = {}
 		for _, c in ipairs(LF.CONDITIONS) do items[#items + 1] = { value = c.id, text = c.name, tooltip = c.tooltip } end
 		local rule = draft.rules[sel]
-		SC.Picker.Open(self, { items = items, placeholder = "Search Conditions",
+		S.Picker.Open(self, { items = items, placeholder = "Search Conditions",
 			isSelected = function(id) return rule and rule.cond[row.index] and rule.cond[row.index].type == id end,
 			onPick = function(id)
 				LF.Retype(rule.cond[row.index], id)

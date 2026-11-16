@@ -291,7 +291,7 @@ local function openAffixPicker(button)
 		items[#items + 1] = { value = name, text = name,
 			tooltip = "Items that can roll this affix and where you haven't attuned it yet at the Affix Forge level." }
 	end
-	SC.Picker.Open(button, {
+	S.Picker.Open(button, {
 		items = items, placeholder = "Search Affixes",
 		isSelected = function(v) return v == (filter.affixPick or false) end,
 		onPick = function(v) set("affixPick", v or nil) end,
