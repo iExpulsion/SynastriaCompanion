@@ -123,70 +123,6 @@ local function paintNav()
 	for _, b in ipairs(frame.nav) do b:SetSelected(b.screen.key == current) end
 end
 
--- The theme picker: every skin the kit has, with who made it on hover. A change applies after a reload.
-local function createThemePicker(bar, anchor)
-	local label = S.Text(bar, "small", C.muted)
-	label:SetPoint("LEFT", anchor, "RIGHT", 2 * S.GAP, 0)
-	label:SetText("Theme")
-	local options, inUse = {}, nil
-	for _, skin in ipairs(S.Skins()) do
-		options[#options + 1] = { value = skin.key, text = skin.label, tooltip = skin.credit }
-		if skin.key == S.Skin() then inUse = skin.label end
-	end
-	local picker
-	picker = S.Dropdown(bar, 96, function(key)
-		SC.SetSkin(key)
-		for _, opt in ipairs(options) do
-			if opt.value == key then picker:SetText(opt.text) end
-		end
-	end)
-	picker:SetOptions(options)
-	picker:SetText(inUse or "")
-	picker:SetPoint("LEFT", label, "RIGHT", S.GAP, 0)
-	return picker
-end
-
--- The size picker: the window's scale on top of the UI scale, for big screens.
-local function createSizePicker(bar, anchor)
-	local label = S.Text(bar, "small", C.muted)
-	label:SetPoint("LEFT", anchor, "RIGHT", 2 * S.GAP, 0)
-	label:SetText("Size")
-	local options = {}
-	for _, scale in ipairs(SC.WINDOW_SCALES) do
-		options[#options + 1] = { value = scale, text = SC.ScaleLabel(scale) }
-	end
-	local picker
-	picker = S.Dropdown(bar, 64, function(scale) SC.SetWindowScale(scale) end)
-	picker:SetOptions(options)
-	picker:SetPoint("LEFT", label, "RIGHT", S.GAP, 0)
-	return picker
-end
-
--- The pixel snapping box: crisp borders, or exactly the UI scale.
-local function createSnapBox(bar, anchor)
-	local box = S.Check(bar, nil, function() SC.SetPixelScale(not SC.db.pixelScale) end)
-	box:SetPoint("LEFT", anchor, "RIGHT", 2 * S.GAP, 0)
-	local label = S.Text(bar, "small", C.muted)
-	label:SetPoint("LEFT", box, "RIGHT", 6, 0)
-	label:SetText("Snap to Pixels")
-	box:HookScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-		GameTooltip:AddLine("Snap to Pixels", 1, 1, 1)
-		GameTooltip:AddLine("Lines the window up with whole screen pixels so its borders stay crisp. It can make the "
-			.. "window a little larger or smaller than the rest of your UI; turn it off to match the UI scale exactly.",
-			nil, nil, nil, true)
-		GameTooltip:Show()
-	end)
-	box:HookScript("OnLeave", function() GameTooltip:Hide() end)
-	return box
-end
-
--- Shows the window size and pixel snapping as saved, after either changes from the title bar or a command.
-local function paintSettings()
-	frame.sizePicker:SetText(SC.ScaleLabel(SC.db.windowScale))
-	frame.snapBox:SetChecked(SC.db.pixelScale)
-end
-
 local function createTitleBar(f, edge)
 	local bar = CreateFrame("Frame", nil, f)
 	bar:SetPoint("TOPLEFT", edge, -edge)
@@ -212,8 +148,8 @@ local function createTitleBar(f, edge)
 	local version = S.Text(bar, "small", C.muted)
 	version:SetPoint("LEFT", title, "RIGHT", S.GAP, 0)
 	version:SetText("v" .. SC.version)
-	f.sizePicker = createSizePicker(bar, createThemePicker(bar, version))
-	f.snapBox = createSnapBox(bar, f.sizePicker)
+	local settings = S.Settings.TitleBar(bar, version)
+	f.themePicker, f.sizePicker, f.snapBox = settings.theme, settings.size, settings.snap
 
 	local inset = (TITLE_H - S.CONTROL_H) / 2
 	local close = S.Button(bar, "Close", "ghost", 56, function() f:Hide() end)
@@ -284,7 +220,6 @@ local function create()
 	f:Hide()
 
 	createTitleBar(f, edge)
-	paintSettings()
 	createSidebar(f, edge)
 	f.main = CreateFrame("Frame", nil, f)
 	f.main:SetPoint("TOPLEFT", edge + SIDEBAR_W, -edge - TITLE_H)
@@ -367,7 +302,6 @@ function Window.Rescaled()
 			placeDefault(frame)
 			SC.SnapPosition(frame)
 		end
-		paintSettings()
 	end
 end
 

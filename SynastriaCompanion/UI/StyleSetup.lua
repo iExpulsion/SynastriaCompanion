@@ -21,83 +21,17 @@ S.SetTheme(YELLOW)
 -- the game's forge colors (Titanforged, Warforged, Lightforged), so forge levels read as they do in its tooltips
 S.colors.forge = { { 0.71, 0.76, 1, 1 }, { 0.94, 0.49, 0.42, 1 }, { 0.94, 0.94, 0.69, 1 } }
 
-local function known(key)
-	for _, skin in ipairs(S.Skins()) do
-		if skin.key == key then return true end
-	end
-	return false
-end
-
--- The saved skin goes on before anything is built; frames take their look when they're made.
+-- The saved skin, window size and pixel snapping (S.Settings) go on before anything is built; frames take their
+-- look when they're made.
 SC:OnLoad(function()
-	if not known(SC.db.skin) then SC.db.skin = "material" end
-	S.UseSkin(SC.db.skin, YELLOW)
-	S.SetWindowScale(SC.db.windowScale)
+	S.Settings.Use(SC.db, { theme = YELLOW, name = "Synastria Companion",
+		onRescaled = function() SC.Window.Rescaled() end })
 end)
 
--- the sizes offered for Companion's windows
-SC.WINDOW_SCALES = { 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2 }
-local MIN_SCALE, MAX_SCALE = 0.5, 3
-
-function SC.ScaleLabel(scale)
-	return ("%d%%"):format(math.floor(scale * 100 + 0.5))
-end
-
--- Sets the size of Companion's windows and keeps the main window's saved spot. Returns false when out of range.
-function SC.SetWindowScale(scale)
-	local ok = type(scale) == "number" and scale >= MIN_SCALE and scale <= MAX_SCALE
-	if ok then
-		SC.db.windowScale = scale
-		S.SetWindowScale(scale)
-		SC.Window.Rescaled()
-	end
-	return ok
-end
-
--- Companion's windows, dialogs and popups are pixel-scaled (S.PixelScale) unless the player turned it off, so their
--- edges and 1px borders land on whole screen pixels. SC.PixelScale registers one as it's made.
-local pixelFrames = {}
-
-function SC.PixelScale(frame)
-	pixelFrames[#pixelFrames + 1] = frame
-	S.PixelScale(frame, SC.db.pixelScale)
-	return frame
-end
-
--- Snaps a window's position to whole pixels, when pixel scaling is on.
-function SC.SnapPosition(frame)
-	if SC.db.pixelScale then S.SnapPosition(frame) end
-end
-
-function SC.SetPixelScale(on)
-	SC.db.pixelScale = on
-	for _, frame in ipairs(pixelFrames) do
-		S.PixelScale(frame, on)
-		SC.SnapPosition(frame)
-	end
-	SC.Window.Rescaled()
-end
-
-StaticPopupDialogs.SYNASTRIA_COMPANION_RELOAD = {
-	text = "Synastria Companion switches to the %s theme after a reload. Reload now?",
-	button1 = "Reload",
-	button2 = "Later",
-	OnAccept = function() ReloadUI() end,
-	timeout = 0,
-	whileDead = true,
-	hideOnEscape = true,
-}
-
--- Saves a skin for the next load and offers to reload. Returns false for a skin that doesn't exist.
-function SC.SetSkin(key)
-	local ok = known(key)
-	if ok and key ~= SC.db.skin then
-		SC.db.skin = key
-		local label = key
-		for _, skin in ipairs(S.Skins()) do
-			if skin.key == key then label = skin.label end
-		end
-		StaticPopup_Show("SYNASTRIA_COMPANION_RELOAD", label)
-	end
-	return ok
-end
+SC.WINDOW_SCALES = S.Settings.SCALES
+SC.ScaleLabel = S.Settings.ScaleLabel
+SC.SetWindowScale = S.Settings.SetWindowScale
+SC.PixelScale = S.Settings.PixelScale
+SC.SnapPosition = S.Settings.SnapPosition
+SC.SetPixelScale = S.Settings.SetPixelScale
+SC.SetSkin = S.Settings.SetSkin
