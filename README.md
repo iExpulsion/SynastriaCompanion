@@ -229,7 +229,9 @@ last), with the others in the tooltip; your own characters share the You row. **
 again; right-click a player to forget them.
 
 Hover an item anyone could attune and its tooltip lists which of your friends still need it: not attuned at all, or
-attuned but not this variant. It's handy for deciding who gets a drop or a Bind on Equip item. Soulbound, account
+attuned but not this variant. It's handy for deciding who gets a drop or a Bind on Equip item. While it asks, the
+tooltip says **Asking Friends...**; answers appear as they come in, and **Asked 3 Friends** shows once everyone has
+been asked. Soulbound, account
 bound and quest items are left out, since they can't be given away, unless they're still in their loot trade window.
 
 Sharing is on by default and covers only your attune counts and whether you need an item. Untick **Share My

@@ -11,7 +11,7 @@ SC.Friends = Friends
 local PREFIX, VERSION = "SComp", "1"
 local SEND_GAP = 1.1
 local LOGIN_DELAY, GROUP_DELAY, ONLINE_DELAY, ATTUNED_DELAY = 5, 3, 10, 30
-local HOVER_DELAY = 0.5
+local HOVER_DELAY, DONE_DELAY = 0.5, 2
 local HELLO_COOLDOWN = 60
 local QUERY_COOLDOWN, ANSWER_TTL = 120, 600
 local FORGET_AFTER = 60 * 86400
@@ -24,8 +24,10 @@ end
 
 -- Outgoing messages, one per SEND_GAP. The server mutes a character's chat when too many addon messages (every
 -- addon's together) land in one server second, and Synastria's limit is low, so each message gets a second of its
--- own. The frame runs only while something waits.
+-- own. The frame runs only while something waits. A message can carry the item string of the question it ends;
+-- questionSent and questionDropped (set further down) hear when it goes out or is dropped.
 local queue = {}
+local questionSent, questionDropped
 local sender = CreateFrame("Frame")
 sender:Hide()
 local lastSent = -math.huge
@@ -35,20 +37,25 @@ sender:SetScript("OnUpdate", function(self)
 		if m then
 			SendAddonMessage(PREFIX, m[1], m[2], m[3])
 			lastSent = GetTime()
+			if m[4] then questionSent(m[4]) end
 		end
 		if #queue == 0 then self:Hide() end
 	end
 end)
 
-local function send(msg, channel, target)
-	queue[#queue + 1] = { msg, channel, target }
+local function send(msg, channel, target, lastOf)
+	queue[#queue + 1] = { msg, channel, target, lastOf }
 	sender:Show()
 end
 
 -- Drops waiting messages of one kind (the text before the first ";").
 local function unqueue(kind)
 	for i = #queue, 1, -1 do
-		if queue[i][1]:match("^[^;]*") == kind then table.remove(queue, i) end
+		local m = queue[i]
+		if m[1]:match("^[^;]*") == kind then
+			table.remove(queue, i)
+			if m[4] then questionDropped(m[4]) end
+		end
 	end
 end
 
@@ -109,12 +116,19 @@ function Friends.Broadcast(msg, groupOnly)
 	end
 end
 
--- Whispers every online friend, guildmates and group members on the list too.
-function Friends.WhisperFriends(msg)
+-- Whispers every online friend, guildmates and group members on the list too; the last whisper carries lastOf.
+-- Returns how many were queued.
+function Friends.WhisperFriends(msg, lastOf)
+	local count = 0
 	for i = 1, GetNumFriends() do
 		local name, _, _, _, connected = GetFriendInfo(i)
-		if name and connected then send(msg, "WHISPER", name) end
+		if name and connected then
+			send(msg, "WHISPER", name)
+			count = count + 1
+		end
 	end
+	if count > 0 then queue[#queue][4] = lastOf end
+	return count
 end
 
 -- A random ID made once and kept in saved data, which every character on the WoW account shares, so others can
@@ -254,6 +268,7 @@ end
 -- A new question replaces older ones still waiting to go out, so hovering item after item at a vendor doesn't pile
 -- them up.
 local pendingQuery, queryAt = nil, 0
+local finishQuestion
 local querier = CreateFrame("Frame")
 querier:Hide()
 querier:SetScript("OnUpdate", function(self)
@@ -262,9 +277,12 @@ querier:SetScript("OnUpdate", function(self)
 		local str = pendingQuery
 		pendingQuery = nil
 		if str and onScreen(str) then
-			Friends.queries[str].asked = time()
+			local q = Friends.queries[str]
+			q.asked = time()
 			unqueue("Q")
-			Friends.WhisperFriends("Q;" .. VERSION .. ";" .. str)
+			q.sentTo = Friends.WhisperFriends("Q;" .. VERSION .. ";" .. str, str)
+			q.state = q.sentTo > 0 and "asking" or "done"
+			if q.state == "done" then finishQuestion(str) end
 		end
 	end
 end)
@@ -310,6 +328,65 @@ function Friends.NeedText(forge, progress)
 	return text
 end
 
+-- A question's progress, as tooltip labels: asking while it waits or is still being whispered, then how many
+-- friends it reached.
+local ASKING_TEXT, NO_FRIENDS_TEXT = "Asking Friends...", "No Friends Online"
+
+local function askedText(q)
+	local text = NO_FRIENDS_TEXT
+	if q.sentTo > 0 then text = ("Asked %d %s"):format(q.sentTo, q.sentTo == 1 and "Friend" or "Friends") end
+	return text
+end
+
+local function addStatus(tt, text)
+	tt:AddLine(text, 0.6, 0.6, 0.6)
+end
+
+local function addDone(tt, entry, q)
+	entry.done = true
+	addStatus(tt, askedText(q))
+end
+
+-- Questions whose last whisper went out, done once DONE_DELAY has passed so quick answers land above the line.
+local finishing = {}
+local finisher = CreateFrame("Frame")
+finisher:Hide()
+
+finishQuestion = function(str)
+	local q = Friends.queries[str]
+	q.state = "done"
+	for tt, entry in pairs(shown) do
+		if entry.item == str and tt:IsShown() and not entry.done then
+			addDone(tt, entry, q)
+			tt:Show()
+		end
+	end
+end
+
+finisher:SetScript("OnUpdate", function(self)
+	local now, waiting = GetTime(), false
+	for str, at in pairs(finishing) do
+		if now >= at then
+			finishing[str] = nil
+			finishQuestion(str)
+		else
+			waiting = true
+		end
+	end
+	if not waiting then self:Hide() end
+end)
+
+questionSent = function(str)
+	finishing[str] = GetTime() + DONE_DELAY
+	finisher:Show()
+end
+
+-- A question cut short by a newer one can be asked again in full.
+questionDropped = function(str)
+	local q = Friends.queries[str]
+	q.state, q.asked = nil, 0
+end
+
 local function addAnswer(tt, entry, a)
 	if not entry.header then
 		entry.header = true
@@ -341,10 +418,14 @@ local function onTooltip(tt)
 	local str = SC.db.askItems and not bound(tt) and Friends.Ask(link) or nil
 	local entry = shown[tt] or { names = {} }
 	shown[tt] = entry
-	entry.item, entry.header = str, false
+	entry.item, entry.header, entry.done = str, false, false
 	wipe(entry.names)
 	if str then
+		local q = Friends.queries[str]
+		local asking = pendingQuery == str or q.state == "asking"
+		if asking then addStatus(tt, ASKING_TEXT) end
 		for _, a in ipairs(Friends.Answers(str)) do addAnswer(tt, entry, a) end
+		if not asking and q.state == "done" then addDone(tt, entry, q) end
 	end
 end
 
