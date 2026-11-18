@@ -9,7 +9,7 @@ local Friends = { queries = {} }
 SC.Friends = Friends
 
 local PREFIX, VERSION = "SComp", "1"
-local SEND_GAP, BURST, BREAK = 0.2, 30, 1.5
+local SEND_GAP = 1.1
 local LOGIN_DELAY, GROUP_DELAY, ONLINE_DELAY, ATTUNED_DELAY = 5, 3, 10, 30
 local HOVER_DELAY = 0.5
 local HELLO_COOLDOWN = 60
@@ -22,21 +22,19 @@ local function me()
 	return UnitName("player")
 end
 
--- Outgoing messages, one per SEND_GAP. The server mutes a character's chat for a while after too many addon
--- messages in a row, each within a second of the last, counting every addon's; so after BURST quick ones the queue
--- waits BREAK, which starts the server's count over. The frame runs only while something waits.
+-- Outgoing messages, one per SEND_GAP. The server mutes a character's chat when too many addon messages (every
+-- addon's together) land in one server second, and Synastria's limit is low, so each message gets a second of its
+-- own. The frame runs only while something waits.
 local queue = {}
 local sender = CreateFrame("Frame")
 sender:Hide()
-local lastSent, burst = -math.huge, 0
+local lastSent = -math.huge
 sender:SetScript("OnUpdate", function(self)
-	local since = GetTime() - lastSent
-	if since >= BREAK then burst = 0 end
-	if since >= (burst >= BURST and BREAK or SEND_GAP) then
+	if GetTime() - lastSent >= SEND_GAP then
 		local m = table.remove(queue, 1)
 		if m then
 			SendAddonMessage(PREFIX, m[1], m[2], m[3])
-			burst, lastSent = burst + 1, GetTime()
+			lastSent = GetTime()
 		end
 		if #queue == 0 then self:Hide() end
 	end
@@ -45,6 +43,13 @@ end)
 local function send(msg, channel, target)
 	queue[#queue + 1] = { msg, channel, target }
 	sender:Show()
+end
+
+-- Drops waiting messages of one kind (the text before the first ";").
+local function unqueue(kind)
+	for i = #queue, 1, -1 do
+		if queue[i][1]:match("^[^;]*") == kind then table.remove(queue, i) end
+	end
 end
 
 local function groupUnits()
@@ -238,6 +243,8 @@ end
 
 -- One pending question: it goes out once a tooltip has shown its item for HOVER_DELAY, so moving the mouse over a
 -- bag full of items asks only about the one it stops on. A tooltip set again to the same item keeps the wait going.
+-- A new question replaces older ones still waiting to go out, so hovering item after item at a vendor doesn't pile
+-- them up.
 local pendingQuery, queryAt = nil, 0
 local querier = CreateFrame("Frame")
 querier:Hide()
@@ -248,6 +255,7 @@ querier:SetScript("OnUpdate", function(self)
 		pendingQuery = nil
 		if str and onScreen(str) then
 			Friends.queries[str].asked = time()
+			unqueue("Q")
 			Friends.Broadcast("Q;" .. VERSION .. ";" .. str)
 		end
 	end
