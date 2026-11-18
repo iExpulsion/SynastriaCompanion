@@ -236,12 +236,13 @@ local function forgeOf(id)
 	return forge
 end
 
--- Whether this character still needs an item variant: forge (best attuned, -1 none) and progress on this variant,
--- or nil when it doesn't.
+-- Whether this account still needs an item variant: forge (best attuned, -1 none) and progress on this variant,
+-- or nil when it doesn't. Attunes are account-wide, so this asks whether anyone could attune the item, not whether
+-- the character playing now could.
 function Friends.Need(str)
 	local id = itemId(str)
 	local forge, progress
-	if id and SC.Attune.CanAttune({ id = id }) then
+	if id and (IsAttunableBySomeone and IsAttunableBySomeone(id) or SC.Attune.CanAttune({ id = id })) then
 		local link = select(2, GetItemInfo(str)) or str
 		forge = forgeOf(id)
 		if GetItemLinkAttuneProgress then
