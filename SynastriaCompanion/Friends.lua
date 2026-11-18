@@ -413,19 +413,29 @@ local function bound(tt)
 	return found and not tradable
 end
 
+-- Any item set on the tooltip starts it over; only items in the player's own bags ask (onBagItem, which runs
+-- after the client has set the item and so after this).
 local function onTooltip(tt)
-	local _, link = tt:GetItem()
-	local str = SC.db.askItems and not bound(tt) and Friends.Ask(link) or nil
 	local entry = shown[tt] or { names = {} }
 	shown[tt] = entry
-	entry.item, entry.header, entry.done = str, false, false
+	entry.item, entry.header, entry.done = nil, false, false
 	wipe(entry.names)
-	if str then
+end
+
+-- An item in the player's bags (not the bank) that could still be given away asks who needs it, and the tooltip
+-- lists the question's progress and answers.
+local function onBagItem(tt, bag, slot)
+	local link = SC.db.askItems and bag and bag >= 0 and bag <= (NUM_BAG_SLOTS or 4) and GetContainerItemLink(bag, slot)
+	local str = link and not bound(tt) and Friends.Ask(link) or nil
+	local entry = shown[tt]
+	if str and entry then
+		entry.item = str
 		local q = Friends.queries[str]
 		local asking = pendingQuery == str or q.state == "asking"
 		if asking then addStatus(tt, ASKING_TEXT) end
 		for _, a in ipairs(Friends.Answers(str)) do addAnswer(tt, entry, a) end
 		if not asking and q.state == "done" then addDone(tt, entry, q) end
+		tt:Show()
 	end
 end
 
@@ -434,14 +444,9 @@ local function onTooltipCleared(tt)
 	if entry then entry.item = nil end
 end
 
-local function hookTooltip(tt)
-	if tt then
-		tt:HookScript("OnTooltipSetItem", onTooltip)
-		tt:HookScript("OnTooltipCleared", onTooltipCleared)
-	end
-end
-hookTooltip(GameTooltip)
-hookTooltip(ItemRefTooltip)
+GameTooltip:HookScript("OnTooltipSetItem", onTooltip)
+GameTooltip:HookScript("OnTooltipCleared", onTooltipCleared)
+hooksecurefunc(GameTooltip, "SetBagItem", onBagItem)
 
 local function answered(name, str, forge, progress)
 	local q = Friends.queries[str]
