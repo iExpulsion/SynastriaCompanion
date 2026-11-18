@@ -330,7 +330,7 @@ end
 
 local function onTooltip(tt)
 	local _, link = tt:GetItem()
-	local str = not bound(tt) and Friends.Ask(link) or nil
+	local str = SC.db.askItems and not bound(tt) and Friends.Ask(link) or nil
 	local entry = shown[tt] or { names = {} }
 	shown[tt] = entry
 	entry.item, entry.header = str, false
@@ -461,6 +461,19 @@ function Friends.SetShare(on)
 	if on then Friends.SendStatus(false) end
 	SC:Print(on and "Friends, your guild and your group see your attunes and which items you need."
 		or "Your attunes are no longer shared. You still see what others share.")
+	if Friends.onChange then Friends.onChange() end
+end
+
+-- Turns asking who needs an item on or off; turning it off drops a question not yet sent. Sharing answers others'
+-- questions either way.
+function Friends.SetAskItems(on)
+	SC.db.askItems = on and true or false
+	if not on then
+		pendingQuery = nil
+		unqueue("Q")
+	end
+	SC:Print(on and "Item tooltips show which friends, guildmates and group members still need the item."
+		or "Item tooltips no longer ask who needs the item. Others can still ask you.")
 	if Friends.onChange then Friends.onChange() end
 end
 

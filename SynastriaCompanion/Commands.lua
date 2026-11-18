@@ -28,6 +28,7 @@ local function usage()
 	SC:Print("/scomp pixel: whether windows snap to whole screen pixels, for crisp borders.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
 	SC:Print("/scomp share: whether friends, your guild and your group see your attunes and which items you need.")
+	SC:Print("/scomp ask: whether item tooltips ask friends, your guild and your group who still needs the item.")
 end
 
 SLASH_SYNASTRIACOMPANION1 = "/scomp"
@@ -62,6 +63,8 @@ SlashCmdList.SYNASTRIACOMPANION = function(msg)
 			"Windows follow the UI scale exactly; borders may blur at some scales.")
 	elseif cmd == "share" then
 		SC.Friends.SetShare(not SC.db.share)
+	elseif cmd == "ask" then
+		SC.Friends.SetAskItems(not SC.db.askItems)
 	elseif cmd == "replace" and replaced and (value == "on" or value == "off") then
 		SC.db.replace[replaced.key] = value == "on"
 		SC:Print("%s: %s.", replaced.label, value == "on" and "opens here" or "opens the game's window")

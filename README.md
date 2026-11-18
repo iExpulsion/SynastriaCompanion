@@ -233,7 +233,8 @@ attuned but not this variant. It's handy for deciding who gets a drop or a Bind 
 bound and quest items are left out, since they can't be given away, unless they're still in their loot trade window.
 
 Sharing is on by default and covers only your attune counts and whether you need an item. Untick **Share My
-Attunes** (or type `/scomp share`) to stop; you still see what others share.
+Attunes** (or type `/scomp share`) to stop; you still see what others share. Untick **Ask Who Needs Items** (or
+type `/scomp ask`) to stop your tooltips asking who needs an item; you keep sharing, and others can still ask you.
 
 ### Leaderboards
 
@@ -263,6 +264,7 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp leaderboards` | Opens Leaderboards |
 | `/scomp friends` | Opens Friends |
 | `/scomp share` | Turns sharing your attunes with friends, guild and group off or back on |
+| `/scomp ask` | Turns item tooltips asking who needs the item off or back on |
 | `/scomp minimap` | Hides or shows the minimap button |
 | `/scomp minimap reset` | Puts the minimap button back on the minimap |
 | `/scomp reset` | Moves the window back to the top middle of the screen |

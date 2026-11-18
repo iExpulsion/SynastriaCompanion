@@ -22,6 +22,8 @@ local DEFAULTS = {
 	windowScale = 1,
 	-- send this character's attune counts and answer "who needs this item" for friends, guild and group
 	share = true,
+	-- ask friends, guild and group who needs an item when its tooltip shows, and list their answers on it
+	askItems = true,
 	-- attune counts heard from others and this account's characters (Friends.lua)
 	friends = {},
 }

@@ -104,6 +104,7 @@ local function render()
 	tbl:SetItems(rows, "Nobody Has Shared Yet", true)
 	panel.status:SetText(S.Count(others, "Player") .. S.Hex(C.muted, "  |  ") .. online .. " Online")
 	panel.share:SetChecked(SC.db.share)
+	panel.ask:SetChecked(SC.db.askItems)
 end
 
 local function cell(row, key)
@@ -199,6 +200,22 @@ local function create(parent, width, height)
 		GameTooltip:Show()
 	end)
 	panel.share:HookScript("OnLeave", function() GameTooltip:Hide() end)
+
+	panel.askLabel = S.Text(panel, "small")
+	panel.askLabel:SetPoint("RIGHT", panel.share, "LEFT", -16, 0)
+	panel.askLabel:SetText("Ask Who Needs Items")
+	panel.ask = S.Check(panel, nil, function()
+		Friends.SetAskItems(not SC.db.askItems)
+	end)
+	panel.ask:SetPoint("RIGHT", panel.askLabel, "LEFT", -6, 0)
+	panel.ask:HookScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:AddLine("Ask Who Needs Items", 1, 1, 1)
+		GameTooltip:AddLine("Asks friends, your guild and your group who still needs an item you hover, and lists "
+			.. "them on its tooltip. Turning this off doesn't stop sharing your own attunes.", nil, nil, nil, true)
+		GameTooltip:Show()
+	end)
+	panel.ask:HookScript("OnLeave", function() GameTooltip:Hide() end)
 
 	Friends.onChange = function()
 		if panel:IsVisible() then render() end
