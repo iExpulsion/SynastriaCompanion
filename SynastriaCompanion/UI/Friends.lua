@@ -211,7 +211,7 @@ local function create(parent, width, height)
 	panel.ask:HookScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:AddLine("Ask Who Needs Items", 1, 1, 1)
-		GameTooltip:AddLine("Asks friends, your guild and your group who still needs an item you hover, and lists "
+		GameTooltip:AddLine("Asks your online friends who still needs an item you hover, and lists "
 			.. "them on its tooltip. Turning this off doesn't stop sharing your own attunes.", nil, nil, nil, true)
 		GameTooltip:Show()
 	end)

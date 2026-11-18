@@ -28,7 +28,7 @@ local function usage()
 	SC:Print("/scomp pixel: whether windows snap to whole screen pixels, for crisp borders.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
 	SC:Print("/scomp share: whether friends, your guild and your group see your attunes and which items you need.")
-	SC:Print("/scomp ask: whether item tooltips ask friends, your guild and your group who still needs the item.")
+	SC:Print("/scomp ask: whether item tooltips ask your online friends who still needs the item.")
 end
 
 SLASH_SYNASTRIACOMPANION1 = "/scomp"

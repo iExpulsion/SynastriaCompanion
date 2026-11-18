@@ -109,6 +109,14 @@ function Friends.Broadcast(msg, groupOnly)
 	end
 end
 
+-- Whispers every online friend, guildmates and group members on the list too.
+function Friends.WhisperFriends(msg)
+	for i = 1, GetNumFriends() do
+		local name, _, _, _, connected = GetFriendInfo(i)
+		if name and connected then send(msg, "WHISPER", name) end
+	end
+end
+
 -- A random ID made once and kept in saved data, which every character on the WoW account shares, so others can
 -- tell which characters are one player's.
 function Friends.AccountId()
@@ -256,7 +264,7 @@ querier:SetScript("OnUpdate", function(self)
 		if str and onScreen(str) then
 			Friends.queries[str].asked = time()
 			unqueue("Q")
-			Friends.Broadcast("Q;" .. VERSION .. ";" .. str)
+			Friends.WhisperFriends("Q;" .. VERSION .. ";" .. str)
 		end
 	end
 end)
@@ -472,7 +480,7 @@ function Friends.SetAskItems(on)
 		pendingQuery = nil
 		unqueue("Q")
 	end
-	SC:Print(on and "Item tooltips show which friends, guildmates and group members still need the item."
+	SC:Print(on and "Item tooltips show which of your friends still need the item."
 		or "Item tooltips no longer ask who needs the item. Others can still ask you.")
 	if Friends.onChange then Friends.onChange() end
 end
