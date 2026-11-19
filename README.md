@@ -28,7 +28,7 @@ one of its windows, Companion opens instead.
 - **Drop Chains:** follow an item to the creature that drops it, see the rest of that creature's loot, and step
   back.
 - **Your Leaderboard Place:** every board in one list, with your rank highlighted and the speed buff times on top.
-- **Friends' Attunes:** the attune counts of friends, guildmates and your group who use Companion, and item
+- **Friends' Attunes:** the attune counts of friends who use Companion, and item
   tooltips that say which of them still need that item.
 - **The Game's Window When You Want It:** the **Game Window** button opens the game's own window for any screen.
 - **Themes:** the flat Material look, Classic for the game's own frames and buttons, Cognac's painted gold
@@ -222,7 +222,7 @@ items and source lines in tooltips.
 
 ### Friends
 
-Friends, guildmates and group members who also use Companion share their attune counts: items attuned on their
+Friends who also use Companion share their attune counts, whispered to each other: items attuned on their
 account and on their character, and how many are Titanforged, Warforged and Lightforged. The list shows who's
 online first. Each player gets one row however many characters they play, shown as the one they're on (or played
 last), with the others in the tooltip; your own characters share the You row. **Refresh** asks everyone online
@@ -266,7 +266,7 @@ buff show at the top. **Refresh** asks for a board again; the server answers at 
 | `/scomp lootdb` | Opens the Item Database (also `itemdb`) |
 | `/scomp leaderboards` | Opens Leaderboards |
 | `/scomp friends` | Opens Friends |
-| `/scomp share` | Turns sharing your attunes with friends, guild and group off or back on |
+| `/scomp share` | Turns sharing your attunes with friends off or back on |
 | `/scomp ask` | Turns item tooltips asking who needs the item off or back on |
 | `/scomp minimap` | Hides or shows the minimap button |
 | `/scomp minimap reset` | Puts the minimap button back on the minimap |

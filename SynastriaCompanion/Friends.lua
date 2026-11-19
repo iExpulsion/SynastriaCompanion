@@ -1,7 +1,7 @@
 local _, NS = ...
 local SC = NS.SC
 
--- Friends: attune counts shared over addon messages with friends, guildmates and the group, kept account-wide, and
+-- Friends: attune counts shared over addon messages whispered to friends, kept account-wide, and
 -- asking them who still needs an item. Messages are fields joined by ";", the second the protocol version:
 -- S is a status, R a status that asks for theirs back, H asks without one (sharing is off), Q asks who needs an
 -- item (by item string), N is a whispered "I need it".
@@ -10,7 +10,7 @@ SC.Friends = Friends
 
 local PREFIX, VERSION = "SComp", "1"
 local SEND_GAP = 1.1
-local LOGIN_DELAY, GROUP_DELAY, ONLINE_DELAY, ATTUNED_DELAY = 5, 3, 10, 30
+local LOGIN_DELAY, ONLINE_DELAY, ATTUNED_DELAY = 5, 10, 30
 local HOVER_DELAY, DONE_DELAY = 0.5, 2
 local HELLO_COOLDOWN = 60
 local QUERY_COOLDOWN, ANSWER_TTL = 120, 600
@@ -23,8 +23,8 @@ local function me()
 end
 
 -- Outgoing messages, one per SEND_GAP. The server mutes a character's chat when too many addon messages (every
--- addon's together) land in one server second, and Synastria's limit is low, so each message gets a second of its
--- own. The frame runs only while something waits. A message can carry the item string of the question it ends;
+-- addon's together) reach it in a short time, so they go out one at a time. The frame runs only while something
+-- waits. A message can carry the item string of the question it ends;
 -- questionSent and questionDropped (set further down) hear when it goes out or is dropped.
 local queue = {}
 local questionSent, questionDropped
@@ -90,34 +90,9 @@ function Friends.Relations()
 	return out
 end
 
--- Sends to the guild and the group, and whispers online friends neither reaches. groupOnly: just the group.
-function Friends.Broadcast(msg, groupOnly)
-	local reached = {}
-	local prefix, count = groupUnits()
-	if count > 0 then
-		send(msg, prefix == "raid" and "RAID" or "PARTY")
-		for i = 1, count do
-			local name = UnitName(prefix .. i)
-			if name then reached[name] = true end
-		end
-	end
-	if not groupOnly then
-		if IsInGuild() then
-			send(msg, "GUILD")
-			for i = 1, GetNumGuildMembers() do
-				local name = GetGuildRosterInfo(i)
-				if name then reached[name] = true end
-			end
-		end
-		for i = 1, GetNumFriends() do
-			local name, _, _, _, connected = GetFriendInfo(i)
-			if name and connected and not reached[name] then send(msg, "WHISPER", name) end
-		end
-	end
-end
-
--- Whispers every online friend, guildmates and group members on the list too; the last whisper carries lastOf.
--- Returns how many were queued.
+-- Whispers every online friend; the last whisper carries lastOf. Nothing goes to the guild or the group: most
+-- guilds are a player's own alts, groups have other addons for this, and every message counts toward the server's
+-- limit. Returns how many were queued.
 function Friends.WhisperFriends(msg, lastOf)
 	local count = 0
 	for i = 1, GetNumFriends() do
@@ -178,16 +153,16 @@ local function greeting()
 	return status and ("R" .. status:sub(2)) or ("H;" .. VERSION)
 end
 
--- Sends this character's status (if shared); with hello the same message asks everyone for theirs.
-function Friends.SendStatus(hello, groupOnly)
+-- Whispers this character's status (if shared) to online friends; with hello the same message asks for theirs.
+function Friends.SendStatus(hello)
 	local msg
 	if hello then
 		msg = greeting()
-		if not groupOnly then Friends.helloAt = time() end
+		Friends.helloAt = time()
 	else
 		msg = SC.db.share and Friends.Status()
 	end
-	if msg then Friends.Broadcast(msg, groupOnly) end
+	if msg then Friends.WhisperFriends(msg) end
 end
 
 -- Asks everyone again, at most once a minute; whether it asked.
@@ -197,23 +172,22 @@ function Friends.Refresh()
 	return ask
 end
 
--- One pending status send: the latest call's time wins, hello and groupOnly accumulate.
+-- One pending status send: the latest call's time wins, hello accumulates.
 local timer = CreateFrame("Frame")
 timer:Hide()
-local statusAt, pendingHello, pendingGroupOnly = 0, false, true
+local statusAt, pendingHello = 0, false
 timer:SetScript("OnUpdate", function(self)
 	if GetTime() >= statusAt then
 		self:Hide()
-		local hello, groupOnly = pendingHello, pendingGroupOnly
-		pendingHello, pendingGroupOnly = false, true
-		Friends.SendStatus(hello, groupOnly)
+		local hello = pendingHello
+		pendingHello = false
+		Friends.SendStatus(hello)
 	end
 end)
 
-function Friends.Schedule(delay, hello, groupOnly)
+function Friends.Schedule(delay, hello)
 	statusAt = GetTime() + delay
 	pendingHello = pendingHello or hello or false
-	pendingGroupOnly = pendingGroupOnly and groupOnly or false
 	timer:Show()
 end
 
@@ -491,8 +465,9 @@ local function reply(from)
 	end
 end
 
--- Messages from the guild and group channels come from members; a whisper counts only from a friend, a guildmate
--- or someone in the group, so strangers can't add rows or make this character answer them.
+-- Messages from the guild and group channels come from members (older versions still send there); a whisper counts
+-- only from a friend, a guildmate or someone in the group, so strangers can't add rows or make this character
+-- answer them.
 function Friends.Receive(prefix, msg, channel, from)
 	local known = from and (channel ~= "WHISPER" or Friends.Relations()[from] ~= nil)
 	if prefix == PREFIX and known and from ~= me() then
@@ -572,7 +547,7 @@ end
 function Friends.SetShare(on)
 	SC.db.share = on and true or false
 	if on then Friends.SendStatus(false) end
-	SC:Print(on and "Friends, your guild and your group see your attunes and which items you need."
+	SC:Print(on and "Your friends see your attunes and which items you need."
 		or "Your attunes are no longer shared. You still see what others share.")
 	if Friends.onChange then Friends.onChange() end
 end
@@ -605,25 +580,14 @@ SC:OnLoad(function()
 	Friends.AccountId()
 end)
 
-local greeted, groupSize = false, 0
+local greeted = false
 SC:On("PLAYER_ENTERING_WORLD", function()
 	if not greeted then
 		greeted = true
 		if IsInGuild() then GuildRoster() end
-		local _, count = groupUnits()
-		groupSize = count
 		Friends.Schedule(LOGIN_DELAY, true)
 	end
 end)
-
--- Someone joined the group: swap statuses with the group only.
-local function groupChanged()
-	local _, count = groupUnits()
-	if count > groupSize and greeted then Friends.Schedule(GROUP_DELAY, true, true) end
-	groupSize = count
-end
-SC:On("PARTY_MEMBERS_CHANGED", groupChanged)
-SC:On("RAID_ROSTER_UPDATE", groupChanged)
 
 -- A friend who comes online (Synastria's friends list follows the account, so also one switching characters) is
 -- whispered this character's status and asked for theirs once their addons have loaded. The first friend list after

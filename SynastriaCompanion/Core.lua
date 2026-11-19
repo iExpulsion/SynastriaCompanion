@@ -20,7 +20,7 @@ local DEFAULTS = {
 	pixelScale = true,
 	-- the player's size for Companion's windows, from 1 (S.SetWindowScale)
 	windowScale = 1,
-	-- send this character's attune counts and answer "who needs this item" for friends, guild and group
+	-- send this character's attune counts and answer "who needs this item" for friends
 	share = true,
 	-- ask online friends who needs an item when its tooltip shows, and list their answers on it
 	askItems = true,

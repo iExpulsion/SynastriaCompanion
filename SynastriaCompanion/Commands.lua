@@ -27,7 +27,7 @@ local function usage()
 	SC:Print("/scomp scale <percent> makes the windows bigger or smaller, such as /scomp scale 150.")
 	SC:Print("/scomp pixel: whether windows snap to whole screen pixels, for crisp borders.")
 	SC:Print("/scomp replace <screen> on|off: whether the game's own window for a screen opens this one instead.")
-	SC:Print("/scomp share: whether friends, your guild and your group see your attunes and which items you need.")
+	SC:Print("/scomp share: whether your friends see your attunes and which items you need.")
 	SC:Print("/scomp ask: whether item tooltips ask your online friends who still needs the item.")
 end
 
