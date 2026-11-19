@@ -31,12 +31,20 @@ local questionSent, questionDropped
 local sender = CreateFrame("Frame")
 sender:Hide()
 local lastSent = -math.huge
+local BYTE_S, BYTE_R = ("S"):byte(), ("R"):byte()
+
+-- When each player was last whispered this character's status (S or R, sent on its own or as an answer), so asking
+-- within a minute of getting it goes unanswered.
+local sharedAt = {}
+
 sender:SetScript("OnUpdate", function(self)
 	if GetTime() - lastSent >= SEND_GAP then
 		local m = table.remove(queue, 1)
 		if m then
 			SendAddonMessage(PREFIX, m[1], m[2], m[3])
 			lastSent = GetTime()
+			local kind = m[1]:byte()
+			if m[2] == "WHISPER" and (kind == BYTE_S or kind == BYTE_R) then sharedAt[m[3]] = time() end
 			if m[4] then questionSent(m[4]) end
 		end
 		if #queue == 0 then self:Hide() end
@@ -455,18 +463,15 @@ local function answered(name, str, forge, progress)
 	end
 end
 
--- When each player who asked for statuses was last answered, so asking over and over gets one answer a minute.
-local repliedAt = {}
-
 -- Friends who came online, by when to ask them for their status. Their own login hello usually arrives first and
 -- gets an answer, which drops the ask.
 local askAt = {}
 
 local function reply(from)
 	askAt[from] = nil
-	local status = SC.db.share and time() - (repliedAt[from] or 0) >= HELLO_COOLDOWN and Friends.Status()
+	local status = SC.db.share and time() - (sharedAt[from] or 0) >= HELLO_COOLDOWN and Friends.Status()
 	if status then
-		repliedAt[from] = time()
+		sharedAt[from] = time()
 		send(status, "WHISPER", from)
 	end
 end
