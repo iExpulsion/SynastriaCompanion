@@ -414,8 +414,8 @@ local function bound(tt)
 	return found and not tradable
 end
 
--- Any item set on the tooltip starts it over; only items in the player's own bags ask (onBagItem, which runs
--- after the client has set the item and so after this).
+-- Any item set on the tooltip starts it over; only items the player holds ask (showAsk, from the Set* hooks below,
+-- which run after the client has set the item and so after this).
 local function onTooltip(tt)
 	local entry = shown[tt] or { names = {} }
 	shown[tt] = entry
@@ -423,11 +423,10 @@ local function onTooltip(tt)
 	wipe(entry.names)
 end
 
--- An item in the player's bags (not the bank) that could still be given away asks who needs it, and the tooltip
--- lists the question's progress and answers.
-local function onBagItem(tt, bag, slot)
-	local link = SC.db.askItems and bag and bag >= 0 and bag <= (NUM_BAG_SLOTS or 4) and GetContainerItemLink(bag, slot)
-	local str = link and not bound(tt) and Friends.Ask(link) or nil
+-- An item the player holds (bags, bank or guild bank) that could still be given away asks who needs it, and the
+-- tooltip lists the question's progress and answers.
+local function showAsk(tt, link)
+	local str = SC.db.askItems and link and not bound(tt) and Friends.Ask(link) or nil
 	local entry = shown[tt]
 	if str and entry then
 		entry.item = str
@@ -445,9 +444,28 @@ local function onTooltipCleared(tt)
 	if entry then entry.item = nil end
 end
 
+-- Bags, the bank's main slots (-1) and bank bags; not the keyring.
+local function onBagItem(tt, bag, slot)
+	local held = bag and bag >= -1 and bag <= (NUM_BAG_SLOTS or 4) + (NUM_BANKBAGSLOTS or 7)
+	showAsk(tt, held and GetContainerItemLink(bag, slot) or nil)
+end
+
+-- The stock bank frame shows its main slots as inventory slots 40 to 67.
+local function onInventoryItem(tt, unit, slot)
+	local first = (BANK_CONTAINER_INVENTORY_OFFSET or 39) + 1
+	local bank = unit == "player" and slot and slot >= first and slot < first + (NUM_BANKGENERIC_SLOTS or 28)
+	showAsk(tt, bank and GetInventoryItemLink("player", slot) or nil)
+end
+
+local function onGuildBankItem(tt, tab, slot)
+	showAsk(tt, tab and slot and GetGuildBankItemLink(tab, slot) or nil)
+end
+
 GameTooltip:HookScript("OnTooltipSetItem", onTooltip)
 GameTooltip:HookScript("OnTooltipCleared", onTooltipCleared)
 hooksecurefunc(GameTooltip, "SetBagItem", onBagItem)
+hooksecurefunc(GameTooltip, "SetInventoryItem", onInventoryItem)
+hooksecurefunc(GameTooltip, "SetGuildBankItem", onGuildBankItem)
 
 local function answered(name, str, forge, progress)
 	local q = Friends.queries[str]

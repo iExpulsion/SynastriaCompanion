@@ -228,12 +228,12 @@ online first. Each player gets one row however many characters they play, shown 
 last), with the others in the tooltip; your own characters share the You row. **Refresh** asks everyone online
 again; right-click a player to forget them.
 
-Hover an item in your bags that anyone could attune and its tooltip lists which of your friends still need it: not
+Hover an item in your bags, bank or guild bank that anyone could attune and its tooltip lists which of your friends still need it: not
 attuned at all, or attuned but not this variant. It's handy for deciding who gets a drop or a Bind on Equip item.
 While it asks, the tooltip says **Asking Friends...**; answers appear as they come in, and **Asked 3 Friends** shows
 once everyone has been asked. Only items you could give away ask: soulbound, account bound and quest items are left
-out unless they're still in their loot trade window, and so are items anywhere but your bags (chat links, vendors,
-loot, the bank).
+out unless they're still in their loot trade window, and so are items you don't hold (chat links, vendors, loot,
+worn gear).
 
 Sharing is on by default and covers only your attune counts and whether you need an item. Untick **Share My
 Attunes** (or type `/scomp share`) to stop; you still see what others share. Untick **Ask Who Needs Items** (or
