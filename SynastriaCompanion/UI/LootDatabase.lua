@@ -75,6 +75,7 @@ local render
 
 local function push(view)
 	S.Dismiss()
+	panel.search:ClearFocus()
 	stack[#stack + 1] = view
 	render()
 end
@@ -214,6 +215,7 @@ end
 local function runSearch()
 	panel.pending = nil
 	local text = panel.search:GetText() or ""
+	panel.query = text
 	local available = LootDB.Available()
 	local rows = available and LootDB.Search(text) or {}
 	fill(panel.results, rows, not available and "The Game's Loot Data Isn't Loaded"
@@ -288,8 +290,9 @@ local function create(parent, width, height)
 
 	panel.search = S.Input(panel, "SynastriaCompanionLootSearch", 260, "Search Items", 60)
 	panel.search:SetPoint("LEFT", panel.back, "RIGHT", GAP, 0)
-	panel.search:HookScript("OnTextChanged", function(_, user)
-		if user then
+	-- the client can report OnTextChanged as user input without a change, so compare with the last query
+	panel.search:HookScript("OnTextChanged", function(self, user)
+		if user and (self:GetText() or "") ~= panel.query then
 			panel.pending = GetTime() + SEARCH_DELAY
 			if top().kind ~= "search" then toSearch() end
 		end
