@@ -95,7 +95,7 @@ local function back()
 end
 
 local function toSearch()
-	S.Dismiss()
+	S.CloseMenus()
 	stack = { stack[1] }
 	render()
 end
