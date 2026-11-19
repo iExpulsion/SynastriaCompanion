@@ -231,7 +231,8 @@ again; right-click a player to forget them.
 Hover an item in your bags, bank or guild bank that anyone could attune and its tooltip lists which of your friends still need it: not
 attuned at all, or attuned but not this variant. It's handy for deciding who gets a drop or a Bind on Equip item.
 While it asks, the tooltip says **Asking Friends...**; answers appear as they come in, and **Asked 3 Friends** shows
-once everyone has been asked. Only items you could give away ask: soulbound, account bound and quest items are left
+once everyone has been asked. Only friends whose Companion has shared with you are asked. Only items you could
+give away ask: soulbound, account bound and quest items are left
 out unless they're still in their loot trade window, and so are items you don't hold (chat links, vendors, loot,
 worn gear).
 

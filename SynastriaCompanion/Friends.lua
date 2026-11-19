@@ -92,12 +92,13 @@ end
 
 -- Whispers every online friend; the last whisper carries lastOf. Nothing goes to the guild or the group: most
 -- guilds are a player's own alts, groups have other addons for this, and every message counts toward the server's
--- limit. Returns how many were queued.
-function Friends.WhisperFriends(msg, lastOf)
+-- limit. knownOnly: just the friends whose Companion has sent a status before. Returns how many were queued.
+function Friends.WhisperFriends(msg, lastOf, knownOnly)
 	local count = 0
 	for i = 1, GetNumFriends() do
 		local name, _, _, _, connected = GetFriendInfo(i)
-		if name and connected then
+		local rec = name and SC.db.friends[name]
+		if name and connected and (not knownOnly or (rec and not rec.own)) then
 			send(msg, "WHISPER", name)
 			count = count + 1
 		end
@@ -255,7 +256,7 @@ querier:SetScript("OnUpdate", function(self)
 			local q = Friends.queries[str]
 			q.asked = time()
 			unqueue("Q")
-			q.sentTo = Friends.WhisperFriends("Q;" .. VERSION .. ";" .. str, str)
+			q.sentTo = Friends.WhisperFriends("Q;" .. VERSION .. ";" .. str, str, true)
 			q.state = q.sentTo > 0 and "asking" or "done"
 			if q.state == "done" then finishQuestion(str) end
 		end
@@ -305,7 +306,7 @@ end
 
 -- A question's progress, as tooltip labels: asking while it waits or is still being whispered, then how many
 -- friends it reached.
-local ASKING_TEXT, NO_FRIENDS_TEXT = "Asking Friends...", "No Friends Online"
+local ASKING_TEXT, NO_FRIENDS_TEXT = "Asking Friends...", "No Friends with Companion Online"
 
 local function askedText(q)
 	local text = NO_FRIENDS_TEXT
