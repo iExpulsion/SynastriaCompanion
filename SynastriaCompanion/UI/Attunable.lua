@@ -313,7 +313,9 @@ local function onRowClick(item, button)
 	if IsModifiedClick() then
 		HandleModifiedItemClick(Attune.Link(item))
 	elseif button == "LeftButton" and OpenLootDb then
+		SC.LootDatabaseUI.from = "attunable"
 		OpenLootDb(item.id)
+		SC.LootDatabaseUI.from = nil
 	end
 end
 
@@ -535,6 +537,7 @@ local function create(parent, width, height)
 		end,
 	})
 	tbl.frame:SetPoint("TOPLEFT", x0, top)
+	panel.table = tbl
 	tbl:SetSort(filter.sort, filter.desc)
 
 	panel.status = S.Text(panel, "small")

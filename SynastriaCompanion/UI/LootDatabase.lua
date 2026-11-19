@@ -90,8 +90,9 @@ end
 
 local function back()
 	S.Dismiss()
+	local from = top().from
 	if #stack > 1 then stack[#stack] = nil end
-	render()
+	if from then SC.Window.Open(from) else render() end
 end
 
 local function toSearch()
@@ -235,7 +236,7 @@ end
 
 function render()
 	local view = top()
-	panel.back:SetEnabled(#stack > 1)
+	panel.back:SetEnabled(#stack > 1 or view.from ~= nil)
 	for _, t in ipairs({ panel.results, panel.sources, panel.loot }) do t:Hide() end
 	if view.kind == "search" then
 		showHeader(nil, "", C.text, "")
@@ -369,10 +370,13 @@ local function create(parent, width, height)
 end
 
 -- Opened from the sidebar it keeps its place; opened by the game for an item it shows that item, with Back going
--- to the search.
+-- to the search. Opened from another Companion screen (LootUI.from set around OpenLootDb), Back on that item
+-- returns to the screen.
 local function show(_, item)
 	local id = LootDB.ResolveItem(item)
-	if id then
+	if id and LootUI.from then
+		stack = { { kind = "search" }, { kind = "item", id = id, from = LootUI.from } }
+	elseif id then
 		local view = top()
 		if not (view.kind == "item" and view.id == id) then
 			if not panel.opened then stack = { { kind = "search" } } end
