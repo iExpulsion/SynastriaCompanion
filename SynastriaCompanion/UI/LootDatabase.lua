@@ -2,7 +2,8 @@ local _, NS = ...
 local SC = NS.SC
 
 -- Item Database: search items, see where one comes from, and see what a creature or object drops, with Back
--- going through everything opened since the search. Replaces the window the game opens with OpenLootDb.
+-- going through everything opened since the search. The search box stays up on every view: typing in it, or Enter,
+-- goes straight back to the results. Replaces the window the game opens with OpenLootDb.
 local LootUI = {}
 SC.LootDatabaseUI = LootUI
 
@@ -89,6 +90,12 @@ end
 local function back()
 	S.Dismiss()
 	if #stack > 1 then stack[#stack] = nil end
+	render()
+end
+
+local function toSearch()
+	S.Dismiss()
+	stack = { stack[1] }
 	render()
 end
 
@@ -227,7 +234,6 @@ end
 function render()
 	local view = top()
 	panel.back:SetEnabled(#stack > 1)
-	setShown(panel.search, view.kind == "search")
 	for _, t in ipairs({ panel.results, panel.sources, panel.loot }) do t:Hide() end
 	if view.kind == "search" then
 		showHeader(nil, "", C.text, "")
@@ -283,11 +289,14 @@ local function create(parent, width, height)
 	panel.search = S.Input(panel, "SynastriaCompanionLootSearch", 260, "Search Items", 60)
 	panel.search:SetPoint("LEFT", panel.back, "RIGHT", GAP, 0)
 	panel.search:HookScript("OnTextChanged", function(_, user)
-		if user then panel.pending = GetTime() + SEARCH_DELAY end
+		if user then
+			panel.pending = GetTime() + SEARCH_DELAY
+			if top().kind ~= "search" then toSearch() end
+		end
 	end)
 	panel.search:SetScript("OnEnterPressed", function(self)
 		self:ClearFocus()
-		runSearch()
+		if top().kind == "search" then runSearch() else toSearch() end
 	end)
 
 	local options = S.Button(panel, "Options", "ghost", 70, function()
