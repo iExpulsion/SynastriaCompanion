@@ -458,7 +458,12 @@ end
 -- When each player who asked for statuses was last answered, so asking over and over gets one answer a minute.
 local repliedAt = {}
 
+-- Friends who came online, by when to ask them for their status. Their own login hello usually arrives first and
+-- gets an answer, which drops the ask.
+local askAt = {}
+
 local function reply(from)
+	askAt[from] = nil
 	local status = SC.db.share and time() - (repliedAt[from] or 0) >= HELLO_COOLDOWN and Friends.Status()
 	if status then
 		repliedAt[from] = time()
@@ -593,7 +598,7 @@ end)
 -- A friend who comes online (Synastria's friends list follows the account, so also one switching characters) is
 -- whispered this character's status and asked for theirs once their addons have loaded. The first friend list after
 -- login only notes who's on, since the login hello reaches them; a friend who goes offline first isn't asked.
-local onlineNow, onlineBefore, friendsKnown, askAt = {}, {}, false, {}
+local onlineNow, onlineBefore, friendsKnown = {}, {}, false
 local asker = CreateFrame("Frame")
 asker:Hide()
 asker:SetScript("OnUpdate", function(self)
