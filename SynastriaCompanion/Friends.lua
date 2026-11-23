@@ -124,12 +124,13 @@ function Friends.AccountId()
 	return SC.db.accountId
 end
 
--- Records: name -> { class (token), level, counts = { account, TF, WF, LF, character, TF, WF, LF }, seen, own,
--- account (the sender's account ID) }.
-local function store(name, class, level, counts, own, account)
-	local rec = SC.db.friends[name] or { counts = {} }
-	SC.db.friends[name] = rec
-	rec.class, rec.level, rec.seen = class, tonumber(level) or 0, time()
+-- Records: key -> { name, class (token), level, counts = { account, TF, WF, LF, character, TF, WF, LF }, seen, own,
+-- account (the sender's account ID) }. Others are keyed by name, as their messages are; this account's own
+-- characters by GUID, since they can share a name.
+local function store(key, name, class, level, counts, own, account)
+	local rec = SC.db.friends[key] or { counts = {} }
+	SC.db.friends[key] = rec
+	rec.name, rec.class, rec.level, rec.seen = name, class, tonumber(level) or 0, time()
 	rec.own = own or rec.own or nil
 	if account and account ~= "" then rec.account = account end
 	for i = 1, 8 do rec.counts[i] = tonumber(counts[i]) or 0 end
@@ -149,7 +150,7 @@ function Friends.Status()
 		local _, class = UnitClass("player")
 		local level = UnitLevel("player") or 0
 		local account = Friends.AccountId()
-		store(me(), class, level, both, true, account)
+		store(UnitGUID("player") or me(), me(), class, level, both, true, account)
 		msg = table.concat({ "S", VERSION, class or "", level, both[1], both[2], both[3], both[4], both[5], both[6],
 			both[7], both[8], account }, ";")
 	end
@@ -488,7 +489,7 @@ function Friends.Receive(prefix, msg, channel, from)
 			if kind == "H" then
 				reply(from)
 			elseif kind == "S" or kind == "R" then
-				store(from, f[3], f[4], { f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12] }, nil, f[13])
+				store(from, from, f[3], f[4], { f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12] }, nil, f[13])
 				if kind == "R" then reply(from) end
 			elseif kind == "Q" and SC.db.share and f[3] then
 				local forge, progress = Friends.Need(f[3])
@@ -520,12 +521,13 @@ end
 -- online or seen last, with the others' names in `others`. A row's relation is the closest any of its characters
 -- has (You, Alt, Group, Friend, Guild, or "" for someone heard from before); online if any of them is.
 function Friends.Rows()
-	local rows, byAccount, relations, player = {}, {}, Friends.Relations(), me()
+	local rows, byAccount, relations, guid = {}, {}, Friends.Relations(), UnitGUID("player")
 	local order = Friends.RELATION_ORDER
-	for name, rec in pairs(SC.db.friends) do
-		local rel = relations[name]
+	for key, rec in pairs(SC.db.friends) do
+		local name = rec.name or key
+		local rel = not rec.own and relations[name]
 		local relation, online
-		if name == player then
+		if rec.own and key == guid then
 			relation, online = "You", true
 		elseif rec.own then
 			relation, online = "Alt", false
@@ -585,8 +587,10 @@ end
 
 SC:OnLoad(function()
 	local now = time()
-	for name, rec in pairs(SC.db.friends) do
-		if not rec.seen or now - rec.seen > FORGET_AFTER then SC.db.friends[name] = nil end
+	for key, rec in pairs(SC.db.friends) do
+		-- own characters used to be keyed by name, which same-named characters shared
+		local stale = rec.own and not rec.name
+		if stale or not rec.seen or now - rec.seen > FORGET_AFTER then SC.db.friends[key] = nil end
 	end
 	Friends.AccountId()
 end)

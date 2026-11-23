@@ -1078,6 +1078,7 @@ local function createTop(width)
 	local looksW = math.floor(room * 0.55)
 	panel.looks = S.Dropdown(panel, looksW, function(look)
 		state.look = look
+		state.chars[UnitGUID("player")].look = look
 		TransmogUI.Refresh()
 	end)
 	panel.looks:SetPoint("TOPLEFT", PAD + LOOK_LABEL_W, -PAD)
@@ -1343,6 +1344,7 @@ local function createSets(width, height)
 	sv.class:SetPoint("TOPLEFT", 0, -(CONTROL_H + GAP))
 	sv.armor = S.Dropdown(sv, ARMOR_W, function(value)
 		state.setArmor = value
+		state.chars[UnitGUID("player")].setArmor = value
 		TransmogUI.Refresh()
 	end)
 	local armors = { { value = 0, text = "Any Armor" } }
@@ -1532,10 +1534,16 @@ end
 local function create(parent, width, height)
 	SC.db.transmog = SC.db.transmog or {}
 	state = SC.db.transmog
-	state.look = state.look or (T.HasData() and T.Active() > 0 and T.Active()) or 1
+	-- the open look and the armor filter start from the character's own, so each character keeps its own (by GUID:
+	-- characters can share a name); the window is first built after login, when the GUID is known
+	state.chars = state.chars or {}
+	local guid = UnitGUID("player")
+	state.chars[guid] = state.chars[guid] or {}
+	local own = state.chars[guid]
+	state.look = own.look or (T.HasData() and T.Active() > 0 and T.Active()) or 1
 	state.setClass = state.setClass or "mine"
 	state.setOpen = state.setOpen or {}
-	state.setArmor = state.setArmor or T.BestArmor()
+	state.setArmor = own.setArmor or T.BestArmor()
 	state.slot = state.slot or 1
 	panel = CreateFrame("Frame", nil, parent)
 	panel:SetSize(width, height)
